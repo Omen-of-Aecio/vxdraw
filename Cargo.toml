@@ -8,35 +8,17 @@ edition = "2018"
 
 [dependencies]
 arrayvec = "0.4"
-bincode = "1.0.1"
-byteorder = "1.2.7"
 cgmath = "0.17"
-chrono = "0.4.6"
-clap = "2.32.0"
-derive_more = "0.11.0"
-either = "1.5.0"
-failure = "0.1.1"
-gfx = "0.17"
 gfx-backend-dx12 = { version = "0.1", optional = true }
 gfx-backend-gl = { version = "0.1", optional = true }
 gfx-backend-metal = { version = "0.1", optional = true }
 gfx-backend-vulkan = { version = "0.1", optional = true }
 gfx-hal = "0.1"
-gfx_window_sdl = "0.8"
 glutin = { version = "0.19", optional = true }
 glsl-to-spirv = "0.1.4"
-honggfuzz = "0.5"
 image = "0.21"
-priority-queue = "0.5.2"
 rand = "0.6.1"
 rand_pcg = "0.1.2"
-rodio = "0.8.1"
-rustyline = "4.1.0"
-sdl2 = "0.31"
-serde = "1.0"
-serde_derive = "1.0"
-time = "0.1.40"
-toml = "0.4.9"
 winit = "0.18"
 
 logger = { path = "../logger" }
