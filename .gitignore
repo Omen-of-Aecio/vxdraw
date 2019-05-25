@@ -1,0 +1,6 @@
+/*
+!.gitignore
+!Cargo.toml
+!images/
+!shaders/
+!src/
