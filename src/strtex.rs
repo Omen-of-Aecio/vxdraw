@@ -939,7 +939,7 @@ pub fn write(
     }
 }
 
-pub fn generate_map2(s: &mut Windowing, blitid: &TextureHandle, seed: [f32; 3]) {
+pub fn fill_with_perlin_noise(s: &mut Windowing, blitid: &TextureHandle, seed: [f32; 3]) {
     static VERTEX_SOURCE: &str = include_str!("../shaders/proc1.vert");
     static FRAGMENT_SOURCE: &str = include_str!("../shaders/proc1.frag");
     let w = s.strtexs[blitid.0].width;
@@ -1319,7 +1319,7 @@ mod tests {
 
         );
         push_sprite(&mut windowing, &id, Sprite::default());
-        generate_map2(&mut windowing, &id, [0.0, 0.0, 0.0]);
+        fill_with_perlin_noise(&mut windowing, &id, [0.0, 0.0, 0.0]);
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "generate_map_randomly", img);
     }
