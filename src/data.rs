@@ -9,8 +9,8 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, Adapter, Backend};
-use std::mem::ManuallyDrop;
 use logger::Logpass;
+use std::mem::ManuallyDrop;
 
 /// A texture that host can read/write into directly, functions similarly to a sprite
 pub struct StreamingTexture {
@@ -145,7 +145,7 @@ pub struct Windowing {
             gfx_hal::command::Primary,
         >,
     >,
-    pub backbuffer: gfx_hal::window::Backbuffer<back::Backend>,
+    pub images: Vec<<back::Backend as Backend>::Image>,
     pub image_views: Vec<<back::Backend as Backend>::ImageView>,
     pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
     pub queue_group: ManuallyDrop<gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>>,

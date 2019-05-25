@@ -18,7 +18,7 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use logger::{debug};
+use logger::debug;
 use std::io::Read;
 use std::iter::once;
 use std::mem::{size_of, ManuallyDrop};
@@ -95,10 +95,7 @@ impl Default for Sprite {
 
 // ---
 
-pub fn push_texture(
-    s: &mut Windowing,
-    options: TextureOptions,
-) -> TextureHandle {
+pub fn push_texture(s: &mut Windowing, options: TextureOptions) -> TextureHandle {
     let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
         make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
 
@@ -251,14 +248,14 @@ pub fn push_texture(
     let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
         binding: 0,
         stride: (size_of::<f32>() * (3 + 2 + 2 + 2 + 1)) as u32,
-        rate: 0,
+        rate: pso::VertexInputRate::Vertex,
     }];
     let attributes: Vec<pso::AttributeDesc> = vec![
         pso::AttributeDesc {
             location: 0,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 0,
             },
         },
@@ -266,7 +263,7 @@ pub fn push_texture(
             location: 1,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 12,
             },
         },
@@ -274,7 +271,7 @@ pub fn push_texture(
             location: 2,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 20,
             },
         },
@@ -282,7 +279,7 @@ pub fn push_texture(
             location: 3,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 28,
             },
         },
@@ -290,7 +287,7 @@ pub fn push_texture(
             location: 4,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 32,
             },
         },
@@ -359,7 +356,7 @@ pub fn push_texture(
             layouts: image::Layout::Undefined..image::Layout::Present,
         };
         let depth = pass::Attachment {
-            format: Some(format::Format::D32Float),
+            format: Some(format::Format::D32Sfloat),
             samples: 1,
             ops: pass::AttachmentOps::new(
                 pass::AttachmentLoadOp::Clear,
@@ -429,6 +426,7 @@ pub fn push_texture(
                         count: 1,
                     },
                 ],
+                pso::DescriptorPoolCreateFlags::empty(),
             )
             .expect("Couldn't create a descriptor pool!")
     };
@@ -990,14 +988,14 @@ pub fn fill_with_perlin_noise(s: &mut Windowing, blitid: &TextureHandle, seed: [
     let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
         binding: 0,
         stride: 8u32,
-        rate: 0,
+        rate: pso::VertexInputRate::Vertex,
     }];
 
     let attributes: Vec<pso::AttributeDesc> = vec![pso::AttributeDesc {
         location: 0,
         binding: 0,
         element: pso::Element {
-            format: format::Format::Rg32Float,
+            format: format::Format::Rg32Sfloat,
             offset: 0,
         },
     }];
@@ -1302,10 +1300,10 @@ pub fn fill_with_perlin_noise(s: &mut Windowing, blitid: &TextureHandle, seed: [
 mod tests {
     use super::*;
     use crate::*;
+    use logger::{Generic, GenericLogger, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use test::{black_box, Bencher};
-    use logger::{Generic, Logger, GenericLogger};
 
     #[test]
     fn generate_map_randomly() {
@@ -1316,7 +1314,6 @@ mod tests {
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-
         );
         push_sprite(&mut windowing, &id, Sprite::default());
         fill_with_perlin_noise(&mut windowing, &id, [0.0, 0.0, 0.0]);
@@ -1333,7 +1330,6 @@ mod tests {
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1376,11 +1372,7 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let id = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(10, 1),
-
-        );
+        let id = push_texture(&mut windowing, TextureOptions::default_with_size(10, 1));
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
         strtex::streaming_texture_set_pixels_block(
@@ -1443,11 +1435,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
-        let id = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(10, 10),
-
-        );
+        let id = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
         strtex::streaming_texture_set_pixel(&mut windowing, &id, 3, 2, (0, 123, 0, 255));
         let mut green_value = 0;
         strtex::read(&mut windowing, &id, |arr, pitch| {
@@ -1461,11 +1449,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
-        let id = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(10, 10),
-
-        );
+        let id = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
         strtex::streaming_texture_set_pixel(&mut windowing, &id, 3, 2, (0, 123, 0, 255));
         strtex::write(&mut windowing, &id, |arr, pitch| {
             arr[3 + 2 * pitch].1 = 124;
@@ -1483,11 +1467,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
-        let id = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(20, 20),
-
-        );
+        let id = push_texture(&mut windowing, TextureOptions::default_with_size(20, 20));
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
@@ -1510,11 +1490,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
-        let id = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(64, 64),
-
-        );
+        let id = push_texture(&mut windowing, TextureOptions::default_with_size(64, 64));
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
@@ -1539,11 +1515,7 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let strtex1 = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(10, 10),
-
-        );
+        let strtex1 = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
         strtex::streaming_texture_set_pixels_block(
             &mut windowing,
             &strtex1,
@@ -1553,11 +1525,7 @@ mod tests {
         );
         strtex::push_sprite(&mut windowing, &strtex1, strtex::Sprite::default());
 
-        let strtex2 = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(10, 10),
-
-        );
+        let strtex2 = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
         strtex::streaming_texture_set_pixels_block(
             &mut windowing,
             &strtex2,
@@ -1591,11 +1559,7 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let id = push_texture(
-            &mut windowing,
-            TextureOptions::default_with_size(50, 50),
-
-        );
+        let id = push_texture(&mut windowing, TextureOptions::default_with_size(50, 50));
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -1618,7 +1582,6 @@ mod tests {
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 

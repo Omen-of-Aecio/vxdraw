@@ -110,7 +110,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
     let pixel_size = 4; //size_of::<image::Rgba<u8>>();
     let row_size = pixel_size * (img.width() as usize);
     let limits = s.adapter.physical_device.limits();
-    let row_alignment_mask = limits.min_buffer_copy_pitch_alignment as u32 - 1;
+    let row_alignment_mask = limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
     let row_pitch = ((row_size as u32 + row_alignment_mask) & !row_alignment_mask) as usize;
     debug_assert!(row_pitch as usize >= row_size);
     let required_bytes = row_pitch * img.height() as usize;
@@ -366,14 +366,14 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
     let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
         binding: 0,
         stride: (size_of::<f32>() * (3 + 2 + 2 + 2 + 1)) as u32,
-        rate: 0,
+        rate: pso::VertexInputRate::Vertex,
     }];
     let attributes: Vec<pso::AttributeDesc> = vec![
         pso::AttributeDesc {
             location: 0,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rgb32Float,
+                format: format::Format::Rgb32Sfloat,
                 offset: 0,
             },
         },
@@ -381,7 +381,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
             location: 1,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 12,
             },
         },
@@ -389,7 +389,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
             location: 2,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 20,
             },
         },
@@ -397,7 +397,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
             location: 3,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 28,
             },
         },
@@ -405,7 +405,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
             location: 4,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 32,
             },
         },
@@ -474,7 +474,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
             layouts: image::Layout::Undefined..image::Layout::Present,
         };
         let depth = pass::Attachment {
-            format: Some(format::Format::D32Float),
+            format: Some(format::Format::D32Sfloat),
             samples: 1,
             ops: pass::AttachmentOps::new(
                 pass::AttachmentLoadOp::Clear,
@@ -544,6 +544,7 @@ pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions)
                         count: 1,
                     },
                 ],
+                pso::DescriptorPoolCreateFlags::empty(),
             )
             .expect("Couldn't create a descriptor pool!")
     };
@@ -1015,11 +1016,11 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
+    use logger::{Generic, GenericLogger, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use std::f32::consts::PI;
     use test::Bencher;
-    use logger::{Generic, Logger, GenericLogger};
 
     // ---
 

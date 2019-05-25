@@ -262,14 +262,14 @@ pub fn create_quad(s: &mut Windowing) {
     let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
         binding: 0,
         stride: BYTES_PER_VTX as u32,
-        rate: 0,
+        rate: pso::VertexInputRate::Vertex,
     }];
     let attributes: Vec<pso::AttributeDesc> = vec![
         pso::AttributeDesc {
             location: 0,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rgb32Float,
+                format: format::Format::Rgb32Sfloat,
                 offset: 0,
             },
         },
@@ -285,7 +285,7 @@ pub fn create_quad(s: &mut Windowing) {
             location: 2,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 16,
             },
         },
@@ -293,7 +293,7 @@ pub fn create_quad(s: &mut Windowing) {
             location: 3,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 24,
             },
         },
@@ -301,7 +301,7 @@ pub fn create_quad(s: &mut Windowing) {
             location: 4,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 28,
             },
         },
@@ -359,7 +359,7 @@ pub fn create_quad(s: &mut Windowing) {
         };
 
         let depth = pass::Attachment {
-            format: Some(format::Format::D32Float),
+            format: Some(format::Format::D32Sfloat),
             samples: 1,
             ops: pass::AttachmentOps::new(
                 pass::AttachmentLoadOp::Clear,
@@ -653,7 +653,7 @@ pub fn set_quad_color(s: &mut Windowing, inst: &QuadHandle, rgba: [u8; 4]) {
 mod tests {
     use crate::*;
     use cgmath::Deg;
-    use logger::{Generic, Logger, GenericLogger};
+    use logger::{Generic, GenericLogger, Logger};
 
     #[test]
     fn simple_quad() {

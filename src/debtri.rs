@@ -178,7 +178,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
     let vertex_buffers = vec![pso::VertexBufferDesc {
         binding: 0,
         stride: BYTES_PER_VTX as u32,
-        rate: 0, // 0 = Per Vertex, 1 = Per Instance, >=2 = Nth Rate
+        rate: pso::VertexInputRate::Vertex,
     }];
 
     let attributes: Vec<pso::AttributeDesc> = vec![
@@ -186,7 +186,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
             location: 0,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 0,
             },
         },
@@ -202,7 +202,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
             location: 2,
             binding: 0,
             element: pso::Element {
-                format: format::Format::Rg32Float,
+                format: format::Format::Rg32Sfloat,
                 offset: 12,
             },
         },
@@ -210,7 +210,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
             location: 3,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 20,
             },
         },
@@ -218,7 +218,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
             location: 4,
             binding: 0,
             element: pso::Element {
-                format: format::Format::R32Float,
+                format: format::Format::R32Sfloat,
                 offset: 24,
             },
         },
@@ -275,7 +275,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
             layouts: image::Layout::Undefined..image::Layout::Present,
         };
         let depth = pass::Attachment {
-            format: Some(format::Format::D32Float),
+            format: Some(format::Format::D32Sfloat),
             samples: 1,
             ops: pass::AttachmentOps::new(
                 pass::AttachmentLoadOp::Clear,
@@ -641,8 +641,8 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
+    use logger::{Generic, GenericLogger, Logger};
     use test::{black_box, Bencher};
-    use logger::{Generic, Logger, GenericLogger};
 
     // ---
 

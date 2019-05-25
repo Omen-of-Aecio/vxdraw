@@ -14,7 +14,7 @@ use gfx_hal::{
     device::Device,
     format, image, memory,
     memory::Properties,
-    pso, Adapter, Backbuffer, Backend,
+    pso, Adapter, Backend,
 };
 use std::f32::consts::PI;
 use std::iter::once;
@@ -311,10 +311,7 @@ pub fn copy_image_to_rgb(
     let (buffer, memory, requirements) =
         make_transfer_buffer_of_size(s, u64::from(width * height * 3));
     let (imgbuf, imgmem, _imgreq) = make_transfer_img_of_size(s, width, height);
-    let images = match s.backbuffer {
-        Backbuffer::Images(ref images) => images,
-        Backbuffer::Framebuffer(_) => unimplemented![],
-    };
+    let images = &s.images;
     unsafe {
         s.device
             .wait_for_fence(
