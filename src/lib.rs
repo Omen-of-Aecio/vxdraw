@@ -876,7 +876,7 @@ mod tests {
             depth_test: false,
             ..dyntex::TextureOptions::default()
         };
-        let tex1 = dyntex::push_texture(&mut windowing, TESTURE, options);
+        let tex1 = windowing.dyntex().push_texture(TESTURE, options);
         let tex2 = strtex::push_texture(
             &mut windowing,
             strtex::TextureOptions {
@@ -886,7 +886,7 @@ mod tests {
                 ..strtex::TextureOptions::default()
             },
         );
-        let tex3 = dyntex::push_texture(&mut windowing, TESTURE, options);
+        let tex3 = windowing.dyntex().push_texture(TESTURE, options);
         let tex4 = strtex::push_texture(
             &mut windowing,
             strtex::TextureOptions {

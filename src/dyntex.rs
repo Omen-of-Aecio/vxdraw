@@ -31,11 +31,606 @@ pub struct Dyntex<'a> {
 
 impl<'a> Dyntex<'a> {
     pub fn new(s: &'a mut Windowing) -> Self {
-        Self { windowing: s }
+        Self {
+            windowing: s,
+        }
     }
 
+    /// Add a texture to the system
+    ///
+    /// You use a texture to create sprites. Sprites are rectangular views into the texture. Sprites
+    /// based on different texures are drawn in the order in which the textures were allocated, that
+    /// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
+    /// so on.
+    ///
+    /// Each texture has options (See `TextureOptions`). This decides how the derivative sprites are
+    /// draw.
+    ///
+    /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
+    /// To make sure transparency works correctly you can turn off the depth test for foreground
+    /// objects and ensure that the foreground texture is allocated last.
     pub fn push_texture(&mut self, img_data: &[u8], options: TextureOptions) -> TextureHandle {
-        push_texture(&mut self.windowing, img_data, options)
+        let s = &mut *self.windowing;
+        let device = &*s.device;
+
+        let img = load_image::load_from_memory_with_format(&img_data[..], load_image::PNG)
+            .unwrap()
+            .to_rgba();
+
+        let pixel_size = 4; //size_of::<image::Rgba<u8>>();
+        let row_size = pixel_size * (img.width() as usize);
+        let limits = s.adapter.physical_device.limits();
+        let row_alignment_mask = limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
+        let row_pitch = ((row_size as u32 + row_alignment_mask) & !row_alignment_mask) as usize;
+        debug_assert!(row_pitch as usize >= row_size);
+        let required_bytes = row_pitch * img.height() as usize;
+
+        let mut image_upload_buffer = unsafe {
+            device.create_buffer(required_bytes as u64, gfx_hal::buffer::Usage::TRANSFER_SRC)
+        }
+        .unwrap();
+        let image_mem_reqs = unsafe { device.get_buffer_requirements(&image_upload_buffer) };
+        let memory_type_id = find_memory_type_id(&s.adapter, image_mem_reqs, Properties::CPU_VISIBLE);
+        let image_upload_memory =
+            unsafe { device.allocate_memory(memory_type_id, image_mem_reqs.size) }.unwrap();
+        unsafe { device.bind_buffer_memory(&image_upload_memory, 0, &mut image_upload_buffer) }
+            .unwrap();
+
+        unsafe {
+            let mut writer = s
+                .device
+                .acquire_mapping_writer::<u8>(&image_upload_memory, 0..image_mem_reqs.size)
+                .expect("Unable to get mapping writer");
+            for y in 0..img.height() as usize {
+                let row = &(*img)[y * row_size..(y + 1) * row_size];
+                let dest_base = y * row_pitch;
+                writer[dest_base..dest_base + row.len()].copy_from_slice(row);
+            }
+            device
+                .release_mapping_writer(writer)
+                .expect("Couldn't release the mapping writer to the staging buffer!");
+        }
+
+        let mut the_image = unsafe {
+            device
+                .create_image(
+                    image::Kind::D2(img.width(), img.height(), 1, 1),
+                    1,
+                    format::Format::Rgba8Srgb,
+                    image::Tiling::Optimal,
+                    image::Usage::TRANSFER_DST | image::Usage::SAMPLED,
+                    image::ViewCapabilities::empty(),
+                )
+                .expect("Couldn't create the image!")
+        };
+
+        let image_memory = unsafe {
+            let requirements = device.get_image_requirements(&the_image);
+            let memory_type_id =
+                find_memory_type_id(&s.adapter, requirements, memory::Properties::DEVICE_LOCAL);
+            device
+                .allocate_memory(memory_type_id, requirements.size)
+                .expect("Unable to allocate")
+        };
+
+        let image_view = unsafe {
+            device
+                .bind_image_memory(&image_memory, 0, &mut the_image)
+                .expect("Unable to bind memory");
+
+            device
+                .create_image_view(
+                    &the_image,
+                    image::ViewKind::D2,
+                    format::Format::Rgba8Srgb,
+                    format::Swizzle::NO,
+                    image::SubresourceRange {
+                        aspects: format::Aspects::COLOR,
+                        levels: 0..1,
+                        layers: 0..1,
+                    },
+                )
+                .expect("Couldn't create the image view!")
+        };
+
+        let sampler = unsafe {
+            s.device
+                .create_sampler(image::SamplerInfo::new(
+                    image::Filter::Nearest,
+                    image::WrapMode::Tile,
+                ))
+                .expect("Couldn't create the sampler!")
+        };
+
+        unsafe {
+            let mut cmd_buffer = s.command_pool.acquire_command_buffer::<command::OneShot>();
+            cmd_buffer.begin();
+            let image_barrier = memory::Barrier::Image {
+                states: (image::Access::empty(), image::Layout::Undefined)
+                    ..(
+                        image::Access::TRANSFER_WRITE,
+                        image::Layout::TransferDstOptimal,
+                    ),
+                target: &the_image,
+                families: None,
+                range: image::SubresourceRange {
+                    aspects: format::Aspects::COLOR,
+                    levels: 0..1,
+                    layers: 0..1,
+                },
+            };
+            cmd_buffer.pipeline_barrier(
+                pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::TRANSFER,
+                memory::Dependencies::empty(),
+                &[image_barrier],
+            );
+            cmd_buffer.copy_buffer_to_image(
+                &image_upload_buffer,
+                &the_image,
+                image::Layout::TransferDstOptimal,
+                &[command::BufferImageCopy {
+                    buffer_offset: 0,
+                    buffer_width: (row_pitch / pixel_size) as u32,
+                    buffer_height: img.height(),
+                    image_layers: gfx_hal::image::SubresourceLayers {
+                        aspects: format::Aspects::COLOR,
+                        level: 0,
+                        layers: 0..1,
+                    },
+                    image_offset: image::Offset { x: 0, y: 0, z: 0 },
+                    image_extent: image::Extent {
+                        width: img.width(),
+                        height: img.height(),
+                        depth: 1,
+                    },
+                }],
+            );
+            let image_barrier = memory::Barrier::Image {
+                states: (
+                    image::Access::TRANSFER_WRITE,
+                    image::Layout::TransferDstOptimal,
+                )
+                    ..(
+                        image::Access::SHADER_READ,
+                        image::Layout::ShaderReadOnlyOptimal,
+                    ),
+                target: &the_image,
+                families: None,
+                range: image::SubresourceRange {
+                    aspects: format::Aspects::COLOR,
+                    levels: 0..1,
+                    layers: 0..1,
+                },
+            };
+            cmd_buffer.pipeline_barrier(
+                pso::PipelineStage::TRANSFER..pso::PipelineStage::FRAGMENT_SHADER,
+                memory::Dependencies::empty(),
+                &[image_barrier],
+            );
+            cmd_buffer.finish();
+            let upload_fence = s
+                .device
+                .create_fence(false)
+                .expect("Couldn't create an upload fence!");
+            s.queue_group.queues[0].submit_nosemaphores(Some(&cmd_buffer), Some(&upload_fence));
+            s.device
+                .wait_for_fence(&upload_fence, u64::max_value())
+                .expect("Couldn't wait for the fence!");
+            s.device.destroy_fence(upload_fence);
+        }
+
+        unsafe {
+            device.destroy_buffer(image_upload_buffer);
+            device.free_memory(image_upload_memory);
+        }
+
+        const VERTEX_SOURCE_TEXTURE: &str = "#version 450
+        #extension GL_ARB_separate_shader_objects : enable
+
+        layout(location = 0) in vec3 v_pos;
+        layout(location = 1) in vec2 v_uv;
+        layout(location = 2) in vec2 v_dxdy;
+        layout(location = 3) in float rotation;
+        layout(location = 4) in float scale;
+        layout(location = 5) in vec4 color;
+
+        layout(location = 0) out vec2 f_uv;
+        layout(location = 1) out vec4 f_color;
+
+        layout(push_constant) uniform PushConstant {
+            mat4 view;
+        } push_constant;
+
+        out gl_PerVertex {
+            vec4 gl_Position;
+        };
+
+        void main() {
+            mat2 rotmatrix = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
+            vec2 pos = rotmatrix * scale * v_pos.xy;
+            f_uv = v_uv;
+            f_color = color;
+            gl_Position = push_constant.view * vec4(pos + v_dxdy, v_pos.z, 1.0);
+        }";
+
+        const FRAGMENT_SOURCE_TEXTURE: &str = "#version 450
+        #extension GL_ARB_separate_shader_objects : enable
+
+        layout(location = 0) in vec2 f_uv;
+        layout(location = 1) in vec4 f_color;
+
+        layout(location = 0) out vec4 color;
+
+        layout(set = 0, binding = 0) uniform texture2D f_texture;
+        layout(set = 0, binding = 1) uniform sampler f_sampler;
+
+        void main() {
+            color = texture(sampler2D(f_texture, f_sampler), f_uv);
+            color.a *= f_color.a;
+            color.rgb += f_color.rgb;
+        }";
+
+        let vs_module = {
+            let glsl = VERTEX_SOURCE_TEXTURE;
+            let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
+                .unwrap()
+                .bytes()
+                .map(Result::unwrap)
+                .collect();
+            unsafe { s.device.create_shader_module(&spirv) }.unwrap()
+        };
+        let fs_module = {
+            let glsl = FRAGMENT_SOURCE_TEXTURE;
+            let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
+                .unwrap()
+                .bytes()
+                .map(Result::unwrap)
+                .collect();
+            unsafe { s.device.create_shader_module(&spirv) }.unwrap()
+        };
+
+        // Describe the shaders
+        const ENTRY_NAME: &str = "main";
+        let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
+        let (vs_entry, fs_entry) = (
+            pso::EntryPoint {
+                entry: ENTRY_NAME,
+                module: &vs_module,
+                specialization: pso::Specialization::default(),
+            },
+            pso::EntryPoint {
+                entry: ENTRY_NAME,
+                module: &fs_module,
+                specialization: pso::Specialization::default(),
+            },
+        );
+        let shader_entries = pso::GraphicsShaderSet {
+            vertex: vs_entry,
+            hull: None,
+            domain: None,
+            geometry: None,
+            fragment: Some(fs_entry),
+        };
+        let input_assembler = pso::InputAssemblerDesc::new(Primitive::TriangleList);
+
+        let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
+            binding: 0,
+            stride: (size_of::<f32>() * (3 + 2 + 2 + 2 + 1)) as u32,
+            rate: pso::VertexInputRate::Vertex,
+        }];
+        let attributes: Vec<pso::AttributeDesc> = vec![
+            pso::AttributeDesc {
+                location: 0,
+                binding: 0,
+                element: pso::Element {
+                    format: format::Format::Rgb32Sfloat,
+                    offset: 0,
+                },
+            },
+            pso::AttributeDesc {
+                location: 1,
+                binding: 0,
+                element: pso::Element {
+                    format: format::Format::Rg32Sfloat,
+                    offset: 12,
+                },
+            },
+            pso::AttributeDesc {
+                location: 2,
+                binding: 0,
+                element: pso::Element {
+                    format: format::Format::Rg32Sfloat,
+                    offset: 20,
+                },
+            },
+            pso::AttributeDesc {
+                location: 3,
+                binding: 0,
+                element: pso::Element {
+                    format: format::Format::R32Sfloat,
+                    offset: 28,
+                },
+            },
+            pso::AttributeDesc {
+                location: 4,
+                binding: 0,
+                element: pso::Element {
+                    format: format::Format::R32Sfloat,
+                    offset: 32,
+                },
+            },
+            pso::AttributeDesc {
+                location: 5,
+                binding: 0,
+                element: pso::Element {
+                    format: format::Format::Rgba8Unorm,
+                    offset: 36,
+                },
+            },
+        ];
+
+        let rasterizer = pso::Rasterizer {
+            depth_clamping: false,
+            polygon_mode: pso::PolygonMode::Fill,
+            cull_face: pso::Face::NONE,
+            front_face: pso::FrontFace::Clockwise,
+            depth_bias: None,
+            conservative: false,
+        };
+
+        let depth_stencil = pso::DepthStencilDesc {
+            depth: if options.depth_test {
+                pso::DepthTest::On {
+                    fun: pso::Comparison::LessEqual,
+                    write: true,
+                }
+            } else {
+                pso::DepthTest::Off
+            },
+            depth_bounds: false,
+            stencil: pso::StencilTest::Off,
+        };
+        let blender = {
+            let blend_state = pso::BlendState::On {
+                color: pso::BlendOp::Add {
+                    src: pso::Factor::SrcAlpha,
+                    dst: pso::Factor::OneMinusSrcAlpha,
+                },
+                alpha: pso::BlendOp::Add {
+                    src: pso::Factor::One,
+                    dst: pso::Factor::OneMinusSrcAlpha,
+                },
+            };
+            pso::BlendDesc {
+                logic_op: Some(pso::LogicOp::Copy),
+                targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
+            }
+        };
+        let extent = image::Extent {
+            width: s.swapconfig.extent.width,
+            height: s.swapconfig.extent.height,
+            depth: 1,
+        }
+        .rect();
+        let triangle_render_pass = {
+            let attachment = pass::Attachment {
+                format: Some(s.format),
+                samples: 1,
+                ops: pass::AttachmentOps::new(
+                    pass::AttachmentLoadOp::Clear,
+                    pass::AttachmentStoreOp::Store,
+                ),
+                stencil_ops: pass::AttachmentOps::DONT_CARE,
+                layouts: image::Layout::Undefined..image::Layout::Present,
+            };
+            let depth = pass::Attachment {
+                format: Some(format::Format::D32Sfloat),
+                samples: 1,
+                ops: pass::AttachmentOps::new(
+                    pass::AttachmentLoadOp::Clear,
+                    pass::AttachmentStoreOp::Store,
+                ),
+                stencil_ops: pass::AttachmentOps::DONT_CARE,
+                layouts: image::Layout::Undefined..image::Layout::DepthStencilAttachmentOptimal,
+            };
+
+            let subpass = pass::SubpassDesc {
+                colors: &[(0, image::Layout::ColorAttachmentOptimal)],
+                depth_stencil: Some(&(1, image::Layout::DepthStencilAttachmentOptimal)),
+                inputs: &[],
+                resolves: &[],
+                preserves: &[],
+            };
+
+            unsafe {
+                s.device
+                    .create_render_pass(&[attachment, depth], &[subpass], &[])
+            }
+            .expect("Can't create render pass")
+        };
+        let baked_states = pso::BakedStates {
+            viewport: Some(pso::Viewport {
+                rect: extent,
+                depth: (0.0..1.0),
+            }),
+            scissor: Some(extent),
+            blend_color: None,
+            depth_bounds: None,
+        };
+        let mut bindings = Vec::<pso::DescriptorSetLayoutBinding>::new();
+        bindings.push(pso::DescriptorSetLayoutBinding {
+            binding: 0,
+            ty: pso::DescriptorType::SampledImage,
+            count: 1,
+            stage_flags: pso::ShaderStageFlags::FRAGMENT,
+            immutable_samplers: false,
+        });
+        bindings.push(pso::DescriptorSetLayoutBinding {
+            binding: 1,
+            ty: pso::DescriptorType::Sampler,
+            count: 1,
+            stage_flags: pso::ShaderStageFlags::FRAGMENT,
+            immutable_samplers: false,
+        });
+        let immutable_samplers = Vec::<<back::Backend as Backend>::Sampler>::new();
+        let triangle_descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout> =
+            vec![unsafe {
+                s.device
+                    .create_descriptor_set_layout(bindings, immutable_samplers)
+                    .expect("Couldn't make a DescriptorSetLayout")
+            }];
+
+        let mut descriptor_pool = unsafe {
+            s.device
+                .create_descriptor_pool(
+                    1, // sets
+                    &[
+                        pso::DescriptorRangeDesc {
+                            ty: pso::DescriptorType::SampledImage,
+                            count: 1,
+                        },
+                        pso::DescriptorRangeDesc {
+                            ty: pso::DescriptorType::Sampler,
+                            count: 1,
+                        },
+                    ],
+                    pso::DescriptorPoolCreateFlags::empty(),
+                )
+                .expect("Couldn't create a descriptor pool!")
+        };
+
+        let descriptor_set = unsafe {
+            descriptor_pool
+                .allocate_set(&triangle_descriptor_set_layouts[0])
+                .expect("Couldn't make a Descriptor Set!")
+        };
+
+        unsafe {
+            s.device.write_descriptor_sets(vec![
+                pso::DescriptorSetWrite {
+                    set: &descriptor_set,
+                    binding: 0,
+                    array_offset: 0,
+                    descriptors: Some(pso::Descriptor::Image(
+                        &image_view,
+                        image::Layout::ShaderReadOnlyOptimal,
+                    )),
+                },
+                pso::DescriptorSetWrite {
+                    set: &descriptor_set,
+                    binding: 1,
+                    array_offset: 0,
+                    descriptors: Some(pso::Descriptor::Sampler(&sampler)),
+                },
+            ]);
+        }
+
+        let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
+        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
+        let triangle_pipeline_layout = unsafe {
+            s.device
+                .create_pipeline_layout(&triangle_descriptor_set_layouts, push_constants)
+                .expect("Couldn't create a pipeline layout")
+        };
+
+        // Describe the pipeline (rasterization, triangle interpretation)
+        let pipeline_desc = pso::GraphicsPipelineDesc {
+            shaders: shader_entries,
+            rasterizer,
+            vertex_buffers,
+            attributes,
+            input_assembler,
+            blender,
+            depth_stencil,
+            multisampling: None,
+            baked_states,
+            layout: &triangle_pipeline_layout,
+            subpass: pass::Subpass {
+                index: 0,
+                main_pass: &triangle_render_pass,
+            },
+            flags: pso::PipelineCreationFlags::empty(),
+            parent: pso::BasePipeline::None,
+        };
+
+        let triangle_pipeline = unsafe {
+            s.device
+                .create_graphics_pipeline(&pipeline_desc, None)
+                .expect("Couldn't create a graphics pipeline!")
+        };
+
+        unsafe {
+            s.device.destroy_shader_module(vs_module);
+            s.device.destroy_shader_module(fs_module);
+        }
+
+        let (texture_vertex_buffer, texture_vertex_memory, texture_vertex_requirements) =
+            make_vertex_buffer_with_data(s, &[0f32; 10 * 4 * 1000]);
+
+        const INDEX_COUNT: usize = 1000;
+        let (
+            texture_vertex_buffer_indices,
+            texture_vertex_memory_indices,
+            texture_vertex_requirements_indices,
+        ) = make_index_buffer_with_data(s, &[0f32; 3 * INDEX_COUNT]);
+
+        unsafe {
+            let mut data_target = s
+                .device
+                .acquire_mapping_writer(
+                    &texture_vertex_memory_indices,
+                    0..texture_vertex_requirements_indices.size,
+                )
+                .expect("Failed to acquire a memory writer!");
+            for index in 0..INDEX_COUNT {
+                let ver = (index * 6) as u16;
+                let ind = (index * 4) as u16;
+                data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
+                    ind,
+                    ind + 1,
+                    ind + 2,
+                    ind + 2,
+                    ind + 3,
+                    ind,
+                ]);
+            }
+            s.device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
+        }
+
+        s.dyntexs.push(SingleTexture {
+            count: 0,
+
+            fixed_perspective: options.fixed_perspective,
+            mockbuffer: vec![],
+            removed: vec![],
+
+            texture_vertex_buffer: ManuallyDrop::new(texture_vertex_buffer),
+            texture_vertex_memory: ManuallyDrop::new(texture_vertex_memory),
+            texture_vertex_requirements,
+
+            texture_vertex_buffer_indices: ManuallyDrop::new(texture_vertex_buffer_indices),
+            texture_vertex_memory_indices: ManuallyDrop::new(texture_vertex_memory_indices),
+            texture_vertex_requirements_indices,
+
+            texture_image_buffer: ManuallyDrop::new(the_image),
+            texture_image_memory: ManuallyDrop::new(image_memory),
+
+            descriptor_pool: ManuallyDrop::new(descriptor_pool),
+            image_view: ManuallyDrop::new(image_view),
+            sampler: ManuallyDrop::new(sampler),
+
+            descriptor_set: ManuallyDrop::new(descriptor_set),
+            descriptor_set_layouts: triangle_descriptor_set_layouts,
+            pipeline: ManuallyDrop::new(triangle_pipeline),
+            pipeline_layout: ManuallyDrop::new(triangle_pipeline_layout),
+            render_pass: ManuallyDrop::new(triangle_render_pass),
+        });
+        s.draw_order.push(DrawType::DynamicTexture {
+            id: s.dyntexs.len() - 1,
+        });
+        TextureHandle(s.dyntexs.len() - 1)
     }
 }
 
@@ -100,602 +695,6 @@ impl Default for TextureOptions {
 }
 
 // ---
-
-/// Add a texture to the system
-///
-/// You use a texture to create sprites. Sprites are rectangular views into the texture. Sprites
-/// based on different texures are drawn in the order in which the textures were allocated, that
-/// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
-/// so on.
-///
-/// Each texture has options (See `TextureOptions`). This decides how the derivative sprites are
-/// draw.
-///
-/// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
-/// To make sure transparency works correctly you can turn off the depth test for foreground
-/// objects and ensure that the foreground texture is allocated last.
-pub fn push_texture(s: &mut Windowing, img_data: &[u8], options: TextureOptions) -> TextureHandle {
-    let device = &s.device;
-
-    let img = load_image::load_from_memory_with_format(&img_data[..], load_image::PNG)
-        .unwrap()
-        .to_rgba();
-
-    let pixel_size = 4; //size_of::<image::Rgba<u8>>();
-    let row_size = pixel_size * (img.width() as usize);
-    let limits = s.adapter.physical_device.limits();
-    let row_alignment_mask = limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
-    let row_pitch = ((row_size as u32 + row_alignment_mask) & !row_alignment_mask) as usize;
-    debug_assert!(row_pitch as usize >= row_size);
-    let required_bytes = row_pitch * img.height() as usize;
-
-    let mut image_upload_buffer = unsafe {
-        device.create_buffer(required_bytes as u64, gfx_hal::buffer::Usage::TRANSFER_SRC)
-    }
-    .unwrap();
-    let image_mem_reqs = unsafe { device.get_buffer_requirements(&image_upload_buffer) };
-    let memory_type_id = find_memory_type_id(&s.adapter, image_mem_reqs, Properties::CPU_VISIBLE);
-    let image_upload_memory =
-        unsafe { device.allocate_memory(memory_type_id, image_mem_reqs.size) }.unwrap();
-    unsafe { device.bind_buffer_memory(&image_upload_memory, 0, &mut image_upload_buffer) }
-        .unwrap();
-
-    unsafe {
-        let mut writer = s
-            .device
-            .acquire_mapping_writer::<u8>(&image_upload_memory, 0..image_mem_reqs.size)
-            .expect("Unable to get mapping writer");
-        for y in 0..img.height() as usize {
-            let row = &(*img)[y * row_size..(y + 1) * row_size];
-            let dest_base = y * row_pitch;
-            writer[dest_base..dest_base + row.len()].copy_from_slice(row);
-        }
-        device
-            .release_mapping_writer(writer)
-            .expect("Couldn't release the mapping writer to the staging buffer!");
-    }
-
-    let mut the_image = unsafe {
-        device
-            .create_image(
-                image::Kind::D2(img.width(), img.height(), 1, 1),
-                1,
-                format::Format::Rgba8Srgb,
-                image::Tiling::Optimal,
-                image::Usage::TRANSFER_DST | image::Usage::SAMPLED,
-                image::ViewCapabilities::empty(),
-            )
-            .expect("Couldn't create the image!")
-    };
-
-    let image_memory = unsafe {
-        let requirements = device.get_image_requirements(&the_image);
-        let memory_type_id =
-            find_memory_type_id(&s.adapter, requirements, memory::Properties::DEVICE_LOCAL);
-        device
-            .allocate_memory(memory_type_id, requirements.size)
-            .expect("Unable to allocate")
-    };
-
-    let image_view = unsafe {
-        device
-            .bind_image_memory(&image_memory, 0, &mut the_image)
-            .expect("Unable to bind memory");
-
-        device
-            .create_image_view(
-                &the_image,
-                image::ViewKind::D2,
-                format::Format::Rgba8Srgb,
-                format::Swizzle::NO,
-                image::SubresourceRange {
-                    aspects: format::Aspects::COLOR,
-                    levels: 0..1,
-                    layers: 0..1,
-                },
-            )
-            .expect("Couldn't create the image view!")
-    };
-
-    let sampler = unsafe {
-        s.device
-            .create_sampler(image::SamplerInfo::new(
-                image::Filter::Nearest,
-                image::WrapMode::Tile,
-            ))
-            .expect("Couldn't create the sampler!")
-    };
-
-    unsafe {
-        let mut cmd_buffer = s.command_pool.acquire_command_buffer::<command::OneShot>();
-        cmd_buffer.begin();
-        let image_barrier = memory::Barrier::Image {
-            states: (image::Access::empty(), image::Layout::Undefined)
-                ..(
-                    image::Access::TRANSFER_WRITE,
-                    image::Layout::TransferDstOptimal,
-                ),
-            target: &the_image,
-            families: None,
-            range: image::SubresourceRange {
-                aspects: format::Aspects::COLOR,
-                levels: 0..1,
-                layers: 0..1,
-            },
-        };
-        cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::TRANSFER,
-            memory::Dependencies::empty(),
-            &[image_barrier],
-        );
-        cmd_buffer.copy_buffer_to_image(
-            &image_upload_buffer,
-            &the_image,
-            image::Layout::TransferDstOptimal,
-            &[command::BufferImageCopy {
-                buffer_offset: 0,
-                buffer_width: (row_pitch / pixel_size) as u32,
-                buffer_height: img.height(),
-                image_layers: gfx_hal::image::SubresourceLayers {
-                    aspects: format::Aspects::COLOR,
-                    level: 0,
-                    layers: 0..1,
-                },
-                image_offset: image::Offset { x: 0, y: 0, z: 0 },
-                image_extent: image::Extent {
-                    width: img.width(),
-                    height: img.height(),
-                    depth: 1,
-                },
-            }],
-        );
-        let image_barrier = memory::Barrier::Image {
-            states: (
-                image::Access::TRANSFER_WRITE,
-                image::Layout::TransferDstOptimal,
-            )
-                ..(
-                    image::Access::SHADER_READ,
-                    image::Layout::ShaderReadOnlyOptimal,
-                ),
-            target: &the_image,
-            families: None,
-            range: image::SubresourceRange {
-                aspects: format::Aspects::COLOR,
-                levels: 0..1,
-                layers: 0..1,
-            },
-        };
-        cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::TRANSFER..pso::PipelineStage::FRAGMENT_SHADER,
-            memory::Dependencies::empty(),
-            &[image_barrier],
-        );
-        cmd_buffer.finish();
-        let upload_fence = s
-            .device
-            .create_fence(false)
-            .expect("Couldn't create an upload fence!");
-        s.queue_group.queues[0].submit_nosemaphores(Some(&cmd_buffer), Some(&upload_fence));
-        s.device
-            .wait_for_fence(&upload_fence, u64::max_value())
-            .expect("Couldn't wait for the fence!");
-        s.device.destroy_fence(upload_fence);
-    }
-
-    unsafe {
-        device.destroy_buffer(image_upload_buffer);
-        device.free_memory(image_upload_memory);
-    }
-
-    const VERTEX_SOURCE_TEXTURE: &str = "#version 450
-    #extension GL_ARB_separate_shader_objects : enable
-
-    layout(location = 0) in vec3 v_pos;
-    layout(location = 1) in vec2 v_uv;
-    layout(location = 2) in vec2 v_dxdy;
-    layout(location = 3) in float rotation;
-    layout(location = 4) in float scale;
-    layout(location = 5) in vec4 color;
-
-    layout(location = 0) out vec2 f_uv;
-    layout(location = 1) out vec4 f_color;
-
-    layout(push_constant) uniform PushConstant {
-        mat4 view;
-    } push_constant;
-
-    out gl_PerVertex {
-        vec4 gl_Position;
-    };
-
-    void main() {
-        mat2 rotmatrix = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
-        vec2 pos = rotmatrix * scale * v_pos.xy;
-        f_uv = v_uv;
-        f_color = color;
-        gl_Position = push_constant.view * vec4(pos + v_dxdy, v_pos.z, 1.0);
-    }";
-
-    const FRAGMENT_SOURCE_TEXTURE: &str = "#version 450
-    #extension GL_ARB_separate_shader_objects : enable
-
-    layout(location = 0) in vec2 f_uv;
-    layout(location = 1) in vec4 f_color;
-
-    layout(location = 0) out vec4 color;
-
-    layout(set = 0, binding = 0) uniform texture2D f_texture;
-    layout(set = 0, binding = 1) uniform sampler f_sampler;
-
-    void main() {
-        color = texture(sampler2D(f_texture, f_sampler), f_uv);
-        color.a *= f_color.a;
-        color.rgb += f_color.rgb;
-    }";
-
-    let vs_module = {
-        let glsl = VERTEX_SOURCE_TEXTURE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
-    let fs_module = {
-        let glsl = FRAGMENT_SOURCE_TEXTURE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
-
-    // Describe the shaders
-    const ENTRY_NAME: &str = "main";
-    let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
-    let (vs_entry, fs_entry) = (
-        pso::EntryPoint {
-            entry: ENTRY_NAME,
-            module: &vs_module,
-            specialization: pso::Specialization::default(),
-        },
-        pso::EntryPoint {
-            entry: ENTRY_NAME,
-            module: &fs_module,
-            specialization: pso::Specialization::default(),
-        },
-    );
-    let shader_entries = pso::GraphicsShaderSet {
-        vertex: vs_entry,
-        hull: None,
-        domain: None,
-        geometry: None,
-        fragment: Some(fs_entry),
-    };
-    let input_assembler = pso::InputAssemblerDesc::new(Primitive::TriangleList);
-
-    let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
-        binding: 0,
-        stride: (size_of::<f32>() * (3 + 2 + 2 + 2 + 1)) as u32,
-        rate: pso::VertexInputRate::Vertex,
-    }];
-    let attributes: Vec<pso::AttributeDesc> = vec![
-        pso::AttributeDesc {
-            location: 0,
-            binding: 0,
-            element: pso::Element {
-                format: format::Format::Rgb32Sfloat,
-                offset: 0,
-            },
-        },
-        pso::AttributeDesc {
-            location: 1,
-            binding: 0,
-            element: pso::Element {
-                format: format::Format::Rg32Sfloat,
-                offset: 12,
-            },
-        },
-        pso::AttributeDesc {
-            location: 2,
-            binding: 0,
-            element: pso::Element {
-                format: format::Format::Rg32Sfloat,
-                offset: 20,
-            },
-        },
-        pso::AttributeDesc {
-            location: 3,
-            binding: 0,
-            element: pso::Element {
-                format: format::Format::R32Sfloat,
-                offset: 28,
-            },
-        },
-        pso::AttributeDesc {
-            location: 4,
-            binding: 0,
-            element: pso::Element {
-                format: format::Format::R32Sfloat,
-                offset: 32,
-            },
-        },
-        pso::AttributeDesc {
-            location: 5,
-            binding: 0,
-            element: pso::Element {
-                format: format::Format::Rgba8Unorm,
-                offset: 36,
-            },
-        },
-    ];
-
-    let rasterizer = pso::Rasterizer {
-        depth_clamping: false,
-        polygon_mode: pso::PolygonMode::Fill,
-        cull_face: pso::Face::NONE,
-        front_face: pso::FrontFace::Clockwise,
-        depth_bias: None,
-        conservative: false,
-    };
-
-    let depth_stencil = pso::DepthStencilDesc {
-        depth: if options.depth_test {
-            pso::DepthTest::On {
-                fun: pso::Comparison::LessEqual,
-                write: true,
-            }
-        } else {
-            pso::DepthTest::Off
-        },
-        depth_bounds: false,
-        stencil: pso::StencilTest::Off,
-    };
-    let blender = {
-        let blend_state = pso::BlendState::On {
-            color: pso::BlendOp::Add {
-                src: pso::Factor::SrcAlpha,
-                dst: pso::Factor::OneMinusSrcAlpha,
-            },
-            alpha: pso::BlendOp::Add {
-                src: pso::Factor::One,
-                dst: pso::Factor::OneMinusSrcAlpha,
-            },
-        };
-        pso::BlendDesc {
-            logic_op: Some(pso::LogicOp::Copy),
-            targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
-        }
-    };
-    let extent = image::Extent {
-        width: s.swapconfig.extent.width,
-        height: s.swapconfig.extent.height,
-        depth: 1,
-    }
-    .rect();
-    let triangle_render_pass = {
-        let attachment = pass::Attachment {
-            format: Some(s.format),
-            samples: 1,
-            ops: pass::AttachmentOps::new(
-                pass::AttachmentLoadOp::Clear,
-                pass::AttachmentStoreOp::Store,
-            ),
-            stencil_ops: pass::AttachmentOps::DONT_CARE,
-            layouts: image::Layout::Undefined..image::Layout::Present,
-        };
-        let depth = pass::Attachment {
-            format: Some(format::Format::D32Sfloat),
-            samples: 1,
-            ops: pass::AttachmentOps::new(
-                pass::AttachmentLoadOp::Clear,
-                pass::AttachmentStoreOp::Store,
-            ),
-            stencil_ops: pass::AttachmentOps::DONT_CARE,
-            layouts: image::Layout::Undefined..image::Layout::DepthStencilAttachmentOptimal,
-        };
-
-        let subpass = pass::SubpassDesc {
-            colors: &[(0, image::Layout::ColorAttachmentOptimal)],
-            depth_stencil: Some(&(1, image::Layout::DepthStencilAttachmentOptimal)),
-            inputs: &[],
-            resolves: &[],
-            preserves: &[],
-        };
-
-        unsafe {
-            s.device
-                .create_render_pass(&[attachment, depth], &[subpass], &[])
-        }
-        .expect("Can't create render pass")
-    };
-    let baked_states = pso::BakedStates {
-        viewport: Some(pso::Viewport {
-            rect: extent,
-            depth: (0.0..1.0),
-        }),
-        scissor: Some(extent),
-        blend_color: None,
-        depth_bounds: None,
-    };
-    let mut bindings = Vec::<pso::DescriptorSetLayoutBinding>::new();
-    bindings.push(pso::DescriptorSetLayoutBinding {
-        binding: 0,
-        ty: pso::DescriptorType::SampledImage,
-        count: 1,
-        stage_flags: pso::ShaderStageFlags::FRAGMENT,
-        immutable_samplers: false,
-    });
-    bindings.push(pso::DescriptorSetLayoutBinding {
-        binding: 1,
-        ty: pso::DescriptorType::Sampler,
-        count: 1,
-        stage_flags: pso::ShaderStageFlags::FRAGMENT,
-        immutable_samplers: false,
-    });
-    let immutable_samplers = Vec::<<back::Backend as Backend>::Sampler>::new();
-    let triangle_descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout> =
-        vec![unsafe {
-            s.device
-                .create_descriptor_set_layout(bindings, immutable_samplers)
-                .expect("Couldn't make a DescriptorSetLayout")
-        }];
-
-    let mut descriptor_pool = unsafe {
-        s.device
-            .create_descriptor_pool(
-                1, // sets
-                &[
-                    pso::DescriptorRangeDesc {
-                        ty: pso::DescriptorType::SampledImage,
-                        count: 1,
-                    },
-                    pso::DescriptorRangeDesc {
-                        ty: pso::DescriptorType::Sampler,
-                        count: 1,
-                    },
-                ],
-                pso::DescriptorPoolCreateFlags::empty(),
-            )
-            .expect("Couldn't create a descriptor pool!")
-    };
-
-    let descriptor_set = unsafe {
-        descriptor_pool
-            .allocate_set(&triangle_descriptor_set_layouts[0])
-            .expect("Couldn't make a Descriptor Set!")
-    };
-
-    unsafe {
-        s.device.write_descriptor_sets(vec![
-            pso::DescriptorSetWrite {
-                set: &descriptor_set,
-                binding: 0,
-                array_offset: 0,
-                descriptors: Some(pso::Descriptor::Image(
-                    &image_view,
-                    image::Layout::ShaderReadOnlyOptimal,
-                )),
-            },
-            pso::DescriptorSetWrite {
-                set: &descriptor_set,
-                binding: 1,
-                array_offset: 0,
-                descriptors: Some(pso::Descriptor::Sampler(&sampler)),
-            },
-        ]);
-    }
-
-    let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-    push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
-    let triangle_pipeline_layout = unsafe {
-        s.device
-            .create_pipeline_layout(&triangle_descriptor_set_layouts, push_constants)
-            .expect("Couldn't create a pipeline layout")
-    };
-
-    // Describe the pipeline (rasterization, triangle interpretation)
-    let pipeline_desc = pso::GraphicsPipelineDesc {
-        shaders: shader_entries,
-        rasterizer,
-        vertex_buffers,
-        attributes,
-        input_assembler,
-        blender,
-        depth_stencil,
-        multisampling: None,
-        baked_states,
-        layout: &triangle_pipeline_layout,
-        subpass: pass::Subpass {
-            index: 0,
-            main_pass: &triangle_render_pass,
-        },
-        flags: pso::PipelineCreationFlags::empty(),
-        parent: pso::BasePipeline::None,
-    };
-
-    let triangle_pipeline = unsafe {
-        s.device
-            .create_graphics_pipeline(&pipeline_desc, None)
-            .expect("Couldn't create a graphics pipeline!")
-    };
-
-    unsafe {
-        s.device.destroy_shader_module(vs_module);
-        s.device.destroy_shader_module(fs_module);
-    }
-
-    let (texture_vertex_buffer, texture_vertex_memory, texture_vertex_requirements) =
-        make_vertex_buffer_with_data(s, &[0f32; 10 * 4 * 1000]);
-
-    const INDEX_COUNT: usize = 1000;
-    let (
-        texture_vertex_buffer_indices,
-        texture_vertex_memory_indices,
-        texture_vertex_requirements_indices,
-    ) = make_index_buffer_with_data(s, &[0f32; 3 * INDEX_COUNT]);
-
-    unsafe {
-        let mut data_target = s
-            .device
-            .acquire_mapping_writer(
-                &texture_vertex_memory_indices,
-                0..texture_vertex_requirements_indices.size,
-            )
-            .expect("Failed to acquire a memory writer!");
-        for index in 0..INDEX_COUNT {
-            let ver = (index * 6) as u16;
-            let ind = (index * 4) as u16;
-            data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
-                ind,
-                ind + 1,
-                ind + 2,
-                ind + 2,
-                ind + 3,
-                ind,
-            ]);
-        }
-        s.device
-            .release_mapping_writer(data_target)
-            .expect("Couldn't release the mapping writer!");
-    }
-
-    s.dyntexs.push(SingleTexture {
-        count: 0,
-
-        fixed_perspective: options.fixed_perspective,
-        mockbuffer: vec![],
-        removed: vec![],
-
-        texture_vertex_buffer: ManuallyDrop::new(texture_vertex_buffer),
-        texture_vertex_memory: ManuallyDrop::new(texture_vertex_memory),
-        texture_vertex_requirements,
-
-        texture_vertex_buffer_indices: ManuallyDrop::new(texture_vertex_buffer_indices),
-        texture_vertex_memory_indices: ManuallyDrop::new(texture_vertex_memory_indices),
-        texture_vertex_requirements_indices,
-
-        texture_image_buffer: ManuallyDrop::new(the_image),
-        texture_image_memory: ManuallyDrop::new(image_memory),
-
-        descriptor_pool: ManuallyDrop::new(descriptor_pool),
-        image_view: ManuallyDrop::new(image_view),
-        sampler: ManuallyDrop::new(sampler),
-
-        descriptor_set: ManuallyDrop::new(descriptor_set),
-        descriptor_set_layouts: triangle_descriptor_set_layouts,
-        pipeline: ManuallyDrop::new(triangle_pipeline),
-        pipeline_layout: ManuallyDrop::new(triangle_pipeline_layout),
-        render_pass: ManuallyDrop::new(triangle_render_pass),
-    });
-    s.draw_order.push(DrawType::DynamicTexture {
-        id: s.dyntexs.len() - 1,
-    });
-    TextureHandle(s.dyntexs.len() - 1)
-}
 
 pub fn remove_texture(s: &mut Windowing, texture: TextureHandle) {
     let mut index = None;
@@ -1052,8 +1051,10 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let tree = push_texture(&mut windowing, TREE, TextureOptions::default());
-        let logo = push_texture(&mut windowing, LOGO, TextureOptions::default());
+        let mut dyntex = windowing.dyntex();
+
+        let tree = dyntex.push_texture(TREE, TextureOptions::default());
+        let logo = dyntex.push_texture(LOGO, TextureOptions::default());
 
         let sprite = Sprite {
             scale: 0.5,
@@ -1086,7 +1087,9 @@ mod tests {
     fn simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
+
+        let mut dyntex = windowing.dyntex();
+        let tex = dyntex.push_texture(LOGO, TextureOptions::default());
         push_sprite(&mut windowing, &tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
@@ -1098,7 +1101,7 @@ mod tests {
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
-        let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
+        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
         push_sprite(&mut windowing, &tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
@@ -1110,7 +1113,7 @@ mod tests {
     fn colored_simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
+        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
         push_sprite(
             &mut windowing,
             &tex,
@@ -1134,8 +1137,7 @@ mod tests {
     fn translated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(
-            &mut windowing,
+        let tex = windowing.dyntex().push_texture(
             LOGO,
             TextureOptions {
                 depth_test: false,
@@ -1196,8 +1198,7 @@ mod tests {
     fn rotated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(
-            &mut windowing,
+        let tex = windowing.dyntex().push_texture(
             LOGO,
             TextureOptions {
                 depth_test: false,
@@ -1258,8 +1259,7 @@ mod tests {
     fn many_sprites() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(
-            &mut windowing,
+        let tex = windowing.dyntex().push_texture(
             LOGO,
             TextureOptions {
                 depth_test: false,
@@ -1293,9 +1293,10 @@ mod tests {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let forest = push_texture(&mut windowing, FOREST, options);
-        let player = push_texture(&mut windowing, LOGO, options);
-        let tree = push_texture(&mut windowing, TREE, options);
+        let mut dyntex = windowing.dyntex();
+        let forest = dyntex.push_texture(FOREST, options);
+        let player = dyntex.push_texture(LOGO, options);
+        let tree = dyntex.push_texture(TREE, options);
 
         push_sprite(&mut windowing, &forest, Sprite::default());
         push_sprite(
@@ -1330,9 +1331,10 @@ mod tests {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let forest = push_texture(&mut windowing, FOREST, options);
-        let player = push_texture(&mut windowing, LOGO, options);
-        let tree = push_texture(&mut windowing, TREE, options);
+        let mut dyntex = windowing.dyntex();
+        let forest = dyntex.push_texture(FOREST, options);
+        let player = dyntex.push_texture(LOGO, options);
+        let tree = dyntex.push_texture(TREE, options);
 
         push_sprite(&mut windowing, &forest, Sprite::default());
         let middle = push_sprite(
@@ -1369,9 +1371,10 @@ mod tests {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let forest = push_texture(&mut windowing, FOREST, options);
-        let player = push_texture(&mut windowing, LOGO, options);
-        let tree = push_texture(&mut windowing, TREE, options);
+        let mut dyntex = windowing.dyntex();
+        let forest = dyntex.push_texture(FOREST, options);
+        let player = dyntex.push_texture(LOGO, options);
+        let tree = dyntex.push_texture(TREE, options);
 
         push_sprite(&mut windowing, &forest, Sprite::default());
         push_sprite(
@@ -1416,9 +1419,11 @@ mod tests {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let forest = push_texture(&mut windowing, FOREST, options);
-        let player = push_texture(&mut windowing, LOGO, options);
-        let tree = push_texture(&mut windowing, TREE, options);
+
+        let mut dyntex = windowing.dyntex();
+        let forest = dyntex.push_texture(FOREST, options);
+        let player = dyntex.push_texture(LOGO, options);
+        let tree = dyntex.push_texture(TREE, options);
 
         push_sprite(&mut windowing, &forest, Sprite::default());
         push_sprite(
@@ -1460,7 +1465,7 @@ mod tests {
             fixed_perspective: Some(Matrix4::identity()),
             ..TextureOptions::default()
         };
-        let forest = push_texture(&mut windowing, FOREST, options);
+        let forest = windowing.dyntex().push_texture(FOREST, options);
 
         push_sprite(&mut windowing, &forest, Sprite::default());
 
@@ -1475,7 +1480,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
-        let testure = push_texture(&mut windowing, TESTURE, options);
+        let testure = windowing.dyntex().push_texture(TESTURE, options);
 
         let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
 
@@ -1500,7 +1505,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
-        let testure = push_texture(&mut windowing, TESTURE, options);
+        let testure = windowing.dyntex().push_texture(TESTURE, options);
         let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
         set_rotation(&mut windowing, &sprite, 0.3);
 
@@ -1515,7 +1520,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
-        let testure = push_texture(&mut windowing, TESTURE, options);
+        let testure = windowing.dyntex().push_texture(TESTURE, options);
 
         for _ in 0..100_000 {
             let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
@@ -1529,7 +1534,7 @@ mod tests {
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
+        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
         for i in 0..1000 {
             push_sprite(
                 &mut windowing,
@@ -1552,7 +1557,7 @@ mod tests {
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
+        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
         let mut rng = random::new(0);
         for i in 0..1000 {
             let (dx, dy) = (
@@ -1583,8 +1588,7 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let fireball_texture = push_texture(
-            &mut windowing,
+        let fireball_texture = windowing.dyntex().push_texture(
             FIREBALL,
             TextureOptions {
                 depth_test: false,
@@ -1644,7 +1648,7 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let options = TextureOptions::default();
-        let testure = push_texture(&mut windowing, TESTURE, options);
+        let testure = windowing.dyntex().push_texture(TESTURE, options);
 
         b.iter(|| {
             let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
