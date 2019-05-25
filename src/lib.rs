@@ -900,8 +900,7 @@ mod tests {
         strtex::streaming_texture_set_pixel(&mut windowing, &tex2, 0, 0, (255, 0, 255, 255));
         strtex::streaming_texture_set_pixel(&mut windowing, &tex4, 0, 0, (255, 255, 255, 255));
 
-        dyntex::push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex1,
             dyntex::Sprite {
                 rotation: 0.0,
@@ -916,8 +915,7 @@ mod tests {
                 ..strtex::Sprite::default()
             },
         );
-        dyntex::push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex3,
             dyntex::Sprite {
                 rotation: 1.0,

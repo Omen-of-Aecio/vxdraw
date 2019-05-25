@@ -632,6 +632,100 @@ impl<'a> Dyntex<'a> {
         });
         TextureHandle(s.dyntexs.len() - 1)
     }
+
+    /// Add a sprite (a rectangular view of a texture) to the system
+    pub fn push_sprite(&mut self, texture: &TextureHandle, sprite: Sprite) -> SpriteHandle {
+        let s = &mut *self.windowing;
+        let tex = &mut s.dyntexs[texture.0];
+
+        // Derive xy from the sprite's initial UV
+        let uv_a = sprite.uv_begin;
+        let uv_b = sprite.uv_end;
+
+        let width = sprite.width;
+        let height = sprite.height;
+
+        let topleft = (
+            -width / 2f32 - sprite.origin.0,
+            -height / 2f32 - sprite.origin.1,
+        );
+        let topleft_uv = uv_a;
+
+        let topright = (
+            width / 2f32 - sprite.origin.0,
+            -height / 2f32 - sprite.origin.1,
+        );
+        let topright_uv = (uv_b.0, uv_a.1);
+
+        let bottomleft = (
+            -width / 2f32 - sprite.origin.0,
+            height / 2f32 - sprite.origin.1,
+        );
+        let bottomleft_uv = (uv_a.0, uv_b.1);
+
+        let bottomright = (
+            width / 2f32 - sprite.origin.0,
+            height / 2f32 - sprite.origin.1,
+        );
+        let bottomright_uv = (uv_b.0, uv_b.1);
+
+        let index = if let Some(value) = tex.removed.pop() {
+            value as u32
+        } else {
+            let old = tex.count;
+            tex.count += 1;
+            old
+        };
+
+        unsafe {
+            let idx = (index * 4 * 10 * 4) as usize;
+
+            while tex.mockbuffer.len() <= idx {
+                tex.mockbuffer.extend([0u8; 4 * 40].iter());
+            }
+            for (i, (point, uv)) in [
+                (topleft, topleft_uv),
+                (bottomleft, bottomleft_uv),
+                (bottomright, bottomright_uv),
+                (topright, topright_uv),
+            ]
+            .iter()
+            .enumerate()
+            {
+                let idx = idx + i * 10 * 4;
+                use std::mem::transmute;
+                let x = &transmute::<f32, [u8; 4]>(point.0);
+                let y = &transmute::<f32, [u8; 4]>(point.1);
+
+                let uv0 = &transmute::<f32, [u8; 4]>(uv.0);
+                let uv1 = &transmute::<f32, [u8; 4]>(uv.1);
+
+                let tr0 = &transmute::<f32, [u8; 4]>(sprite.translation.0);
+                let tr1 = &transmute::<f32, [u8; 4]>(sprite.translation.1);
+
+                let rot = &transmute::<f32, [u8; 4]>(sprite.rotation);
+                let scale = &transmute::<f32, [u8; 4]>(sprite.scale);
+
+                let colors = &transmute::<(u8, u8, u8, u8), [u8; 4]>(sprite.colors[i]);
+
+                tex.mockbuffer[idx..idx + 4].copy_from_slice(x);
+                tex.mockbuffer[idx + 4..idx + 8].copy_from_slice(y);
+                tex.mockbuffer[idx + 8..idx + 12]
+                    .copy_from_slice(&transmute::<f32, [u8; 4]>(sprite.depth));
+
+                tex.mockbuffer[idx + 12..idx + 16].copy_from_slice(uv0);
+                tex.mockbuffer[idx + 16..idx + 20].copy_from_slice(uv1);
+
+                tex.mockbuffer[idx + 20..idx + 24].copy_from_slice(tr0);
+                tex.mockbuffer[idx + 24..idx + 28].copy_from_slice(tr1);
+
+                tex.mockbuffer[idx + 28..idx + 32].copy_from_slice(rot);
+                tex.mockbuffer[idx + 32..idx + 36].copy_from_slice(scale);
+                tex.mockbuffer[idx + 36..idx + 40].copy_from_slice(colors);
+            }
+        }
+        SpriteHandle(texture.0, index as usize)
+    }
 }
 
 // ---
@@ -752,99 +846,6 @@ fn destroy_texture(s: &mut Windowing, mut dyntex: SingleTexture) {
         s.device
             .destroy_image_view(ManuallyDrop::into_inner(read(&dyntex.image_view)));
     }
-}
-
-/// Add a sprite (a rectangular view of a texture) to the system
-pub fn push_sprite(s: &mut Windowing, texture: &TextureHandle, sprite: Sprite) -> SpriteHandle {
-    let tex = &mut s.dyntexs[texture.0];
-
-    // Derive xy from the sprite's initial UV
-    let uv_a = sprite.uv_begin;
-    let uv_b = sprite.uv_end;
-
-    let width = sprite.width;
-    let height = sprite.height;
-
-    let topleft = (
-        -width / 2f32 - sprite.origin.0,
-        -height / 2f32 - sprite.origin.1,
-    );
-    let topleft_uv = uv_a;
-
-    let topright = (
-        width / 2f32 - sprite.origin.0,
-        -height / 2f32 - sprite.origin.1,
-    );
-    let topright_uv = (uv_b.0, uv_a.1);
-
-    let bottomleft = (
-        -width / 2f32 - sprite.origin.0,
-        height / 2f32 - sprite.origin.1,
-    );
-    let bottomleft_uv = (uv_a.0, uv_b.1);
-
-    let bottomright = (
-        width / 2f32 - sprite.origin.0,
-        height / 2f32 - sprite.origin.1,
-    );
-    let bottomright_uv = (uv_b.0, uv_b.1);
-
-    let index = if let Some(value) = tex.removed.pop() {
-        value as u32
-    } else {
-        let old = tex.count;
-        tex.count += 1;
-        old
-    };
-
-    unsafe {
-        let idx = (index * 4 * 10 * 4) as usize;
-
-        while tex.mockbuffer.len() <= idx {
-            tex.mockbuffer.extend([0u8; 4 * 40].iter());
-        }
-        for (i, (point, uv)) in [
-            (topleft, topleft_uv),
-            (bottomleft, bottomleft_uv),
-            (bottomright, bottomright_uv),
-            (topright, topright_uv),
-        ]
-        .iter()
-        .enumerate()
-        {
-            let idx = idx + i * 10 * 4;
-            use std::mem::transmute;
-            let x = &transmute::<f32, [u8; 4]>(point.0);
-            let y = &transmute::<f32, [u8; 4]>(point.1);
-
-            let uv0 = &transmute::<f32, [u8; 4]>(uv.0);
-            let uv1 = &transmute::<f32, [u8; 4]>(uv.1);
-
-            let tr0 = &transmute::<f32, [u8; 4]>(sprite.translation.0);
-            let tr1 = &transmute::<f32, [u8; 4]>(sprite.translation.1);
-
-            let rot = &transmute::<f32, [u8; 4]>(sprite.rotation);
-            let scale = &transmute::<f32, [u8; 4]>(sprite.scale);
-
-            let colors = &transmute::<(u8, u8, u8, u8), [u8; 4]>(sprite.colors[i]);
-
-            tex.mockbuffer[idx..idx + 4].copy_from_slice(x);
-            tex.mockbuffer[idx + 4..idx + 8].copy_from_slice(y);
-            tex.mockbuffer[idx + 8..idx + 12]
-                .copy_from_slice(&transmute::<f32, [u8; 4]>(sprite.depth));
-
-            tex.mockbuffer[idx + 12..idx + 16].copy_from_slice(uv0);
-            tex.mockbuffer[idx + 16..idx + 20].copy_from_slice(uv1);
-
-            tex.mockbuffer[idx + 20..idx + 24].copy_from_slice(tr0);
-            tex.mockbuffer[idx + 24..idx + 28].copy_from_slice(tr1);
-
-            tex.mockbuffer[idx + 28..idx + 32].copy_from_slice(rot);
-            tex.mockbuffer[idx + 32..idx + 36].copy_from_slice(scale);
-            tex.mockbuffer[idx + 36..idx + 40].copy_from_slice(colors);
-        }
-    }
-    SpriteHandle(texture.0, index as usize)
 }
 
 pub fn remove_sprite(s: &mut Windowing, handle: SpriteHandle) {
@@ -1061,16 +1062,14 @@ mod tests {
             ..Sprite::default()
         };
 
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tree,
             Sprite {
                 depth: 0.5,
                 ..sprite
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &logo,
             Sprite {
                 depth: 0.6,
@@ -1090,7 +1089,7 @@ mod tests {
 
         let mut dyntex = windowing.dyntex();
         let tex = dyntex.push_texture(LOGO, TextureOptions::default());
-        push_sprite(&mut windowing, &tex, Sprite::default());
+        windowing.dyntex().push_sprite(&tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1102,7 +1101,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
         let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
-        push_sprite(&mut windowing, &tex, Sprite::default());
+        windowing.dyntex().push_sprite(&tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1114,8 +1113,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 colors: [
@@ -1151,8 +1149,7 @@ mod tests {
             ..Sprite::default()
         };
 
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, -0.5),
@@ -1160,8 +1157,7 @@ mod tests {
                 ..base
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, -0.5),
@@ -1169,8 +1165,7 @@ mod tests {
                 ..base
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, 0.5),
@@ -1178,8 +1173,7 @@ mod tests {
                 ..base
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, 0.5),
@@ -1212,8 +1206,7 @@ mod tests {
             ..Sprite::default()
         };
 
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, -0.5),
@@ -1221,8 +1214,7 @@ mod tests {
                 ..base
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, -0.5),
@@ -1230,8 +1222,7 @@ mod tests {
                 ..base
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, 0.5),
@@ -1239,8 +1230,7 @@ mod tests {
                 ..base
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, 0.5),
@@ -1267,8 +1257,7 @@ mod tests {
             },
         );
         for i in 0..360 {
-            push_sprite(
-                &mut windowing,
+            windowing.dyntex().push_sprite(
                 &tex,
                 Sprite {
                     rotation: ((i * 10) as f32 / 180f32 * PI),
@@ -1298,17 +1287,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        push_sprite(&mut windowing, &forest, Sprite::default());
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(&forest, Sprite::default());
+        windowing.dyntex().push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1336,17 +1323,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        push_sprite(&mut windowing, &forest, Sprite::default());
-        let middle = push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(&forest, Sprite::default());
+        let middle = windowing.dyntex().push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1376,17 +1361,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        push_sprite(&mut windowing, &forest, Sprite::default());
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(&forest, Sprite::default());
+        windowing.dyntex().push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1425,17 +1408,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        push_sprite(&mut windowing, &forest, Sprite::default());
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(&forest, Sprite::default());
+        windowing.dyntex().push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        push_sprite(
-            &mut windowing,
+        windowing.dyntex().push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1467,7 +1448,7 @@ mod tests {
         };
         let forest = windowing.dyntex().push_texture(FOREST, options);
 
-        push_sprite(&mut windowing, &forest, Sprite::default());
+        windowing.dyntex().push_sprite(&forest, Sprite::default());
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "fixed_perspective", img);
@@ -1482,7 +1463,7 @@ mod tests {
         let options = TextureOptions::default();
         let testure = windowing.dyntex().push_texture(TESTURE, options);
 
-        let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
+        let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
 
         set_uvs2(
             &mut windowing,
@@ -1506,7 +1487,7 @@ mod tests {
 
         let options = TextureOptions::default();
         let testure = windowing.dyntex().push_texture(TESTURE, options);
-        let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
+        let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
         set_rotation(&mut windowing, &sprite, 0.3);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1523,7 +1504,7 @@ mod tests {
         let testure = windowing.dyntex().push_texture(TESTURE, options);
 
         for _ in 0..100_000 {
-            let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
+            let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
             remove_sprite(&mut windowing, sprite);
         }
 
@@ -1536,8 +1517,7 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
         for i in 0..1000 {
-            push_sprite(
-                &mut windowing,
+            windowing.dyntex().push_sprite(
                 &tex,
                 Sprite {
                     rotation: ((i * 10) as f32 / 180f32 * PI),
@@ -1564,8 +1544,7 @@ mod tests {
                 rng.gen_range(-1.0f32, 1.0f32),
                 rng.gen_range(-1.0f32, 1.0f32),
             );
-            push_sprite(
-                &mut windowing,
+            windowing.dyntex().push_sprite(
                 &tex,
                 Sprite {
                     translation: (dx, dy),
@@ -1599,8 +1578,7 @@ mod tests {
         let mut fireballs = vec![];
         for idx in -10..10 {
             for jdx in -10..10 {
-                fireballs.push(push_sprite(
-                    &mut windowing,
+                fireballs.push(windowing.dyntex().push_sprite(
                     &fireball_texture,
                     Sprite {
                         width: 0.68,
@@ -1651,7 +1629,7 @@ mod tests {
         let testure = windowing.dyntex().push_texture(TESTURE, options);
 
         b.iter(|| {
-            let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
+            let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
             remove_sprite(&mut windowing, sprite);
         });
     }
