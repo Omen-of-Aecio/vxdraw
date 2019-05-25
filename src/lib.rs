@@ -133,6 +133,10 @@ impl Windowing {
             self.swapconfig.extent.height as f32,
         )
     }
+
+    pub fn dyntex(&mut self) -> dyntex::Dyntex {
+        dyntex::Dyntex::new(self)
+    }
 }
 
 pub fn init_window_with_vulkan(mut log: Logpass, show: ShowWindow) -> Windowing {
@@ -153,10 +157,14 @@ pub fn init_window_with_vulkan(mut log: Logpass, show: ShowWindow) -> Windowing 
     #[cfg(feature = "gl")]
     let (mut adapters, mut surf, dims) = {
         let window = {
-            let builder =
-                back::config_context(back::glutin::ContextBuilder::new(), format::Format::Rgba8Srgb, None)
-                    .with_vsync(true);
-            back::glutin::WindowedContext::new_windowed(window_builder, builder, &events_loop).unwrap()
+            let builder = back::config_context(
+                back::glutin::ContextBuilder::new(),
+                format::Format::Rgba8Srgb,
+                None,
+            )
+            .with_vsync(true);
+            back::glutin::WindowedContext::new_windowed(window_builder, builder, &events_loop)
+                .unwrap()
         };
 
         set_window_size(window.window(), show);

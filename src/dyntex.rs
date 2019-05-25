@@ -25,6 +25,20 @@ use gfx_hal::{
 use std::io::Read;
 use std::mem::{size_of, ManuallyDrop};
 
+pub struct Dyntex<'a> {
+    windowing: &'a mut Windowing,
+}
+
+impl<'a> Dyntex<'a> {
+    pub fn new(s: &'a mut Windowing) -> Self {
+        Self { windowing: s }
+    }
+
+    pub fn push_texture(&mut self, img_data: &[u8], options: TextureOptions) -> TextureHandle {
+        push_texture(&mut self.windowing, img_data, options)
+    }
+}
+
 // ---
 
 /// A view into a texture
