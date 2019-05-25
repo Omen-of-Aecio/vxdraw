@@ -86,7 +86,7 @@ fn set_window_size(window: &mut winit::Window, show: ShowWindow) -> Extent2D {
 }
 
 #[cfg(feature = "gl")]
-fn set_window_size(window: &mut glutin::GlWindow, show: ShowWindow) -> Extent2D {
+fn set_window_size(window: &glutin::Window, show: ShowWindow) -> Extent2D {
     let dpi_factor = window.get_hidpi_factor();
     let (w, h): (u32, u32) = match show {
         ShowWindow::Headless1k => {
@@ -152,17 +152,14 @@ pub fn init_window_with_vulkan(mut log: Logpass, show: ShowWindow) -> Windowing 
 
     #[cfg(feature = "gl")]
     let (mut adapters, mut surf, dims) = {
-        let mut window = {
-            let builder = back::config_context(
-                back::glutin::ContextBuilder::new(),
-                format::Format::Rgba8Srgb,
-                None,
-            )
-            .with_vsync(true);
-            back::glutin::GlWindow::new(window_builder, builder, &events_loop).unwrap()
+        let window = {
+            let builder =
+                back::config_context(back::glutin::ContextBuilder::new(), format::Format::Rgba8Srgb, None)
+                    .with_vsync(true);
+            back::glutin::WindowedContext::new_windowed(window_builder, builder, &events_loop).unwrap()
         };
 
-        set_window_size(&mut window, show);
+        set_window_size(window.window(), show);
         let dims = {
             let dpi_factor = window.get_hidpi_factor();
             debug![log, "vxdraw", "Window DPI factor"; "factor" => dpi_factor];
