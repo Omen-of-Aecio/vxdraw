@@ -32,7 +32,7 @@ use gfx_hal::{
     window::{Extent2D, PresentMode::*, Surface, Swapchain},
     Backbuffer, Backend, FrameSync, Instance, Primitive, SwapchainConfig,
 };
-use logger::{debug, info, trace, warn, Generic, InDebug, InDebugPretty, Logger};
+use logger::{debug, info, trace, warn, InDebug, InDebugPretty, Logpass};
 use std::io::Read;
 use std::iter::once;
 use std::mem::{size_of, ManuallyDrop};
@@ -145,7 +145,7 @@ impl Windowing {
     }
 }
 
-pub fn init_window_with_vulkan(log: &mut Logger<Generic>, show: ShowWindow) -> Windowing {
+pub fn init_window_with_vulkan(mut log: Logpass, show: ShowWindow) -> Windowing {
     #[cfg(feature = "gl")]
     static BACKEND: &str = "OpenGL";
     #[cfg(feature = "vulkan")]
@@ -521,6 +521,7 @@ pub fn init_window_with_vulkan(log: &mut Logger<Generic>, show: ShowWindow) -> W
         vk_inst: ManuallyDrop::new(vk_inst),
         #[cfg(not(feature = "gl"))]
         window,
+        log,
     };
     debtri::create_debug_triangle(&mut windowing);
     quads::create_quad(&mut windowing);
@@ -537,19 +538,17 @@ pub fn collect_input(windowing: &mut Windowing) -> Vec<Event> {
 
 pub fn draw_frame_copy_framebuffer(
     s: &mut Windowing,
-    log: &mut Logger<Generic>,
     view: &Matrix4<f32>,
 ) -> Vec<u8> {
-    draw_frame_internal(s, log, view, copy_image_to_rgb)
+    draw_frame_internal(s, view, copy_image_to_rgb)
 }
 
-pub fn draw_frame(s: &mut Windowing, log: &mut Logger<Generic>, view: &Matrix4<f32>) {
-    draw_frame_internal(s, log, view, |_, _| {});
+pub fn draw_frame(s: &mut Windowing, view: &Matrix4<f32>) {
+    draw_frame_internal(s, view, |_, _| {});
 }
 
 fn draw_frame_internal<T>(
     s: &mut Windowing,
-    log: &mut Logger<Generic>,
     view: &Matrix4<f32>,
     postproc: fn(&mut Windowing, gfx_hal::window::SwapImageIndex) -> T,
 ) -> T {
@@ -582,7 +581,7 @@ fn draw_frame_internal<T>(
             let current_frame = s.current_frame;
             let texture_count = s.dyntexs.len();
             let debugtris_cnt = s.debtris.as_ref().map_or(0, |x| x.triangles_count);
-            trace![log, "vxdraw", "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
+            trace![s.log, "vxdraw", "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
         }
 
         {
@@ -1132,6 +1131,7 @@ mod tests {
     use super::*;
     use cgmath::{Deg, Vector3};
     use test::Bencher;
+    use logger::{Logger, Generic, GenericLogger};
 
     // ---
 
@@ -1141,28 +1141,26 @@ mod tests {
 
     #[test]
     fn setup_and_teardown() {
-        let mut logger = Logger::spawn_void();
-        let _ = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let _ = init_window_with_vulkan(logger, ShowWindow::Headless1k);
     }
 
     #[test]
     fn setup_and_teardown_draw_clear() {
-        let mut logger = Logger::spawn_void();
-        logger.set_colorize(true);
-        logger.set_log_level(64);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
 
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
 
         assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_with_test", img);
     }
 
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let (buffer, memory, _) =
             make_vertex_buffer_with_data_on_gpu(&mut windowing, &vec![1.0f32; 10_000]);
@@ -1175,15 +1173,15 @@ mod tests {
 
     #[test]
     fn init_window_and_get_input() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         collect_input(&mut windowing);
     }
 
     #[test]
     fn generate_map() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let mut img = super::generate_map(&mut windowing, 1000, 1000);
         let img = img
             .drain(..)
@@ -1196,8 +1194,8 @@ mod tests {
 
     #[test]
     fn tearing_test() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let _tri = make_centered_equilateral_triangle();
@@ -1210,27 +1208,29 @@ mod tests {
             }
             let rot =
                 prspect * Matrix4::from_axis_angle(Vector3::new(0.0f32, 0.0, 1.0), Deg(i as f32));
-            draw_frame(&mut windowing, &mut logger, &rot);
+            draw_frame(&mut windowing, &rot);
             // std::thread::sleep(std::time::Duration::new(0, 80_000_000));
         }
     }
 
     #[test]
     fn correct_perspective() {
-        let mut logger = Logger::spawn_void();
         {
-            let windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+            let logger = Logger::<Generic>::spawn_void().to_logpass();
+            let windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
             assert_eq![Matrix4::identity(), gen_perspective(&windowing)];
         }
         {
-            let windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1x2k);
+            let logger = Logger::<Generic>::spawn_void().to_logpass();
+            let windowing = init_window_with_vulkan(logger, ShowWindow::Headless1x2k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
                 gen_perspective(&windowing)
             ];
         }
         {
-            let windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless2x1k);
+            let logger = Logger::<Generic>::spawn_void().to_logpass();
+            let windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
                 gen_perspective(&windowing)
@@ -1240,8 +1240,8 @@ mod tests {
 
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = dyntex::TextureOptions {
@@ -1257,7 +1257,7 @@ mod tests {
                 height: 1,
                 ..strtex::TextureOptions::default()
             },
-            &mut logger,
+
         );
         let tex3 = dyntex::push_texture(&mut windowing, TESTURE, options);
         let tex4 = strtex::push_texture(
@@ -1268,7 +1268,7 @@ mod tests {
                 height: 1,
                 ..strtex::TextureOptions::default()
             },
-            &mut logger,
+
         );
 
         strtex::streaming_texture_set_pixel(&mut windowing, &tex2, 0, 0, (255, 0, 255, 255));
@@ -1308,7 +1308,7 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "strtex_and_dyntex_respect_draw_order", img);
     }
 
@@ -1316,19 +1316,19 @@ mod tests {
 
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         b.iter(|| {
-            draw_frame(&mut windowing, &mut logger, &prspect);
+            draw_frame(&mut windowing, &prspect);
         });
     }
 
     #[bench]
     fn bench_generate_map(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         b.iter(|| {
             super::generate_map(&mut windowing, 1000, 1000);
         });

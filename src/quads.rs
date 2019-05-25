@@ -653,11 +653,12 @@ pub fn set_quad_color(s: &mut Windowing, inst: &QuadHandle, rgba: [u8; 4]) {
 mod tests {
     use crate::*;
     use cgmath::Deg;
+    use logger::{Generic, Logger, GenericLogger};
 
     #[test]
     fn simple_quad() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -666,14 +667,14 @@ mod tests {
 
         quads::push(&mut windowing, quad);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_quad", img);
     }
 
     #[test]
     fn simple_quad_translated() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -683,14 +684,14 @@ mod tests {
         let handle = quads::push(&mut windowing, quad);
         quads::translate(&mut windowing, &handle, (0.25, 0.4));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_quad_translated", img);
     }
 
     #[test]
     fn simple_quad_rotated_with_exotic_origin() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -710,7 +711,7 @@ mod tests {
         quads::quad_rotate_all(&mut windowing, Deg(30.0));
 
         // then
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(
             &mut windowing,
             "simple_quad_rotated_with_exotic_origin",
@@ -720,8 +721,8 @@ mod tests {
 
     #[test]
     fn a_bunch_of_quads() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
@@ -742,14 +743,14 @@ mod tests {
             }
         }
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "a_bunch_of_quads", img);
     }
 
     #[test]
     fn overlapping_quads_respect_z_order() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let mut quad = quads::Quad {
             scale: 0.5,
@@ -770,7 +771,7 @@ mod tests {
         quad.translation = (0.0, 0.0);
         quads::push(&mut windowing, quad);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "overlapping_quads_respect_z_order", img);
 
         // ---
@@ -793,7 +794,7 @@ mod tests {
         quad.translation = (0.25, 0.25);
         quads::push(&mut windowing, quad);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "overlapping_quads_respect_z_order", img);
     }
 }

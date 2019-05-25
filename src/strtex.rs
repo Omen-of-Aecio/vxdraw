@@ -18,7 +18,7 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use logger::{debug, Generic, Logger};
+use logger::{debug};
 use std::io::Read;
 use std::iter::once;
 use std::mem::{size_of, ManuallyDrop};
@@ -98,7 +98,6 @@ impl Default for Sprite {
 pub fn push_texture(
     s: &mut Windowing,
     options: TextureOptions,
-    log: &mut Logger<Generic>,
 ) -> TextureHandle {
     let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
         make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
@@ -239,7 +238,7 @@ pub fn push_texture(
             specialization: pso::Specialization::default(),
         },
     );
-    debug![log, "vxdraw", "After making"];
+    debug![s.log, "vxdraw", "After making"];
     let shader_entries = pso::GraphicsShaderSet {
         vertex: vs_entry,
         hull: None,
@@ -1306,34 +1305,35 @@ mod tests {
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use test::{black_box, Bencher};
+    use logger::{Generic, Logger, GenericLogger};
 
     #[test]
     fn generate_map_randomly() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, Sprite::default());
         generate_map2(&mut windowing, &id, [0.0, 0.0, 0.0]);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "generate_map_randomly", img);
     }
 
     #[test]
     fn streaming_texture_blocks() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1366,20 +1366,20 @@ mod tests {
             (0, 0, 0, 0),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_blocks", img);
     }
 
     #[test]
     fn streaming_texture_blocks_off_by_one() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(10, 1),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1399,7 +1399,7 @@ mod tests {
             (0, 0, 255, 255),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_blocks_off_by_one", img);
 
         strtex::streaming_texture_set_pixels_block(
@@ -1434,19 +1434,19 @@ mod tests {
             (255, 0, 255, 255),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_blocks_off_by_one", img);
     }
 
     #[test]
     fn use_read() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(10, 10),
-            &mut logger,
+
         );
         strtex::streaming_texture_set_pixel(&mut windowing, &id, 3, 2, (0, 123, 0, 255));
         let mut green_value = 0;
@@ -1458,13 +1458,13 @@ mod tests {
 
     #[test]
     fn use_write() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(10, 10),
-            &mut logger,
+
         );
         strtex::streaming_texture_set_pixel(&mut windowing, &id, 3, 2, (0, 123, 0, 255));
         strtex::write(&mut windowing, &id, |arr, pitch| {
@@ -1480,13 +1480,13 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_pixel_accesses() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(20, 20),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1507,13 +1507,13 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_block_accesses() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(64, 64),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1535,14 +1535,14 @@ mod tests {
 
     #[test]
     fn streaming_texture_respects_z_ordering() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let strtex1 = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(10, 10),
-            &mut logger,
+
         );
         strtex::streaming_texture_set_pixels_block(
             &mut windowing,
@@ -1556,7 +1556,7 @@ mod tests {
         let strtex2 = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(10, 10),
-            &mut logger,
+
         );
         strtex::streaming_texture_set_pixels_block(
             &mut windowing,
@@ -1574,12 +1574,12 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_z_ordering", img);
 
         strtex::remove_texture(&mut windowing, strtex1);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_z_ordering_removed", img);
     }
 
@@ -1587,14 +1587,14 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel_while_drawing(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(50, 50),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1606,19 +1606,19 @@ mod tests {
                 black_box(2),
                 (255, 0, 0, 255),
             );
-            draw_frame(&mut windowing, &mut logger, &prspect);
+            draw_frame(&mut windowing, &prspect);
         });
     }
 
     #[bench]
     fn bench_streaming_texture_set_500x500_area(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-            &mut logger,
+
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1636,13 +1636,12 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_500x500_area_using_iterator(b: &mut Bencher) {
         use itertools::Itertools;
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-            &mut logger,
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 
@@ -1659,13 +1658,12 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
             TextureOptions::default_with_size(1000, 1000),
-            &mut logger,
         );
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
 

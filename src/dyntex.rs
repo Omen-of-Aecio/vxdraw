@@ -1019,6 +1019,7 @@ mod tests {
     use rand_pcg::Pcg64Mcg as random;
     use std::f32::consts::PI;
     use test::Bencher;
+    use logger::{Generic, Logger, GenericLogger};
 
     // ---
 
@@ -1032,8 +1033,8 @@ mod tests {
 
     #[test]
     fn overlapping_dyntex_respect_z_order() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let tree = push_texture(&mut windowing, TREE, TextureOptions::default());
@@ -1062,38 +1063,38 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "overlapping_dyntex_respect_z_order", img);
     }
 
     #[test]
     fn simple_texture() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
         push_sprite(&mut windowing, &tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_texture", img);
     }
 
     #[test]
     fn simple_texture_adheres_to_view() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
         let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
         push_sprite(&mut windowing, &tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_texture_adheres_to_view", img);
     }
 
     #[test]
     fn colored_simple_texture() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
         push_sprite(
             &mut windowing,
@@ -1110,14 +1111,14 @@ mod tests {
         );
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture", img);
     }
 
     #[test]
     fn translated_texture() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(
             &mut windowing,
             LOGO,
@@ -1172,14 +1173,14 @@ mod tests {
         sprite_translate_all(&mut windowing, &tex, (0.25, 0.35));
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "translated_texture", img);
     }
 
     #[test]
     fn rotated_texture() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(
             &mut windowing,
             LOGO,
@@ -1234,14 +1235,14 @@ mod tests {
         sprite_rotate_all(&mut windowing, &tex, Deg(90.0));
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "rotated_texture", img);
     }
 
     #[test]
     fn many_sprites() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(
             &mut windowing,
             LOGO,
@@ -1263,14 +1264,14 @@ mod tests {
         }
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "many_sprites", img);
     }
 
     #[test]
     fn three_layer_scene() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1300,14 +1301,14 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene", img);
     }
 
     #[test]
     fn three_layer_scene_remove_middle() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1339,14 +1340,14 @@ mod tests {
 
         remove_sprite(&mut windowing, middle);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_middle", img);
     }
 
     #[test]
     fn three_layer_scene_remove_middle_texture() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1378,7 +1379,7 @@ mod tests {
 
         remove_texture(&mut windowing, player);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(
             &mut windowing,
             "three_layer_scene_remove_middle_texture",
@@ -1387,13 +1388,13 @@ mod tests {
 
         remove_texture(&mut windowing, tree);
 
-        draw_frame(&mut windowing, &mut logger, &prspect);
+        draw_frame(&mut windowing, &prspect);
     }
 
     #[test]
     fn three_layer_scene_remove_last_texture() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1425,18 +1426,18 @@ mod tests {
 
         remove_texture(&mut windowing, tree);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_last_texture", img);
 
         remove_texture(&mut windowing, player);
 
-        draw_frame(&mut windowing, &mut logger, &prspect);
+        draw_frame(&mut windowing, &prspect);
     }
 
     #[test]
     fn fixed_perspective() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
         let prspect = Matrix4::from_scale(0.0) * gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1448,14 +1449,14 @@ mod tests {
 
         push_sprite(&mut windowing, &forest, Sprite::default());
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "fixed_perspective", img);
     }
 
     #[test]
     fn change_of_uv_works_for_first() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
@@ -1468,19 +1469,19 @@ mod tests {
             std::iter::once((&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0))),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
 
         set_uv(&mut windowing, &sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
     }
 
     #[test]
     fn set_single_sprite_rotation() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
@@ -1488,14 +1489,14 @@ mod tests {
         let sprite = push_sprite(&mut windowing, &testure, Sprite::default());
         set_rotation(&mut windowing, &sprite, 0.3);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &mut logger, &prspect);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "set_single_sprite_rotation", img);
     }
 
     #[test]
     fn push_and_pop_often_avoid_allocating_out_of_bounds() {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
@@ -1506,13 +1507,13 @@ mod tests {
             remove_sprite(&mut windowing, sprite);
         }
 
-        draw_frame(&mut windowing, &mut logger, &prspect);
+        draw_frame(&mut windowing, &prspect);
     }
 
     #[bench]
     fn bench_many_sprites(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
         for i in 0..1000 {
             push_sprite(
@@ -1528,14 +1529,14 @@ mod tests {
 
         let prspect = gen_perspective(&windowing);
         b.iter(|| {
-            draw_frame(&mut windowing, &mut logger, &prspect);
+            draw_frame(&mut windowing, &prspect);
         });
     }
 
     #[bench]
     fn bench_many_particles(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let tex = push_texture(&mut windowing, LOGO, TextureOptions::default());
         let mut rng = random::new(0);
         for i in 0..1000 {
@@ -1557,14 +1558,14 @@ mod tests {
 
         let prspect = gen_perspective(&windowing);
         b.iter(|| {
-            draw_frame(&mut windowing, &mut logger, &prspect);
+            draw_frame(&mut windowing, &prspect);
         });
     }
 
     #[bench]
     fn animated_fireballs_20x20_uvs2(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let fireball_texture = push_texture(
@@ -1618,14 +1619,14 @@ mod tests {
                 &mut windowing,
                 fireballs.iter().map(|id| (id, uv_begin, uv_end)),
             );
-            draw_frame(&mut windowing, &mut logger, &prspect);
+            draw_frame(&mut windowing, &prspect);
         });
     }
 
     #[bench]
     fn bench_push_and_pop_sprite(b: &mut Bencher) {
-        let mut logger = Logger::spawn_void();
-        let mut windowing = init_window_with_vulkan(&mut logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
 
         let options = TextureOptions::default();
         let testure = push_texture(&mut windowing, TESTURE, options);
