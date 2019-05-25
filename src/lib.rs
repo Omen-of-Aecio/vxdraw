@@ -10,8 +10,6 @@ use gfx_backend_gl as back;
 use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
-// use gfx_hal::format::{AsFormat, ChannelType, Rgba8Srgb as ColorFormat, Swizzle};
-use ::image as load_image;
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -21,21 +19,14 @@ use gfx_hal::{
     device::Device,
     format::{self, ChannelType, Swizzle},
     image, memory, pass, pool,
-    pso::{
-        self, AttributeDesc, BakedStates, BasePipeline, BlendDesc, BlendOp, BlendState,
-        ColorBlendDesc, ColorMask, DepthStencilDesc, DepthTest, DescriptorSetLayoutBinding,
-        Element, Face, Factor, FrontFace, GraphicsPipelineDesc, InputAssemblerDesc, LogicOp,
-        PipelineCreationFlags, PipelineStage, PolygonMode, Rasterizer, Rect, ShaderStageFlags,
-        StencilTest, VertexBufferDesc, Viewport,
-    },
+    pso,
     queue::Submission,
     window::{Extent2D, PresentMode::*, Surface, Swapchain},
-    Backbuffer, Backend, FrameSync, Instance, Primitive, SwapchainConfig,
+    Backbuffer, Backend, FrameSync, Instance, SwapchainConfig,
 };
 use logger::{debug, info, trace, warn, InDebug, InDebugPretty, Logpass};
-use std::io::Read;
 use std::iter::once;
-use std::mem::{size_of, ManuallyDrop};
+use std::mem::{ManuallyDrop};
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowBuilder};
 
 pub mod data;
@@ -500,7 +491,7 @@ pub fn init_window_with_vulkan(mut log: Logpass, show: ShowWindow) -> Windowing 
         image_views,
         present_wait_semaphores,
         queue_group: ManuallyDrop::new(queue_group),
-        render_area: Rect {
+        render_area: pso::Rect {
             x: 0,
             y: 0,
             w: dims.width as i16,
@@ -607,7 +598,7 @@ fn draw_frame_internal<T>(
                     },
                 };
                 buffer.pipeline_barrier(
-                    PipelineStage::TOP_OF_PIPE..PipelineStage::FRAGMENT_SHADER,
+                    pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
                     memory::Dependencies::empty(),
                     &[image_barrier],
                 );
@@ -624,7 +615,7 @@ fn draw_frame_internal<T>(
                     },
                 };
                 buffer.pipeline_barrier(
-                    PipelineStage::FRAGMENT_SHADER..PipelineStage::HOST,
+                    pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
                     memory::Dependencies::empty(),
                     &[image_barrier],
                 );
@@ -643,7 +634,7 @@ fn draw_frame_internal<T>(
                             enc.bind_graphics_pipeline(&strtex.pipeline);
                             enc.push_graphics_constants(
                                 &strtex.pipeline_layout,
-                                ShaderStageFlags::VERTEX,
+                                pso::ShaderStageFlags::VERTEX,
                                 0,
                                 &*(view.as_ptr() as *const [u32; 16]),
                             );
@@ -668,14 +659,14 @@ fn draw_frame_internal<T>(
                             if let Some(persp) = dyntex.fixed_perspective {
                                 enc.push_graphics_constants(
                                     &dyntex.pipeline_layout,
-                                    ShaderStageFlags::VERTEX,
+                                    pso::ShaderStageFlags::VERTEX,
                                     0,
                                     &*(persp.as_ptr() as *const [u32; 16]),
                                 );
                             } else {
                                 enc.push_graphics_constants(
                                     &dyntex.pipeline_layout,
-                                    ShaderStageFlags::VERTEX,
+                                    pso::ShaderStageFlags::VERTEX,
                                     0,
                                     &*(view.as_ptr() as *const [u32; 16]),
                                 );
@@ -714,7 +705,7 @@ fn draw_frame_internal<T>(
                     enc.bind_graphics_pipeline(&quads.pipeline);
                     enc.push_graphics_constants(
                         &quads.pipeline_layout,
-                        ShaderStageFlags::VERTEX,
+                        pso::ShaderStageFlags::VERTEX,
                         0,
                         &*(view.as_ptr() as *const [u32; 16]),
                     );
@@ -734,7 +725,7 @@ fn draw_frame_internal<T>(
                         s.swapconfig.extent.width as f32 / s.swapconfig.extent.height as f32;
                     enc.push_graphics_constants(
                         &debtris.pipeline_layout,
-                        ShaderStageFlags::VERTEX,
+                        pso::ShaderStageFlags::VERTEX,
                         0,
                         &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
                     );
@@ -750,7 +741,7 @@ fn draw_frame_internal<T>(
         let command_buffers = &s.command_buffers[s.current_frame];
         let wait_semaphores: ArrayVec<[_; 1]> = [(
             &s.acquire_image_semaphores[swap_image as usize],
-            PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+            pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
         )]
         .into();
         {
