@@ -93,62 +93,13 @@ const TRI_BYTE_SIZE: usize = PTS_PER_TRI * BYTES_PER_VTX;
 
 // TODO Remove the dependency on Windowing, just use Device
 pub fn create_debug_triangle(s: &mut Windowing) {
-    pub const VERTEX_SOURCE: &str = "#version 450
-    #extension GL_ARG_separate_shader_objects : enable
-    layout (location = 0) in vec2 position;
-    layout (location = 1) in vec4 color;
-    layout (location = 2) in vec2 dxdy;
-    layout (location = 3) in float rotation;
-    layout (location = 4) in float scale;
+    pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
 
-    layout(push_constant) uniform PushConstant {
-        float w_over_h;
-    } push_constant;
+    pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.frag.spirv"];
 
-    layout (location = 0) out vec4 outcolor;
-    out gl_PerVertex {
-        vec4 gl_Position;
-    };
+    let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
 
-    void main() {
-        mat2 rotmatrix = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
-        vec2 pos = rotmatrix * scale * position;
-        if (push_constant.w_over_h >= 1.0) {
-            pos.x /= push_constant.w_over_h;
-        } else {
-            pos.y *= push_constant.w_over_h;
-        }
-        gl_Position = vec4(pos + dxdy, 0.0, 1.0);
-        outcolor = color;
-    }";
-
-    pub const FRAGMENT_SOURCE: &str = "#version 450
-    #extension GL_ARG_separate_shader_objects : enable
-    layout(location = 0) in vec4 incolor;
-    layout(location = 0) out vec4 color;
-    void main() {
-        color = incolor;
-    }";
-
-    let vs_module = {
-        let glsl = VERTEX_SOURCE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
-
-    let fs_module = {
-        let glsl = FRAGMENT_SOURCE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
+    let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
 
     const ENTRY_NAME: &str = "main";
     let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;

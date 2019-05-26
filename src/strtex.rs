@@ -155,70 +155,12 @@ pub fn push_texture(s: &mut Windowing, options: TextureOptions) -> TextureHandle
             .expect("Couldn't create the sampler!")
     };
 
-    const VERTEX_SOURCE_TEXTURE: &str = "#version 450
-    #extension GL_ARB_separate_shader_objects : enable
+    const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.vert.spirv"];
 
-    layout(location = 0) in vec3 v_pos;
-    layout(location = 1) in vec2 v_uv;
-    layout(location = 2) in vec2 v_dxdy;
-    layout(location = 3) in float rotation;
-    layout(location = 4) in float scale;
-    layout(location = 5) in vec4 color;
+    const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.frag.spirv"];
 
-    layout(location = 0) out vec2 f_uv;
-    layout(location = 1) out vec4 f_color;
-
-    layout(push_constant) uniform PushConstant {
-        mat4 view;
-    } push_constant;
-
-    out gl_PerVertex {
-        vec4 gl_Position;
-    };
-
-    void main() {
-        mat2 rotmatrix = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
-        vec2 pos = rotmatrix * scale * v_pos.xy;
-        f_uv = v_uv;
-        f_color = color;
-        gl_Position = push_constant.view * vec4(pos + v_dxdy, v_pos.z, 1.0);
-    }";
-
-    const FRAGMENT_SOURCE_TEXTURE: &str = "#version 450
-    #extension GL_ARB_separate_shader_objects : enable
-
-    layout(location = 0) in vec2 f_uv;
-    layout(location = 1) in vec4 f_color;
-
-    layout(location = 0) out vec4 color;
-
-    layout(set = 0, binding = 0) uniform texture2D f_texture;
-    layout(set = 0, binding = 1) uniform sampler f_sampler;
-
-    void main() {
-        color = texture(sampler2D(f_texture, f_sampler), f_uv);
-        color.a *= f_color.a;
-        color.rgb += f_color.rgb;
-    }";
-
-    let vs_module = {
-        let glsl = VERTEX_SOURCE_TEXTURE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
-    let fs_module = {
-        let glsl = FRAGMENT_SOURCE_TEXTURE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
+    let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE_TEXTURE) }.unwrap() };
+    let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE_TEXTURE) }.unwrap() };
 
     // Describe the shaders
     const ENTRY_NAME: &str = "main";
@@ -929,28 +871,12 @@ pub fn write(
 }
 
 pub fn fill_with_perlin_noise(s: &mut Windowing, blitid: &TextureHandle, seed: [f32; 3]) {
-    static VERTEX_SOURCE: &str = include_str!("../shaders/proc1.vert");
-    static FRAGMENT_SOURCE: &str = include_str!("../shaders/proc1.frag");
+    static VERTEX_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.vert.spirv");
+    static FRAGMENT_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.frag.spirv");
     let w = s.strtexs[blitid.0].width;
     let h = s.strtexs[blitid.0].height;
-    let vs_module = {
-        let glsl = VERTEX_SOURCE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
-    let fs_module = {
-        let glsl = FRAGMENT_SOURCE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
+    let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
+    let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
     const ENTRY_NAME: &str = "main";
     let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
     let (vs_entry, fs_entry) = (

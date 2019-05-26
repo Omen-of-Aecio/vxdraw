@@ -184,56 +184,12 @@ pub fn pop_n_quads(s: &mut Windowing, n: usize) {
 }
 
 pub fn create_quad(s: &mut Windowing) {
-    pub const VERTEX_SOURCE: &str = "#version 450
-    #extension GL_ARG_separate_shader_objects : enable
-    layout (location = 0) in vec3 position;
-    layout (location = 1) in vec4 color;
-    layout (location = 2) in vec2 dxdy;
-    layout (location = 3) in float rotation;
-    layout (location = 4) in float scale;
+    pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.vert.spirv"];
 
-    layout(push_constant) uniform PushConstant {
-        mat4 view;
-    } push_constant;
+    pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.frag.spirv"];
 
-    layout (location = 0) out vec4 outcolor;
-
-    out gl_PerVertex {
-        vec4 gl_Position;
-    };
-    void main() {
-        mat2 rotmatrix = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
-        vec2 pos = rotmatrix * scale * position.xy;
-        gl_Position = push_constant.view * vec4(pos + dxdy, position.z, 1.0);
-        outcolor = color;
-    }";
-
-    pub const FRAGMENT_SOURCE: &str = "#version 450
-    #extension GL_ARG_separate_shader_objects : enable
-    layout(location = 0) in vec4 incolor;
-    layout(location = 0) out vec4 color;
-    void main() {
-        color = incolor;
-    }";
-
-    let vs_module = {
-        let glsl = VERTEX_SOURCE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
-    let fs_module = {
-        let glsl = FRAGMENT_SOURCE;
-        let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
-            .unwrap()
-            .bytes()
-            .map(Result::unwrap)
-            .collect();
-        unsafe { s.device.create_shader_module(&spirv) }.unwrap()
-    };
+    let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
+    let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
 
     // Describe the shaders
     const ENTRY_NAME: &str = "main";
