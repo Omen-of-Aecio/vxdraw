@@ -761,6 +761,31 @@ impl<'a> Dyntex<'a> {
             dyntex.removed.push(handle.1);
         }
     }
+
+    pub fn set_position(&mut self, handle: &SpriteHandle, position: (f32, f32)) {
+        let s = &mut* self.windowing;
+        if let Some(stex) = s.dyntexs.get_mut(handle.0) {
+            unsafe {
+                use std::mem::transmute;
+                let position0 = &transmute::<f32, [u8; 4]>(position.0);
+                let position1 = &transmute::<f32, [u8; 4]>(position.1);
+
+                let mut idx = (handle.1 * 4 * 10 * 4) as usize;
+
+                stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
+                stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
+                idx += 40;
+                stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
+                stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
+                idx += 40;
+                stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
+                stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
+                idx += 40;
+                stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
+                stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
+            }
+        }
+    }
 }
 
 // ---
@@ -862,30 +887,6 @@ fn destroy_texture(s: &mut Windowing, mut dyntex: SingleTexture) {
 }
 
 // ---
-
-pub fn set_position(s: &mut Windowing, handle: &SpriteHandle, position: (f32, f32)) {
-    if let Some(stex) = s.dyntexs.get_mut(handle.0) {
-        unsafe {
-            use std::mem::transmute;
-            let position0 = &transmute::<f32, [u8; 4]>(position.0);
-            let position1 = &transmute::<f32, [u8; 4]>(position.1);
-
-            let mut idx = (handle.1 * 4 * 10 * 4) as usize;
-
-            stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
-            stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
-            idx += 40;
-            stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
-            stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
-            idx += 40;
-            stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
-            stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
-            idx += 40;
-            stex.mockbuffer[idx + 5 * 4..idx + 6 * 4].copy_from_slice(position0);
-            stex.mockbuffer[idx + 6 * 4..idx + 7 * 4].copy_from_slice(position1);
-        }
-    }
-}
 
 pub fn set_rotation(s: &mut Windowing, handle: &SpriteHandle, rotation: f32) {
     if let Some(stex) = s.dyntexs.get_mut(handle.0) {
@@ -1131,6 +1132,32 @@ mod tests {
         let prspect = gen_perspective(&windowing);
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture", img);
+    }
+
+    #[test]
+    fn colored_simple_texture_set_position() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+
+        let mut dyntex = windowing.dyntex();
+        let tex = dyntex.push_texture(LOGO, TextureOptions::default());
+        let sprite = dyntex.push_sprite(
+            &tex,
+            Sprite {
+                colors: [
+                    (255, 1, 2, 255),
+                    (0, 255, 0, 255),
+                    (0, 0, 255, 100),
+                    (255, 2, 1, 0),
+                ],
+                ..Sprite::default()
+            },
+        );
+        dyntex.set_position(&sprite, (0.5, 0.3));
+
+        let prspect = gen_perspective(&windowing);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture_set_position", img);
     }
 
     #[test]
