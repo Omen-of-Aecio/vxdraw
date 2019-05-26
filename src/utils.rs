@@ -659,7 +659,7 @@ pub fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::De
 }
 
 pub fn remove_windmills(vx: &mut VxDraw) {
-    super::debtri::pop_many(vx, 1000);
+    vx.debtri().pop_many(1000);
 }
 
 pub fn add_4_screencorners(vx: &mut VxDraw) {

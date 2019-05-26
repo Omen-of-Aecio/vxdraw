@@ -10,7 +10,7 @@
 //!     vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
 //!
-//!     // So the window does not instantly disappear
+//!     // Sleep here so the window does not instantly disappear
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -1115,13 +1115,12 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let _tri = make_centered_equilateral_triangle();
-        let mut debtri = vx.debtri();
-        debtri.push(debtri::DebugTriangle::default());
+        vx.debtri().push(debtri::DebugTriangle::default());
         for i in 0..=360 {
             if i % 2 == 0 {
                 add_4_screencorners(&mut vx);
             } else {
-                debtri::pop_many(&mut vx, 4);
+                vx.debtri().pop_many(4);
             }
             let rot =
                 prspect * Matrix4::from_axis_angle(Vector3::new(0.0f32, 0.0, 1.0), Deg(i as f32));

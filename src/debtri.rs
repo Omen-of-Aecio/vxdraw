@@ -71,6 +71,220 @@ impl<'a> Debtri<'a> {
             unreachable![]
         }
     }
+
+    /// Remove the last added debug triangle from rendering
+    pub fn pop(&mut self) {
+        let vx = &mut *self.vx;
+        if let Some(ref mut debtris) = vx.debtris {
+            // TODO deallocate and move the buffer if it's small enough
+            unsafe {
+                vx.device
+                    .wait_for_fences(
+                        &vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
+        }
+    }
+
+    /// Remove the last N added debug triangle from rendering
+    pub fn pop_many(&mut self, n: usize) {
+        if let Some(ref mut debtris) = self.vx.debtris {
+            unsafe {
+                self.vx
+                    .device
+                    .wait_for_fences(
+                        &self.vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            debtris.triangles_count = debtris.triangles_count.checked_sub(n).unwrap_or(0);
+        }
+    }
+
+    // ---
+
+    pub fn set_position(&mut self, inst: &DebugTriangleHandle, pos: (f32, f32)) {
+        let vx = &mut *self.vx;
+        let inst = inst.0;
+        let device = &vx.device;
+        if let Some(ref mut debtris) = vx.debtris {
+            unsafe {
+                device
+                    .wait_for_fences(
+                        &vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            unsafe {
+                let mut data_target = device
+                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+
+                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+                data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
+                idx += 7;
+                data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
+                idx += 7;
+                data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
+                device
+                    .release_mapping_writer(data_target)
+                    .expect("Couldn't release the mapping writer!");
+            }
+        }
+    }
+
+    pub fn set_scale(&mut self, inst: &DebugTriangleHandle, scale: f32) {
+        let vx = &mut *self.vx;
+        let inst = inst.0;
+        let device = &vx.device;
+        if let Some(ref mut debtris) = vx.debtris {
+            unsafe {
+                device
+                    .wait_for_fences(
+                        &vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            unsafe {
+                let mut data_target = device
+                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+
+                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+                data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
+                idx += 7;
+                data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
+                idx += 7;
+                data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
+                device
+                    .release_mapping_writer(data_target)
+                    .expect("Couldn't release the mapping writer!");
+            }
+        }
+    }
+
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &DebugTriangleHandle, deg: T) {
+        let vx = &mut *self.vx;
+        let inst = inst.0;
+        let device = &vx.device;
+        if let Some(ref mut debtris) = vx.debtris {
+            unsafe {
+                device
+                    .wait_for_fences(
+                        &vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            unsafe {
+                let mut data_target = device
+                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+
+                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+                let rot = deg.into().0;
+                data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
+                idx += 7;
+                data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
+                idx += 7;
+                data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
+                device
+                    .release_mapping_writer(data_target)
+                    .expect("Couldn't release the mapping writer!");
+            }
+        }
+    }
+
+    pub fn set_color(&mut self, inst: &DebugTriangleHandle, rgba: [u8; 4]) {
+        let vx = &mut *self.vx;
+        let inst = inst.0;
+        let device = &vx.device;
+        if let Some(ref mut debtris) = vx.debtris {
+            unsafe {
+                device
+                    .wait_for_fences(
+                        &vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            unsafe {
+                let mut data_target = device
+                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+
+                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+                let rgba = &transmute::<[u8; 4], [f32; 1]>(rgba);
+                data_target[idx + 2..idx + 3].copy_from_slice(rgba);
+                idx += 7;
+                data_target[idx + 2..idx + 3].copy_from_slice(rgba);
+                idx += 7;
+                data_target[idx + 2..idx + 3].copy_from_slice(rgba);
+                device
+                    .release_mapping_writer(data_target)
+                    .expect("Couldn't release the mapping writer!");
+            }
+        }
+    }
+
+    // ---
+
+    /// Rotate all debug triangles
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, deg: T) {
+        let vx = &mut *self.vx;
+        let device = &vx.device;
+        if let Some(ref mut debtris) = vx.debtris {
+            unsafe {
+                device
+                    .wait_for_fences(
+                        &vx.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+            }
+            unsafe {
+                let data_reader = device
+                    .acquire_mapping_reader::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+                let mut vertices = Vec::<f32>::with_capacity(debtris.triangles_count);
+                for i in 0..debtris.triangles_count {
+                    let idx = i * TRI_BYTE_SIZE / size_of::<f32>();
+                    let rotation = &data_reader[idx + 5..idx + 6];
+                    vertices.push(rotation[0]);
+                }
+                device.release_mapping_reader(data_reader);
+
+                let mut data_target = device
+                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+
+                for (i, vert) in vertices.iter().enumerate() {
+                    let mut idx = i * TRI_BYTE_SIZE / size_of::<f32>();
+                    data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
+                    idx += 7;
+                    data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
+                    idx += 7;
+                    data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
+                }
+                device
+                    .release_mapping_writer(data_target)
+                    .expect("Couldn't release the mapping writer!");
+            }
+        }
+    }
 }
 
 pub struct DebugTriangleHandle(usize);
@@ -377,213 +591,6 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
     s.debtris = Some(debtris);
 }
 
-/// Remove the last added debug triangle from rendering
-pub fn pop(s: &mut VxDraw) {
-    if let Some(ref mut debtris) = s.debtris {
-        // TODO deallocate and move the buffer if it's small enough
-        unsafe {
-            s.device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
-    }
-}
-
-/// Remove the last N added debug triangle from rendering
-pub fn pop_many(s: &mut VxDraw, n: usize) {
-    if let Some(ref mut debtris) = s.debtris {
-        unsafe {
-            s.device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        debtris.triangles_count = debtris.triangles_count.checked_sub(n).unwrap_or(0);
-    }
-}
-
-// ---
-
-pub fn set_position(s: &mut VxDraw, inst: &DebugTriangleHandle, pos: (f32, f32)) {
-    let inst = inst.0;
-    let device = &s.device;
-    if let Some(ref mut debtris) = s.debtris {
-        unsafe {
-            device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-
-            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-            data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
-            idx += 7;
-            data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
-            idx += 7;
-            data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-    }
-}
-
-pub fn set_scale(s: &mut VxDraw, inst: &DebugTriangleHandle, scale: f32) {
-    let inst = inst.0;
-    let device = &s.device;
-    if let Some(ref mut debtris) = s.debtris {
-        unsafe {
-            device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-
-            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-            data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
-            idx += 7;
-            data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
-            idx += 7;
-            data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-    }
-}
-
-pub fn set_rotation<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, inst: &DebugTriangleHandle, deg: T) {
-    let inst = inst.0;
-    let device = &s.device;
-    if let Some(ref mut debtris) = s.debtris {
-        unsafe {
-            device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-
-            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-            let rot = deg.into().0;
-            data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
-            idx += 7;
-            data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
-            idx += 7;
-            data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-    }
-}
-
-pub fn set_color(s: &mut VxDraw, inst: &DebugTriangleHandle, rgba: [u8; 4]) {
-    let inst = inst.0;
-    let device = &s.device;
-    if let Some(ref mut debtris) = s.debtris {
-        unsafe {
-            device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-
-            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-            let rgba = &transmute::<[u8; 4], [f32; 1]>(rgba);
-            data_target[idx + 2..idx + 3].copy_from_slice(rgba);
-            idx += 7;
-            data_target[idx + 2..idx + 3].copy_from_slice(rgba);
-            idx += 7;
-            data_target[idx + 2..idx + 3].copy_from_slice(rgba);
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-    }
-}
-
-// ---
-
-/// Rotate all debug triangles
-pub fn rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, deg: T) {
-    let device = &s.device;
-    if let Some(ref mut debtris) = s.debtris {
-        unsafe {
-            device
-                .wait_for_fences(
-                    &s.frames_in_flight_fences,
-                    gfx_hal::device::WaitFor::All,
-                    u64::max_value(),
-                )
-                .expect("Unable to wait for fences");
-        }
-        unsafe {
-            let data_reader = device
-                .acquire_mapping_reader::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-            let mut vertices = Vec::<f32>::with_capacity(debtris.triangles_count);
-            for i in 0..debtris.triangles_count {
-                let idx = i * TRI_BYTE_SIZE / size_of::<f32>();
-                let rotation = &data_reader[idx + 5..idx + 6];
-                vertices.push(rotation[0]);
-            }
-            device.release_mapping_reader(data_reader);
-
-            let mut data_target = device
-                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-
-            for (i, vert) in vertices.iter().enumerate() {
-                let mut idx = i * TRI_BYTE_SIZE / size_of::<f32>();
-                data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
-                idx += 7;
-                data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
-                idx += 7;
-                data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
-            }
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -616,10 +623,11 @@ mod tests {
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        let handle = vx.debtri().push(tri);
-        set_scale(&mut vx, &handle, 0.1);
-        set_rotation(&mut vx, &handle, Deg(30.0));
-        set_position(&mut vx, &handle, (0.25, 0.5));
+        let mut debtri = vx.debtri();
+        let handle = debtri.push(tri);
+        debtri.set_scale(&handle, 0.1);
+        debtri.set_rotation(&handle, Deg(30.0));
+        debtri.set_position(&handle, (0.25, 0.5));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "test_single_triangle_api", img);
@@ -634,8 +642,9 @@ mod tests {
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        let idx = vx.debtri().push(tri);
-        set_color(&mut vx, &idx, [255, 0, 255, 255]);
+        let mut debtri = vx.debtri();
+        let idx = debtri.push(tri);
+        debtri.set_color(&idx, [255, 0, 255, 255]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -751,10 +760,11 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let handles = utils::add_windmills(&mut vx, false);
-        set_color(&mut vx, &handles[0], [255, 0, 0, 255]);
-        set_color(&mut vx, &handles[249], [0, 255, 0, 255]);
-        set_color(&mut vx, &handles[499], [0, 0, 255, 255]);
-        set_color(&mut vx, &handles[999], [0, 0, 0, 255]);
+        let mut debtri = vx.debtri();
+        debtri.set_color(&handles[0], [255, 0, 0, 255]);
+        debtri.set_color(&handles[249], [0, 255, 0, 255]);
+        debtri.set_color(&handles[499], [0, 0, 255, 255]);
+        debtri.set_color(&handles[999], [0, 0, 0, 255]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -769,7 +779,7 @@ mod tests {
 
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
-            rotate_all(&mut vx, Deg(-1.0f32));
+            vx.debtri().rotate_all(Deg(-1.0f32));
         }
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -778,7 +788,7 @@ mod tests {
 
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
-            rotate_all(&mut vx, Deg(-1.0f32));
+            vx.debtri().rotate_all(Deg(-1.0f32));
             vx.draw_frame(&prspect);
         }
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -833,7 +843,8 @@ mod tests {
         let handles = utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            set_color(&mut vx, &handles[0], black_box([0, 0, 0, 255]));
+            vx.debtri()
+                .set_color(&handles[0], black_box([0, 0, 0, 255]));
         });
     }
 
@@ -846,7 +857,7 @@ mod tests {
         utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            rotate_all(&mut vx, Deg(1.0f32));
+            vx.debtri().rotate_all(Deg(1.0f32));
             vx.draw_frame(&prspect);
         });
     }
@@ -859,7 +870,7 @@ mod tests {
         utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            rotate_all(&mut vx, Deg(1.0f32));
+            vx.debtri().rotate_all(Deg(1.0f32));
         });
     }
 }
