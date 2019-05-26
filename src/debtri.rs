@@ -1,5 +1,5 @@
 use super::utils::*;
-use crate::data::{ColoredTriangleList, VxDraw};
+use crate::data::{DebugTriangleData, VxDraw};
 use cgmath::Rad;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -576,7 +576,7 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
     let (dtbuffer, dtmemory, dtreqs) =
         make_vertex_buffer_with_data(s, &[0.0f32; TRI_BYTE_SIZE / 4 * 1000]);
 
-    let debtris = ColoredTriangleList {
+    let debtris = DebugTriangleData {
         capacity: dtreqs.size,
         triangles_count: 0,
         triangles_buffer: dtbuffer,

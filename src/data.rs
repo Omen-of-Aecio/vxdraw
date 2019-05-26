@@ -72,7 +72,7 @@ pub struct SingleTexture {
     pub descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
 }
 
-pub struct ColoredTriangleList {
+pub struct DebugTriangleData {
     pub capacity: u64,
     pub triangles_count: usize,
     pub triangles_buffer: <back::Backend as Backend>::Buffer,
@@ -118,7 +118,7 @@ pub struct VxDraw {
     pub strtexs: Vec<StreamingTexture>,
     pub dyntexs: Vec<SingleTexture>,
     pub quads: Option<ColoredQuadList>,
-    pub debtris: Option<ColoredTriangleList>,
+    pub debtris: Option<DebugTriangleData>,
     //
     pub current_frame: usize,
     pub max_frames_in_flight: usize,
