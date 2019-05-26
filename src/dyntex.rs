@@ -819,7 +819,7 @@ impl<'a> Dyntex<'a> {
         }
     }
 
-    pub fn set_uvs2<'b>(
+    pub fn set_uvs<'b>(
         &mut self,
         mut uvs: impl Iterator<Item = (&'b SpriteHandle, (f32, f32), (f32, f32))>,
     ) {
@@ -1459,7 +1459,7 @@ mod tests {
         let testure = dyntex.push_texture(TESTURE, options);
         let sprite = dyntex.push_sprite(&testure, Sprite::default());
 
-        dyntex.set_uvs2(std::iter::once((
+        dyntex.set_uvs(std::iter::once((
             &sprite,
             (1.0 / 3.0, 0.0),
             (2.0 / 3.0, 1.0),
@@ -1617,7 +1617,7 @@ mod tests {
 
             windowing
                 .dyntex()
-                .set_uvs2(fireballs.iter().map(|id| (id, uv_begin, uv_end)));
+                .set_uvs(fireballs.iter().map(|id| (id, uv_begin, uv_end)));
             draw_frame(&mut windowing, &prspect);
         });
     }
