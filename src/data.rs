@@ -76,8 +76,8 @@ pub struct DebugTriangleData {
     pub hidden: bool,
     pub capacity: u64,
     pub triangles_count: usize,
-    pub triangles_buffer: <back::Backend as Backend>::Buffer,
-    pub triangles_memory: <back::Backend as Backend>::Memory,
+    pub triangles_buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
+    pub triangles_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
     pub memory_requirements: gfx_hal::memory::Requirements,
 
     pub descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
@@ -120,7 +120,7 @@ pub struct VxDraw {
     pub strtexs: Vec<StreamingTexture>,
     pub dyntexs: Vec<SingleTexture>,
     pub quads: Vec<ColoredQuadList>,
-    pub debtris: Option<DebugTriangleData>,
+    pub debtris: DebugTriangleData,
     //
     pub current_frame: usize,
     pub max_frames_in_flight: usize,
@@ -202,9 +202,12 @@ impl Drop for VxDraw {
         }
 
         unsafe {
-            if let Some(mut debtris) = self.debtris.take() {
-                self.device.destroy_buffer(debtris.triangles_buffer);
-                self.device.free_memory(debtris.triangles_memory);
+            {
+                let debtris = &mut self.debtris;
+                self.device
+                    .destroy_buffer(ManuallyDrop::into_inner(read(&debtris.triangles_buffer)));
+                self.device
+                    .free_memory(ManuallyDrop::into_inner(read(&debtris.triangles_memory)));
                 for dsl in debtris.descriptor_set.drain(..) {
                     self.device.destroy_descriptor_set_layout(dsl);
                 }

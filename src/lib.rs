@@ -470,7 +470,9 @@ impl VxDraw {
             .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
             .collect();
 
-        let mut vx = VxDraw {
+        let debtris = debtri::create_debug_triangle(&device, &adapter, &format);
+
+        let vx = VxDraw {
             acquire_image_semaphores,
             acquire_image_semaphore_free: ManuallyDrop::new(
                 device
@@ -484,7 +486,6 @@ impl VxDraw {
             current_frame: 0,
             draw_order: vec![],
             max_frames_in_flight,
-            debtris: None,
             device: ManuallyDrop::new(device),
             device_limits: phys_dev_limits,
             events_loop,
@@ -517,8 +518,8 @@ impl VxDraw {
             #[cfg(not(feature = "gl"))]
             window,
             log,
+            debtris,
         };
-        debtri::create_debug_triangle(&mut vx);
         vx
     }
 
@@ -822,7 +823,7 @@ impl VxDraw {
             {
                 let current_frame = self.current_frame;
                 let texture_count = self.dyntexs.len();
-                let debugtris_cnt = self.debtris.as_ref().map_or(0, |x| x.triangles_count);
+                let debugtris_cnt = self.debtris.triangles_count;
                 let swap_image = swap_image.0;
                 trace![self.log, "vxdraw", "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
             }
@@ -988,22 +989,21 @@ impl VxDraw {
                             }
                         }
                     }
-                    if let Some(ref debtris) = self.debtris {
-                        if !debtris.hidden {
-                            enc.bind_graphics_pipeline(&debtris.pipeline);
-                            let ratio = self.swapconfig.extent.width as f32
-                                / self.swapconfig.extent.height as f32;
-                            enc.push_graphics_constants(
-                                &debtris.pipeline_layout,
-                                pso::ShaderStageFlags::VERTEX,
-                                0,
-                                &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
-                            );
-                            let count = debtris.triangles_count;
-                            let buffers: ArrayVec<[_; 1]> = [(&debtris.triangles_buffer, 0)].into();
-                            enc.bind_vertex_buffers(0, buffers);
-                            enc.draw(0..(count * 3) as u32, 0..1);
-                        }
+                    if !self.debtris.hidden {
+                        enc.bind_graphics_pipeline(&self.debtris.pipeline);
+                        let ratio = self.swapconfig.extent.width as f32
+                            / self.swapconfig.extent.height as f32;
+                        enc.push_graphics_constants(
+                            &self.debtris.pipeline_layout,
+                            pso::ShaderStageFlags::VERTEX,
+                            0,
+                            &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
+                        );
+                        let count = self.debtris.triangles_count;
+                        let buffers: ArrayVec<[_; 1]> =
+                            [(&*self.debtris.triangles_buffer, 0)].into();
+                        enc.bind_vertex_buffers(0, buffers);
+                        enc.draw(0..(count * 3) as u32, 0..1);
                     }
                 }
                 buffer.finish();

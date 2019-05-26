@@ -41,7 +41,7 @@ use gfx_backend_gl as back;
 use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
-use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
+use gfx_hal::{device::Device, format, image, pass, pso, Adapter, Backend, Primitive};
 use std::mem::{size_of, transmute, ManuallyDrop};
 
 // ---
@@ -64,12 +64,12 @@ impl<'a> Debtri<'a> {
 
     /// Enable drawing of the debug triangles
     pub fn show(&mut self) {
-        self.vx.debtris.as_mut().unwrap().hidden = false;
+        self.vx.debtris.hidden = false;
     }
 
     /// Disable drawing of the debug triangles
     pub fn hide(&mut self) {
-        self.vx.debtris.as_mut().unwrap().hidden = true;
+        self.vx.debtris.hidden = true;
     }
 
     /// Add a new debug triangle to the renderer
@@ -77,48 +77,39 @@ impl<'a> Debtri<'a> {
     /// The new triangle will be drawn upon the next draw.
     pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
         let s = &mut *self.vx;
-        let overrun = if let Some(ref mut debtris) = s.debtris {
-            Some((debtris.triangles_count + 1) * TRI_BYTE_SIZE > debtris.capacity as usize)
-        } else {
-            None
-        };
-        if let Some(overrun) = overrun {
+        let debtris = &mut s.debtris;
+        let overrun = (debtris.triangles_count + 1) * TRI_BYTE_SIZE > debtris.capacity as usize;
+        if overrun {
             // TODO Do reallocation here
             assert_eq![false, overrun];
         }
-        if let Some(ref mut debtris) = s.debtris {
-            let device = &s.device;
-            unsafe {
-                let mut data_target = device
-                    .acquire_mapping_writer(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
-                let idx = debtris.triangles_count * TRI_BYTE_SIZE / size_of::<f32>();
+        let device = &s.device;
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
+            let idx = debtris.triangles_count * TRI_BYTE_SIZE / size_of::<f32>();
 
-                for (i, idx) in [idx, idx + 7, idx + 14].iter().enumerate() {
-                    data_target[*idx..*idx + 2]
-                        .copy_from_slice(&[triangle.origin[i].0, triangle.origin[i].1]);
-                    data_target[*idx + 2..*idx + 3].copy_from_slice(
-                        &transmute::<[u8; 4], [f32; 1]>([
-                            triangle.colors_rgba[i].0,
-                            triangle.colors_rgba[i].1,
-                            triangle.colors_rgba[i].2,
-                            triangle.colors_rgba[i].3,
-                        ]),
-                    );
-                    data_target[*idx + 3..*idx + 5]
-                        .copy_from_slice(&[triangle.translation.0, triangle.translation.1]);
-                    data_target[*idx + 5..*idx + 6].copy_from_slice(&[triangle.rotation]);
-                    data_target[*idx + 6..*idx + 7].copy_from_slice(&[triangle.scale]);
-                }
-                debtris.triangles_count += 1;
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
+            for (i, idx) in [idx, idx + 7, idx + 14].iter().enumerate() {
+                data_target[*idx..*idx + 2]
+                    .copy_from_slice(&[triangle.origin[i].0, triangle.origin[i].1]);
+                data_target[*idx + 2..*idx + 3].copy_from_slice(&transmute::<[u8; 4], [f32; 1]>([
+                    triangle.colors_rgba[i].0,
+                    triangle.colors_rgba[i].1,
+                    triangle.colors_rgba[i].2,
+                    triangle.colors_rgba[i].3,
+                ]));
+                data_target[*idx + 3..*idx + 5]
+                    .copy_from_slice(&[triangle.translation.0, triangle.translation.1]);
+                data_target[*idx + 5..*idx + 6].copy_from_slice(&[triangle.rotation]);
+                data_target[*idx + 6..*idx + 7].copy_from_slice(&[triangle.scale]);
             }
-            Handle(debtris.triangles_count - 1)
-        } else {
-            unreachable![]
+            debtris.triangles_count += 1;
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
         }
+        Handle(debtris.triangles_count - 1)
     }
 
     /// Remove the last added debug triangle from rendering
@@ -126,19 +117,18 @@ impl<'a> Debtri<'a> {
     /// Has no effect if there are no debug triangles.
     pub fn pop(&mut self) {
         let vx = &mut *self.vx;
-        if let Some(ref mut debtris) = vx.debtris {
-            // TODO deallocate and move the buffer if it's small enough
-            unsafe {
-                vx.device
-                    .wait_for_fences(
-                        &vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-            }
-            debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
+        let debtris = &mut vx.debtris;
+        // TODO deallocate and move the buffer if it's small enough
+        unsafe {
+            vx.device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
         }
+        debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
     }
 
     /// Remove the last N added debug triangle from rendering
@@ -146,19 +136,18 @@ impl<'a> Debtri<'a> {
     /// If the amount to pop is bigger than the amount of debug triangles, then all debug triangles
     /// wil be removed.
     pub fn pop_many(&mut self, n: usize) {
-        if let Some(ref mut debtris) = self.vx.debtris {
-            unsafe {
-                self.vx
-                    .device
-                    .wait_for_fences(
-                        &self.vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-            }
-            debtris.triangles_count = debtris.triangles_count.checked_sub(n).unwrap_or(0);
+        unsafe {
+            self.vx
+                .device
+                .wait_for_fences(
+                    &self.vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
         }
+        self.vx.debtris.triangles_count =
+            self.vx.debtris.triangles_count.checked_sub(n).unwrap_or(0);
     }
 
     // ---
@@ -168,31 +157,30 @@ impl<'a> Debtri<'a> {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
-        if let Some(ref mut debtris) = vx.debtris {
-            unsafe {
-                device
-                    .wait_for_fences(
-                        &vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-            }
-            unsafe {
-                let mut data_target = device
-                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
+        let debtris = &mut vx.debtris;
+        unsafe {
+            device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
+        }
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
 
-                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-                data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
-                idx += 7;
-                data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
-                idx += 7;
-                data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
-            }
+            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+            data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
+            idx += 7;
+            data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
+            idx += 7;
+            data_target[idx + 3..idx + 5].copy_from_slice(&[pos.0, pos.1]);
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
         }
     }
 
@@ -201,31 +189,30 @@ impl<'a> Debtri<'a> {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
-        if let Some(ref mut debtris) = vx.debtris {
-            unsafe {
-                device
-                    .wait_for_fences(
-                        &vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-            }
-            unsafe {
-                let mut data_target = device
-                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
+        let debtris = &mut vx.debtris;
+        unsafe {
+            device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
+        }
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
 
-                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-                data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
-                idx += 7;
-                data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
-                idx += 7;
-                data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
-            }
+            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+            data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
+            idx += 7;
+            data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
+            idx += 7;
+            data_target[idx + 6..idx + 7].copy_from_slice(&[scale]);
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
         }
     }
 
@@ -234,32 +221,31 @@ impl<'a> Debtri<'a> {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
-        if let Some(ref mut debtris) = vx.debtris {
-            unsafe {
-                device
-                    .wait_for_fences(
-                        &vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-            }
-            unsafe {
-                let mut data_target = device
-                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
+        let debtris = &mut vx.debtris;
+        unsafe {
+            device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
+        }
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
 
-                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-                let rot = deg.into().0;
-                data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
-                idx += 7;
-                data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
-                idx += 7;
-                data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
-            }
+            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+            let rot = deg.into().0;
+            data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
+            idx += 7;
+            data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
+            idx += 7;
+            data_target[idx + 5..idx + 6].copy_from_slice(&[rot]);
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
         }
     }
 
@@ -268,32 +254,31 @@ impl<'a> Debtri<'a> {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
-        if let Some(ref mut debtris) = vx.debtris {
-            unsafe {
-                device
-                    .wait_for_fences(
-                        &vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-            }
-            unsafe {
-                let mut data_target = device
-                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
+        let debtris = &mut vx.debtris;
+        unsafe {
+            device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
+        }
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
 
-                let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
-                let rgba = &transmute::<[u8; 4], [f32; 1]>(rgba);
-                data_target[idx + 2..idx + 3].copy_from_slice(rgba);
-                idx += 7;
-                data_target[idx + 2..idx + 3].copy_from_slice(rgba);
-                idx += 7;
-                data_target[idx + 2..idx + 3].copy_from_slice(rgba);
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
-            }
+            let mut idx = inst * TRI_BYTE_SIZE / size_of::<f32>();
+            let rgba = &transmute::<[u8; 4], [f32; 1]>(rgba);
+            data_target[idx + 2..idx + 3].copy_from_slice(rgba);
+            idx += 7;
+            data_target[idx + 2..idx + 3].copy_from_slice(rgba);
+            idx += 7;
+            data_target[idx + 2..idx + 3].copy_from_slice(rgba);
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
         }
     }
 
@@ -303,44 +288,43 @@ impl<'a> Debtri<'a> {
     pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, deg: T) {
         let vx = &mut *self.vx;
         let device = &vx.device;
-        if let Some(ref mut debtris) = vx.debtris {
-            unsafe {
-                device
-                    .wait_for_fences(
-                        &vx.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
+        let debtris = &mut vx.debtris;
+        unsafe {
+            device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
+        }
+        unsafe {
+            let data_reader = device
+                .acquire_mapping_reader::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
+            let mut vertices = Vec::<f32>::with_capacity(debtris.triangles_count);
+            for i in 0..debtris.triangles_count {
+                let idx = i * TRI_BYTE_SIZE / size_of::<f32>();
+                let rotation = &data_reader[idx + 5..idx + 6];
+                vertices.push(rotation[0]);
             }
-            unsafe {
-                let data_reader = device
-                    .acquire_mapping_reader::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
-                let mut vertices = Vec::<f32>::with_capacity(debtris.triangles_count);
-                for i in 0..debtris.triangles_count {
-                    let idx = i * TRI_BYTE_SIZE / size_of::<f32>();
-                    let rotation = &data_reader[idx + 5..idx + 6];
-                    vertices.push(rotation[0]);
-                }
-                device.release_mapping_reader(data_reader);
+            device.release_mapping_reader(data_reader);
 
-                let mut data_target = device
-                    .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
-                    .expect("Failed to acquire a memory writer!");
+            let mut data_target = device
+                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
 
-                for (i, vert) in vertices.iter().enumerate() {
-                    let mut idx = i * TRI_BYTE_SIZE / size_of::<f32>();
-                    data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
-                    idx += 7;
-                    data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
-                    idx += 7;
-                    data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
-                }
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
+            for (i, vert) in vertices.iter().enumerate() {
+                let mut idx = i * TRI_BYTE_SIZE / size_of::<f32>();
+                data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
+                idx += 7;
+                data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
+                idx += 7;
+                data_target[idx + 5..idx + 6].copy_from_slice(&[*vert + deg.into().0]);
             }
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
         }
     }
 }
@@ -426,14 +410,18 @@ const TRI_BYTE_SIZE: usize = PTS_PER_TRI * BYTES_PER_VTX;
 // ---
 
 // TODO Remove the dependency on VxDraw, just use Device
-pub fn create_debug_triangle(s: &mut VxDraw) {
+pub fn create_debug_triangle(
+    device: &back::Device,
+    adapter: &Adapter<back::Backend>,
+    format: &format::Format,
+) -> DebugTriangleData {
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
 
     pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.frag.spirv"];
 
-    let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
+    let vs_module = { unsafe { device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
 
-    let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
+    let fs_module = { unsafe { device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
 
     const ENTRY_NAME: &str = "main";
     let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
@@ -543,7 +531,7 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
 
     let triangle_render_pass = {
         let attachment = pass::Attachment {
-            format: Some(s.format),
+            format: Some(*format),
             samples: 1,
             ops: pass::AttachmentOps::new(
                 pass::AttachmentLoadOp::Clear,
@@ -571,11 +559,8 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
             preserves: &[],
         };
 
-        unsafe {
-            s.device
-                .create_render_pass(&[attachment, depth], &[subpass], &[])
-        }
-        .expect("Can't create render pass")
+        unsafe { device.create_render_pass(&[attachment, depth], &[subpass], &[]) }
+            .expect("Can't create render pass")
     };
 
     // TODO Remove explicit extent setting here, do that while rendering instead (avoids the need
@@ -591,7 +576,7 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
     let immutable_samplers = Vec::<<back::Backend as Backend>::Sampler>::new();
     let triangle_descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout> =
         vec![unsafe {
-            s.device
+            device
                 .create_descriptor_set_layout(bindings, immutable_samplers)
                 .expect("Couldn't make a DescriptorSetLayout")
         }];
@@ -599,7 +584,7 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
     push_constants.push((pso::ShaderStageFlags::VERTEX, 0..1));
 
     let triangle_pipeline_layout = unsafe {
-        s.device
+        device
             .create_pipeline_layout(&triangle_descriptor_set_layouts, push_constants)
             .expect("Couldn't create a pipeline layout")
     };
@@ -625,25 +610,25 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
     };
 
     let triangle_pipeline = unsafe {
-        s.device
+        device
             .create_graphics_pipeline(&pipeline_desc, None)
             .expect("Couldn't create a graphics pipeline!")
     };
 
     unsafe {
-        s.device.destroy_shader_module(vs_module);
-        s.device.destroy_shader_module(fs_module);
+        device.destroy_shader_module(vs_module);
+        device.destroy_shader_module(fs_module);
     }
 
     let (dtbuffer, dtmemory, dtreqs) =
-        make_vertex_buffer_with_data(s, &[0.0f32; TRI_BYTE_SIZE / 4 * 1000]);
+        make_vertex_buffer_with_data2(device, adapter, &[0.0f32; TRI_BYTE_SIZE / 4 * 1000]);
 
     let debtris = DebugTriangleData {
         hidden: false,
         capacity: dtreqs.size,
         triangles_count: 0,
-        triangles_buffer: dtbuffer,
-        triangles_memory: dtmemory,
+        triangles_buffer: ManuallyDrop::new(dtbuffer),
+        triangles_memory: ManuallyDrop::new(dtmemory),
         memory_requirements: dtreqs,
 
         descriptor_set: triangle_descriptor_set_layouts,
@@ -651,7 +636,7 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
         pipeline_layout: ManuallyDrop::new(triangle_pipeline_layout),
         render_pass: ManuallyDrop::new(triangle_render_pass),
     };
-    s.debtris = Some(debtris);
+    debtris
 }
 
 #[cfg(test)]
