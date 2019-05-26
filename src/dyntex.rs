@@ -1008,7 +1008,7 @@ mod tests {
     #[test]
     fn overlapping_dyntex_respect_z_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut dyntex = windowing.dyntex();
@@ -1044,7 +1044,7 @@ mod tests {
     #[test]
     fn simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = windowing.dyntex();
         let tex = dyntex.push_texture(LOGO, TextureOptions::default());
@@ -1058,7 +1058,7 @@ mod tests {
     #[test]
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
         let tex = windowing
             .dyntex()
             .push_texture(LOGO, TextureOptions::default());
@@ -1072,7 +1072,7 @@ mod tests {
     #[test]
     fn colored_simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let tex = windowing
             .dyntex()
             .push_texture(LOGO, TextureOptions::default());
@@ -1097,7 +1097,7 @@ mod tests {
     #[test]
     fn colored_simple_texture_set_position() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = windowing.dyntex();
         let tex = dyntex.push_texture(LOGO, TextureOptions::default());
@@ -1123,7 +1123,7 @@ mod tests {
     #[test]
     fn translated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let tex = windowing.dyntex().push_texture(
             LOGO,
             TextureOptions {
@@ -1182,7 +1182,7 @@ mod tests {
     #[test]
     fn rotated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let mut dyntex = windowing.dyntex();
         let tex = dyntex.push_texture(
             LOGO,
@@ -1240,7 +1240,7 @@ mod tests {
     #[test]
     fn many_sprites() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let tex = windowing.dyntex().push_texture(
             LOGO,
             TextureOptions {
@@ -1267,7 +1267,7 @@ mod tests {
     #[test]
     fn three_layer_scene() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1303,7 +1303,7 @@ mod tests {
     #[test]
     fn three_layer_scene_remove_middle() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1341,7 +1341,7 @@ mod tests {
     #[test]
     fn three_layer_scene_remove_middle_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1387,7 +1387,7 @@ mod tests {
     #[test]
     fn three_layer_scene_remove_last_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1430,7 +1430,7 @@ mod tests {
     #[test]
     fn fixed_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
         let prspect = Matrix4::from_scale(0.0) * gen_perspective(&windowing);
 
         let options = TextureOptions {
@@ -1449,7 +1449,7 @@ mod tests {
     #[test]
     fn change_of_uv_works_for_first() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut dyntex = windowing.dyntex();
@@ -1478,7 +1478,7 @@ mod tests {
     #[test]
     fn set_single_sprite_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut dyntex = windowing.dyntex();
@@ -1494,7 +1494,7 @@ mod tests {
     #[test]
     fn push_and_pop_often_avoid_allocating_out_of_bounds() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = TextureOptions::default();
@@ -1512,7 +1512,7 @@ mod tests {
     #[bench]
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let tex = windowing
             .dyntex()
             .push_texture(LOGO, TextureOptions::default());
@@ -1536,7 +1536,7 @@ mod tests {
     #[bench]
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let tex = windowing
             .dyntex()
             .push_texture(LOGO, TextureOptions::default());
@@ -1566,7 +1566,7 @@ mod tests {
     #[bench]
     fn animated_fireballs_20x20_uvs2(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let fireball_texture = windowing.dyntex().push_texture(
@@ -1624,7 +1624,7 @@ mod tests {
     #[bench]
     fn bench_push_and_pop_sprite(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
 
         let options = TextureOptions::default();
         let testure = windowing.dyntex().push_texture(TESTURE, options);
@@ -1639,7 +1639,7 @@ mod tests {
     #[bench]
     fn bench_push_and_pop_texture(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let mut dyntex = windowing.dyntex();
 
         b.iter(|| {

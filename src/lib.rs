@@ -123,6 +123,386 @@ fn set_window_size(window: &glutin::Window, show: ShowWindow) -> Extent2D {
 }
 
 impl Windowing {
+    pub fn new(mut log: Logpass, show: ShowWindow) -> Windowing {
+        #[cfg(feature = "gl")]
+        static BACKEND: &str = "OpenGL";
+        #[cfg(feature = "vulkan")]
+        static BACKEND: &str = "Vulkan";
+        #[cfg(feature = "metal")]
+        static BACKEND: &str = "Metal";
+        #[cfg(feature = "dx12")]
+        static BACKEND: &str = "Dx12";
+
+        info![log, "vxdraw", "Initializing rendering"; "show" => InDebug(&show), "backend" => BACKEND];
+
+        let events_loop = EventsLoop::new();
+        let window_builder = WindowBuilder::new().with_visibility(show == ShowWindow::Enable);
+
+        #[cfg(feature = "gl")]
+        let (mut adapters, mut surf, dims) = {
+            let window = {
+                let builder = back::config_context(
+                    back::glutin::ContextBuilder::new(),
+                    format::Format::Rgba8Srgb,
+                    None,
+                )
+                .with_vsync(true);
+                back::glutin::WindowedContext::new_windowed(window_builder, builder, &events_loop)
+                    .unwrap()
+            };
+
+            set_window_size(window.window(), show);
+            let dims = {
+                let dpi_factor = window.get_hidpi_factor();
+                debug![log, "vxdraw", "Window DPI factor"; "factor" => dpi_factor];
+                let (w, h): (u32, u32) = window
+                    .get_inner_size()
+                    .unwrap()
+                    .to_physical(dpi_factor)
+                    .into();
+                Extent2D {
+                    width: w,
+                    height: h,
+                }
+            };
+
+            let surface = back::Surface::from_window(window);
+            let adapters = surface.enumerate_adapters();
+            (adapters, surface, dims)
+        };
+
+        #[cfg(not(feature = "gl"))]
+        let (window, vk_inst, mut adapters, mut surf, dims) = {
+            let mut window = window_builder.build(&events_loop).unwrap();
+            let version = 1;
+            let vk_inst = back::Instance::create("renderer", version);
+            let surf: <back::Backend as Backend>::Surface = vk_inst.create_surface(&window);
+            let adapters = vk_inst.enumerate_adapters();
+            let dims = set_window_size(&mut window, show);
+            let dpi_factor = window.get_hidpi_factor();
+            debug![log, "vxdraw", "Window DPI factor"; "factor" => dpi_factor];
+            (window, vk_inst, adapters, surf, dims)
+        };
+
+        // ---
+
+        {
+            let len = adapters.len();
+            debug![log, "vxdraw", "Adapters found"; "count" => len];
+        }
+
+        for (idx, adap) in adapters.iter().enumerate() {
+            let info = adap.info.clone();
+            let limits = adap.physical_device.limits();
+            debug![log, "vxdraw", "Adapter found"; "idx" => idx, "info" => InDebugPretty(&info), "device limits" => InDebugPretty(&limits)];
+        }
+
+        // TODO Find appropriate adapter, I've never seen a case where we have 2+ adapters, that time
+        // will come one day
+        let adapter = adapters.remove(0);
+        let (device, queue_group) = adapter
+            .open_with::<_, gfx_hal::Graphics>(1, |family| surf.supports_queue_family(family))
+            .expect("Unable to find device supporting graphics");
+
+        let phys_dev_limits = adapter.physical_device.limits();
+
+        let (caps, formats, present_modes) = surf.compatibility(&adapter.physical_device);
+
+        debug![log, "vxdraw", "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
+        debug![log, "vxdraw", "Formats available"; "formats" => InDebugPretty(&formats); clone formats];
+        let format = formats.map_or(format::Format::Rgba8Srgb, |formats| {
+            formats
+                .iter()
+                .find(|format| format.base_format().1 == ChannelType::Srgb)
+                .cloned()
+                .unwrap_or(formats[0])
+        });
+
+        debug![log, "vxdraw", "Format chosen"; "format" => InDebugPretty(&format); clone format];
+        debug![log, "vxdraw", "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
+
+        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
+        // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
+        let present_mode = {
+            [Mailbox, Fifo, Relaxed, Immediate]
+                .iter()
+                .cloned()
+                .find(|pm| present_modes.contains(pm))
+                .ok_or("No PresentMode values specified!")
+                .unwrap()
+        };
+        debug![log, "vxdraw", "Using best possible present mode"; "mode" => InDebug(&present_mode)];
+
+        let image_count = if present_mode == Mailbox {
+            (caps.image_count.end - 1)
+                .min(3)
+                .max(caps.image_count.start)
+        } else {
+            (caps.image_count.end - 1)
+                .min(2)
+                .max(caps.image_count.start)
+        };
+        debug![log, "vxdraw", "Using swapchain images"; "count" => image_count];
+
+        debug![log, "vxdraw", "Swapchain size"; "extent" => InDebug(&dims)];
+
+        let mut swap_config = SwapchainConfig::from_caps(&caps, format, dims);
+        swap_config.present_mode = present_mode;
+        swap_config.image_count = image_count;
+        swap_config.extent = dims;
+        if caps.usage.contains(image::Usage::TRANSFER_SRC) {
+            swap_config.image_usage |= gfx_hal::image::Usage::TRANSFER_SRC;
+        } else {
+            warn![
+                log,
+                "vxdraw", "Surface does not support TRANSFER_SRC, may fail during testing"
+            ];
+        }
+
+        debug![log, "vxdraw", "Swapchain final configuration"; "swapchain" => InDebugPretty(&swap_config); clone swap_config];
+
+        let (swapchain, images) =
+            unsafe { device.create_swapchain(&mut surf, swap_config.clone(), None) }
+                .expect("Unable to create swapchain");
+
+        let images_string = format!["{:#?}", images];
+        debug![log, "vxdraw", "Image information"; "images" => images_string];
+
+        // NOTE: for curious people, the render_pass, used in both framebuffer creation AND command
+        // buffer when drawing, only need to be _compatible_, which means the SAMPLE count and the
+        // FORMAT is _the exact same_.
+        // Other elements such as attachment load/store methods are irrelevant.
+        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#renderpass-compatibility
+        let render_pass = {
+            let color_attachment = pass::Attachment {
+                format: Some(format),
+                samples: 1,
+                ops: pass::AttachmentOps {
+                    load: pass::AttachmentLoadOp::Clear,
+                    store: pass::AttachmentStoreOp::Store,
+                },
+                stencil_ops: pass::AttachmentOps::DONT_CARE,
+                layouts: image::Layout::Undefined..image::Layout::Present,
+            };
+            let depth = pass::Attachment {
+                format: Some(format::Format::D32Sfloat),
+                samples: 1,
+                ops: pass::AttachmentOps::new(
+                    pass::AttachmentLoadOp::Clear,
+                    pass::AttachmentStoreOp::Store,
+                ),
+                stencil_ops: pass::AttachmentOps::DONT_CARE,
+                layouts: image::Layout::Undefined..image::Layout::DepthStencilAttachmentOptimal,
+            };
+
+            let subpass = pass::SubpassDesc {
+                colors: &[(0, image::Layout::ColorAttachmentOptimal)],
+                depth_stencil: Some(&(1, image::Layout::DepthStencilAttachmentOptimal)),
+                inputs: &[],
+                resolves: &[],
+                preserves: &[],
+            };
+            debug![log, "vxdraw", "Render pass info"; "color attachment" => InDebugPretty(&color_attachment); clone color_attachment];
+            unsafe {
+                device
+                    .create_render_pass(&[color_attachment, depth], &[subpass], &[])
+                    .map_err(|_| "Couldn't create a render pass!")
+                    .unwrap()
+            }
+        };
+
+        {
+            let rpfmt = format!["{:#?}", render_pass];
+            debug![log, "vxdraw", "Created render pass for framebuffers"; "renderpass" => rpfmt];
+        }
+
+        let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
+        let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
+        let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
+        let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
+
+        let (image_views, framebuffers) = {
+            let image_views = images
+                .iter()
+                .map(|image| unsafe {
+                    device
+                        .create_image_view(
+                            &image,
+                            image::ViewKind::D2,
+                            format, // MUST be identical to the image's format
+                            Swizzle::NO,
+                            image::SubresourceRange {
+                                aspects: format::Aspects::COLOR,
+                                levels: 0..1,
+                                layers: 0..1,
+                            },
+                        )
+                        .map_err(|_| "Couldn't create the image_view for the image!")
+                })
+                .collect::<Result<Vec<_>, &str>>()
+                .unwrap();
+
+            unsafe {
+                for _ in &image_views {
+                    let mut depth_image = device
+                        .create_image(
+                            image::Kind::D2(dims.width, dims.height, 1, 1),
+                            1,
+                            format::Format::D32Sfloat,
+                            image::Tiling::Optimal,
+                            image::Usage::DEPTH_STENCIL_ATTACHMENT,
+                            image::ViewCapabilities::empty(),
+                        )
+                        .expect("Unable to create depth image");
+                    let requirements = device.get_image_requirements(&depth_image);
+                    let memory_type_id = find_memory_type_id(
+                        &adapter,
+                        requirements,
+                        memory::Properties::DEVICE_LOCAL,
+                    );
+                    let memory = device
+                        .allocate_memory(memory_type_id, requirements.size)
+                        .expect("Couldn't allocate image memory!");
+                    device
+                        .bind_image_memory(&memory, 0, &mut depth_image)
+                        .expect("Couldn't bind the image memory!");
+                    let image_view = device
+                        .create_image_view(
+                            &depth_image,
+                            image::ViewKind::D2,
+                            format::Format::D32Sfloat,
+                            format::Swizzle::NO,
+                            image::SubresourceRange {
+                                aspects: format::Aspects::DEPTH,
+                                levels: 0..1,
+                                layers: 0..1,
+                            },
+                        )
+                        .expect("Couldn't create the image view!");
+                    depth_images.push(depth_image);
+                    depth_image_views.push(image_view);
+                    depth_image_requirements.push(requirements);
+                    depth_image_memories.push(memory);
+                }
+            }
+            let framebuffers: Vec<<back::Backend as Backend>::Framebuffer> = {
+                image_views
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, image_view)| unsafe {
+                        device
+                            .create_framebuffer(
+                                &render_pass,
+                                vec![image_view, &depth_image_views[idx]],
+                                image::Extent {
+                                    width: dims.width as u32,
+                                    height: dims.height as u32,
+                                    depth: 1,
+                                },
+                            )
+                            .map_err(|_| "Failed to create a framebuffer!")
+                    })
+                    .collect::<Result<Vec<_>, &str>>()
+                    .unwrap()
+            };
+            (image_views, framebuffers)
+        };
+
+        {
+            let image_views = format!["{:?}", image_views];
+            debug![log, "vxdraw", "Created image views"; "image views" => image_views];
+        }
+
+        let framebuffers_string = format!["{:#?}", framebuffers];
+        debug![log, "vxdraw", "Framebuffer information"; "framebuffers" => framebuffers_string];
+
+        let max_frames_in_flight = 3;
+        assert![max_frames_in_flight > 0];
+
+        let mut frames_in_flight_fences = vec![];
+        let mut present_wait_semaphores = vec![];
+        for _ in 0..max_frames_in_flight {
+            frames_in_flight_fences.push(device.create_fence(true).expect("Can't create fence"));
+            present_wait_semaphores
+                .push(device.create_semaphore().expect("Can't create semaphore"));
+        }
+
+        let acquire_image_semaphores = (0..image_count)
+            .map(|_| device.create_semaphore().expect("Can't create semaphore"))
+            .collect::<Vec<_>>();
+
+        {
+            let count = frames_in_flight_fences.len();
+            debug![log, "vxdraw", "Allocated fences and semaphores"; "count" => count];
+        }
+
+        let mut command_pool = unsafe {
+            device
+                .create_command_pool_typed(
+                    &queue_group,
+                    pool::CommandPoolCreateFlags::RESET_INDIVIDUAL,
+                )
+                .unwrap()
+        };
+
+        let command_buffers: Vec<_> = framebuffers
+            .iter()
+            .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
+            .collect();
+
+        let mut windowing = Windowing {
+            acquire_image_semaphores,
+            acquire_image_semaphore_free: ManuallyDrop::new(
+                device
+                    .create_semaphore()
+                    .expect("Unable to create semaphore"),
+            ),
+            adapter,
+            images,
+            command_buffers,
+            command_pool: ManuallyDrop::new(command_pool),
+            current_frame: 0,
+            draw_order: vec![],
+            max_frames_in_flight,
+            debtris: None,
+            device: ManuallyDrop::new(device),
+            device_limits: phys_dev_limits,
+            events_loop,
+            frames_in_flight_fences,
+            framebuffers,
+            format,
+            image_count: image_count as usize,
+            image_views,
+            present_wait_semaphores,
+            queue_group: ManuallyDrop::new(queue_group),
+            render_area: pso::Rect {
+                x: 0,
+                y: 0,
+                w: dims.width as i16,
+                h: dims.height as i16,
+            },
+            render_pass: ManuallyDrop::new(render_pass),
+            surf,
+            swapchain: ManuallyDrop::new(swapchain),
+            swapconfig: swap_config,
+            strtexs: vec![],
+            dyntexs: vec![],
+            quads: None,
+            depth_images,
+            depth_image_views,
+            depth_image_requirements,
+            depth_image_memories,
+            #[cfg(not(feature = "gl"))]
+            vk_inst: ManuallyDrop::new(vk_inst),
+            #[cfg(not(feature = "gl"))]
+            window,
+            log,
+        };
+        debtri::create_debug_triangle(&mut windowing);
+        quads::create_quad(&mut windowing);
+        windowing
+    }
+
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
         let dpi_factor = self.window.get_hidpi_factor();
         let (w, h): (u32, u32) = self
@@ -150,379 +530,6 @@ impl Windowing {
     pub fn dyntex(&mut self) -> dyntex::Dyntex {
         dyntex::Dyntex::new(self)
     }
-}
-
-pub fn init_window_with_vulkan(mut log: Logpass, show: ShowWindow) -> Windowing {
-    #[cfg(feature = "gl")]
-    static BACKEND: &str = "OpenGL";
-    #[cfg(feature = "vulkan")]
-    static BACKEND: &str = "Vulkan";
-    #[cfg(feature = "metal")]
-    static BACKEND: &str = "Metal";
-    #[cfg(feature = "dx12")]
-    static BACKEND: &str = "Dx12";
-
-    info![log, "vxdraw", "Initializing rendering"; "show" => InDebug(&show), "backend" => BACKEND];
-
-    let events_loop = EventsLoop::new();
-    let window_builder = WindowBuilder::new().with_visibility(show == ShowWindow::Enable);
-
-    #[cfg(feature = "gl")]
-    let (mut adapters, mut surf, dims) = {
-        let window = {
-            let builder = back::config_context(
-                back::glutin::ContextBuilder::new(),
-                format::Format::Rgba8Srgb,
-                None,
-            )
-            .with_vsync(true);
-            back::glutin::WindowedContext::new_windowed(window_builder, builder, &events_loop)
-                .unwrap()
-        };
-
-        set_window_size(window.window(), show);
-        let dims = {
-            let dpi_factor = window.get_hidpi_factor();
-            debug![log, "vxdraw", "Window DPI factor"; "factor" => dpi_factor];
-            let (w, h): (u32, u32) = window
-                .get_inner_size()
-                .unwrap()
-                .to_physical(dpi_factor)
-                .into();
-            Extent2D {
-                width: w,
-                height: h,
-            }
-        };
-
-        let surface = back::Surface::from_window(window);
-        let adapters = surface.enumerate_adapters();
-        (adapters, surface, dims)
-    };
-
-    #[cfg(not(feature = "gl"))]
-    let (window, vk_inst, mut adapters, mut surf, dims) = {
-        let mut window = window_builder.build(&events_loop).unwrap();
-        let version = 1;
-        let vk_inst = back::Instance::create("renderer", version);
-        let surf: <back::Backend as Backend>::Surface = vk_inst.create_surface(&window);
-        let adapters = vk_inst.enumerate_adapters();
-        let dims = set_window_size(&mut window, show);
-        let dpi_factor = window.get_hidpi_factor();
-        debug![log, "vxdraw", "Window DPI factor"; "factor" => dpi_factor];
-        (window, vk_inst, adapters, surf, dims)
-    };
-
-    // ---
-
-    {
-        let len = adapters.len();
-        debug![log, "vxdraw", "Adapters found"; "count" => len];
-    }
-
-    for (idx, adap) in adapters.iter().enumerate() {
-        let info = adap.info.clone();
-        let limits = adap.physical_device.limits();
-        debug![log, "vxdraw", "Adapter found"; "idx" => idx, "info" => InDebugPretty(&info), "device limits" => InDebugPretty(&limits)];
-    }
-
-    // TODO Find appropriate adapter, I've never seen a case where we have 2+ adapters, that time
-    // will come one day
-    let adapter = adapters.remove(0);
-    let (device, queue_group) = adapter
-        .open_with::<_, gfx_hal::Graphics>(1, |family| surf.supports_queue_family(family))
-        .expect("Unable to find device supporting graphics");
-
-    let phys_dev_limits = adapter.physical_device.limits();
-
-    let (caps, formats, present_modes) = surf.compatibility(&adapter.physical_device);
-
-    debug![log, "vxdraw", "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
-    debug![log, "vxdraw", "Formats available"; "formats" => InDebugPretty(&formats); clone formats];
-    let format = formats.map_or(format::Format::Rgba8Srgb, |formats| {
-        formats
-            .iter()
-            .find(|format| format.base_format().1 == ChannelType::Srgb)
-            .cloned()
-            .unwrap_or(formats[0])
-    });
-
-    debug![log, "vxdraw", "Format chosen"; "format" => InDebugPretty(&format); clone format];
-    debug![log, "vxdraw", "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
-
-    // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
-    // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
-    let present_mode = {
-        [Mailbox, Fifo, Relaxed, Immediate]
-            .iter()
-            .cloned()
-            .find(|pm| present_modes.contains(pm))
-            .ok_or("No PresentMode values specified!")
-            .unwrap()
-    };
-    debug![log, "vxdraw", "Using best possible present mode"; "mode" => InDebug(&present_mode)];
-
-    let image_count = if present_mode == Mailbox {
-        (caps.image_count.end - 1)
-            .min(3)
-            .max(caps.image_count.start)
-    } else {
-        (caps.image_count.end - 1)
-            .min(2)
-            .max(caps.image_count.start)
-    };
-    debug![log, "vxdraw", "Using swapchain images"; "count" => image_count];
-
-    debug![log, "vxdraw", "Swapchain size"; "extent" => InDebug(&dims)];
-
-    let mut swap_config = SwapchainConfig::from_caps(&caps, format, dims);
-    swap_config.present_mode = present_mode;
-    swap_config.image_count = image_count;
-    swap_config.extent = dims;
-    if caps.usage.contains(image::Usage::TRANSFER_SRC) {
-        swap_config.image_usage |= gfx_hal::image::Usage::TRANSFER_SRC;
-    } else {
-        warn![
-            log,
-            "vxdraw", "Surface does not support TRANSFER_SRC, may fail during testing"
-        ];
-    }
-
-    debug![log, "vxdraw", "Swapchain final configuration"; "swapchain" => InDebugPretty(&swap_config); clone swap_config];
-
-    let (swapchain, images) =
-        unsafe { device.create_swapchain(&mut surf, swap_config.clone(), None) }
-            .expect("Unable to create swapchain");
-
-    let images_string = format!["{:#?}", images];
-    debug![log, "vxdraw", "Image information"; "images" => images_string];
-
-    // NOTE: for curious people, the render_pass, used in both framebuffer creation AND command
-    // buffer when drawing, only need to be _compatible_, which means the SAMPLE count and the
-    // FORMAT is _the exact same_.
-    // Other elements such as attachment load/store methods are irrelevant.
-    // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#renderpass-compatibility
-    let render_pass = {
-        let color_attachment = pass::Attachment {
-            format: Some(format),
-            samples: 1,
-            ops: pass::AttachmentOps {
-                load: pass::AttachmentLoadOp::Clear,
-                store: pass::AttachmentStoreOp::Store,
-            },
-            stencil_ops: pass::AttachmentOps::DONT_CARE,
-            layouts: image::Layout::Undefined..image::Layout::Present,
-        };
-        let depth = pass::Attachment {
-            format: Some(format::Format::D32Sfloat),
-            samples: 1,
-            ops: pass::AttachmentOps::new(
-                pass::AttachmentLoadOp::Clear,
-                pass::AttachmentStoreOp::Store,
-            ),
-            stencil_ops: pass::AttachmentOps::DONT_CARE,
-            layouts: image::Layout::Undefined..image::Layout::DepthStencilAttachmentOptimal,
-        };
-
-        let subpass = pass::SubpassDesc {
-            colors: &[(0, image::Layout::ColorAttachmentOptimal)],
-            depth_stencil: Some(&(1, image::Layout::DepthStencilAttachmentOptimal)),
-            inputs: &[],
-            resolves: &[],
-            preserves: &[],
-        };
-        debug![log, "vxdraw", "Render pass info"; "color attachment" => InDebugPretty(&color_attachment); clone color_attachment];
-        unsafe {
-            device
-                .create_render_pass(&[color_attachment, depth], &[subpass], &[])
-                .map_err(|_| "Couldn't create a render pass!")
-                .unwrap()
-        }
-    };
-
-    {
-        let rpfmt = format!["{:#?}", render_pass];
-        debug![log, "vxdraw", "Created render pass for framebuffers"; "renderpass" => rpfmt];
-    }
-
-    let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
-    let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
-    let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
-    let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
-
-    let (image_views, framebuffers) = {
-        let image_views = images
-            .iter()
-            .map(|image| unsafe {
-                device
-                    .create_image_view(
-                        &image,
-                        image::ViewKind::D2,
-                        format, // MUST be identical to the image's format
-                        Swizzle::NO,
-                        image::SubresourceRange {
-                            aspects: format::Aspects::COLOR,
-                            levels: 0..1,
-                            layers: 0..1,
-                        },
-                    )
-                    .map_err(|_| "Couldn't create the image_view for the image!")
-            })
-            .collect::<Result<Vec<_>, &str>>()
-            .unwrap();
-
-        unsafe {
-            for _ in &image_views {
-                let mut depth_image = device
-                    .create_image(
-                        image::Kind::D2(dims.width, dims.height, 1, 1),
-                        1,
-                        format::Format::D32Sfloat,
-                        image::Tiling::Optimal,
-                        image::Usage::DEPTH_STENCIL_ATTACHMENT,
-                        image::ViewCapabilities::empty(),
-                    )
-                    .expect("Unable to create depth image");
-                let requirements = device.get_image_requirements(&depth_image);
-                let memory_type_id =
-                    find_memory_type_id(&adapter, requirements, memory::Properties::DEVICE_LOCAL);
-                let memory = device
-                    .allocate_memory(memory_type_id, requirements.size)
-                    .expect("Couldn't allocate image memory!");
-                device
-                    .bind_image_memory(&memory, 0, &mut depth_image)
-                    .expect("Couldn't bind the image memory!");
-                let image_view = device
-                    .create_image_view(
-                        &depth_image,
-                        image::ViewKind::D2,
-                        format::Format::D32Sfloat,
-                        format::Swizzle::NO,
-                        image::SubresourceRange {
-                            aspects: format::Aspects::DEPTH,
-                            levels: 0..1,
-                            layers: 0..1,
-                        },
-                    )
-                    .expect("Couldn't create the image view!");
-                depth_images.push(depth_image);
-                depth_image_views.push(image_view);
-                depth_image_requirements.push(requirements);
-                depth_image_memories.push(memory);
-            }
-        }
-        let framebuffers: Vec<<back::Backend as Backend>::Framebuffer> = {
-            image_views
-                .iter()
-                .enumerate()
-                .map(|(idx, image_view)| unsafe {
-                    device
-                        .create_framebuffer(
-                            &render_pass,
-                            vec![image_view, &depth_image_views[idx]],
-                            image::Extent {
-                                width: dims.width as u32,
-                                height: dims.height as u32,
-                                depth: 1,
-                            },
-                        )
-                        .map_err(|_| "Failed to create a framebuffer!")
-                })
-                .collect::<Result<Vec<_>, &str>>()
-                .unwrap()
-        };
-        (image_views, framebuffers)
-    };
-
-    {
-        let image_views = format!["{:?}", image_views];
-        debug![log, "vxdraw", "Created image views"; "image views" => image_views];
-    }
-
-    let framebuffers_string = format!["{:#?}", framebuffers];
-    debug![log, "vxdraw", "Framebuffer information"; "framebuffers" => framebuffers_string];
-
-    let max_frames_in_flight = 3;
-    assert![max_frames_in_flight > 0];
-
-    let mut frames_in_flight_fences = vec![];
-    let mut present_wait_semaphores = vec![];
-    for _ in 0..max_frames_in_flight {
-        frames_in_flight_fences.push(device.create_fence(true).expect("Can't create fence"));
-        present_wait_semaphores.push(device.create_semaphore().expect("Can't create semaphore"));
-    }
-
-    let acquire_image_semaphores = (0..image_count)
-        .map(|_| device.create_semaphore().expect("Can't create semaphore"))
-        .collect::<Vec<_>>();
-
-    {
-        let count = frames_in_flight_fences.len();
-        debug![log, "vxdraw", "Allocated fences and semaphores"; "count" => count];
-    }
-
-    let mut command_pool = unsafe {
-        device
-            .create_command_pool_typed(&queue_group, pool::CommandPoolCreateFlags::RESET_INDIVIDUAL)
-            .unwrap()
-    };
-
-    let command_buffers: Vec<_> = framebuffers
-        .iter()
-        .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
-        .collect();
-
-    let mut windowing = Windowing {
-        acquire_image_semaphores,
-        acquire_image_semaphore_free: ManuallyDrop::new(
-            device
-                .create_semaphore()
-                .expect("Unable to create semaphore"),
-        ),
-        adapter,
-        images,
-        command_buffers,
-        command_pool: ManuallyDrop::new(command_pool),
-        current_frame: 0,
-        draw_order: vec![],
-        max_frames_in_flight,
-        debtris: None,
-        device: ManuallyDrop::new(device),
-        device_limits: phys_dev_limits,
-        events_loop,
-        frames_in_flight_fences,
-        framebuffers,
-        format,
-        image_count: image_count as usize,
-        image_views,
-        present_wait_semaphores,
-        queue_group: ManuallyDrop::new(queue_group),
-        render_area: pso::Rect {
-            x: 0,
-            y: 0,
-            w: dims.width as i16,
-            h: dims.height as i16,
-        },
-        render_pass: ManuallyDrop::new(render_pass),
-        surf,
-        swapchain: ManuallyDrop::new(swapchain),
-        swapconfig: swap_config,
-        strtexs: vec![],
-        dyntexs: vec![],
-        quads: None,
-        depth_images,
-        depth_image_views,
-        depth_image_requirements,
-        depth_image_memories,
-        #[cfg(not(feature = "gl"))]
-        vk_inst: ManuallyDrop::new(vk_inst),
-        #[cfg(not(feature = "gl"))]
-        window,
-        log,
-    };
-    debtri::create_debug_triangle(&mut windowing);
-    quads::create_quad(&mut windowing);
-    windowing
 }
 
 pub fn collect_input(windowing: &mut Windowing) -> Vec<Event> {
@@ -993,14 +1000,14 @@ mod tests {
     #[test]
     fn setup_and_teardown() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let _ = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let _ = Windowing::new(logger, ShowWindow::Headless1k);
     }
 
     #[test]
     fn setup_and_teardown_draw_clear() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
 
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1011,7 +1018,7 @@ mod tests {
     #[test]
     fn setup_and_teardown_draw_resize() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let large_triangle = {
@@ -1038,7 +1045,7 @@ mod tests {
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
 
         let (buffer, memory, _) =
             make_vertex_buffer_with_data_on_gpu(&mut windowing, &vec![1.0f32; 10_000]);
@@ -1052,14 +1059,14 @@ mod tests {
     #[test]
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         collect_input(&mut windowing);
     }
 
     #[test]
     fn tearing_test() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let _tri = make_centered_equilateral_triangle();
@@ -1081,12 +1088,12 @@ mod tests {
     fn correct_perspective() {
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+            let windowing = Windowing::new(logger, ShowWindow::Headless1k);
             assert_eq![Matrix4::identity(), gen_perspective(&windowing)];
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = init_window_with_vulkan(logger, ShowWindow::Headless1x2k);
+            let windowing = Windowing::new(logger, ShowWindow::Headless1x2k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
                 gen_perspective(&windowing)
@@ -1094,7 +1101,7 @@ mod tests {
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
+            let windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
                 gen_perspective(&windowing)
@@ -1105,7 +1112,7 @@ mod tests {
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = dyntex::TextureOptions {
@@ -1177,7 +1184,7 @@ mod tests {
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         b.iter(|| {

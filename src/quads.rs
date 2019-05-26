@@ -604,7 +604,7 @@ mod tests {
     #[test]
     fn simple_quad() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -620,7 +620,7 @@ mod tests {
     #[test]
     fn simple_quad_translated() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -637,7 +637,7 @@ mod tests {
     #[test]
     fn simple_quad_rotated_with_exotic_origin() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -668,7 +668,7 @@ mod tests {
     #[test]
     fn a_bunch_of_quads() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
@@ -696,7 +696,7 @@ mod tests {
     #[test]
     fn overlapping_quads_respect_z_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let mut quad = quads::Quad {
             scale: 0.5,

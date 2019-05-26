@@ -588,7 +588,7 @@ mod tests {
     #[test]
     fn simple_triangle() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
@@ -603,7 +603,7 @@ mod tests {
     #[test]
     fn test_single_triangle_api() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
@@ -621,7 +621,7 @@ mod tests {
     #[test]
     fn simple_triangle_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
@@ -636,7 +636,7 @@ mod tests {
     #[test]
     fn debug_triangle_corners_widescreen() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&windowing);
 
         for i in [-1f32, 1f32].iter() {
@@ -655,7 +655,7 @@ mod tests {
     #[test]
     fn debug_triangle_corners_tallscreen() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1x2k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1x2k);
         let prspect = gen_perspective(&windowing);
 
         for i in [-1f32, 1f32].iter() {
@@ -674,7 +674,7 @@ mod tests {
     #[test]
     fn circle_of_triangles() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&windowing);
 
         for i in 0..360 {
@@ -692,7 +692,7 @@ mod tests {
     #[test]
     fn triangle_in_corner() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut tri = DebugTriangle::default();
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn windmills() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -726,7 +726,7 @@ mod tests {
     #[test]
     fn windmills_ignore_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -738,7 +738,7 @@ mod tests {
     #[test]
     fn windmills_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let handles = utils::add_windmills(&mut windowing, false);
@@ -755,7 +755,7 @@ mod tests {
     #[test]
     fn rotating_windmills_drawing_invariant() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -779,7 +779,7 @@ mod tests {
     #[test]
     fn windmills_given_initial_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, true);
@@ -792,7 +792,7 @@ mod tests {
     #[bench]
     fn bench_simple_triangle(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         push(&mut windowing, DebugTriangle::default());
@@ -806,7 +806,7 @@ mod tests {
     #[bench]
     fn bench_still_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -819,7 +819,7 @@ mod tests {
     #[bench]
     fn bench_windmills_set_color(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
 
         let handles = utils::add_windmills(&mut windowing, false);
 
@@ -831,7 +831,7 @@ mod tests {
     #[bench]
     fn bench_rotating_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -845,7 +845,7 @@ mod tests {
     #[bench]
     fn bench_rotating_windmills_no_render(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
 
         utils::add_windmills(&mut windowing, false);
 
