@@ -36,13 +36,13 @@ impl<'a> Dyntex<'a> {
 
     /// Add a texture to the system
     ///
-    /// You use a texture to create sprites. Sprites are rectangular views into the texture. Sprites
+    /// You use a texture to create sprites. Sprites are rectangular views into a texture. Sprites
     /// based on different texures are drawn in the order in which the textures were allocated, that
     /// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
     /// so on.
     ///
     /// Each texture has options (See `TextureOptions`). This decides how the derivative sprites are
-    /// draw.
+    /// drawn.
     ///
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
     /// To make sure transparency works correctly you can turn off the depth test for foreground
@@ -633,6 +633,9 @@ impl<'a> Dyntex<'a> {
     }
 
     /// Add a sprite (a rectangular view of a texture) to the system
+    ///
+    /// The sprite is automatically drawn on each [draw] call, and must be removed by
+    /// [remove_sprite] to stop it from being drawn.
     pub fn push_sprite(&mut self, texture: &TextureHandle, sprite: Sprite) -> SpriteHandle {
         let s = &mut *self.windowing;
         let tex = &mut s.dyntexs[texture.0];
@@ -726,6 +729,11 @@ impl<'a> Dyntex<'a> {
         SpriteHandle(texture.0, index as usize)
     }
 
+    /// Remove a texture
+    ///
+    /// Removes the texture from memory and destroys all sprites associated with it.
+    /// All lingering sprite handles that were spawned using this texture handle will be
+    /// invalidated.
     pub fn remove_texture(&mut self, texture: TextureHandle) {
         let s = &mut *self.windowing;
         let mut index = None;
@@ -749,6 +757,7 @@ impl<'a> Dyntex<'a> {
         }
     }
 
+    /// Removes a single sprite, making it not be drawn
     pub fn remove_sprite(&mut self, handle: SpriteHandle) {
         let s = &mut *self.windowing;
         if let Some(dyntex) = s.dyntexs.get_mut(handle.0) {
@@ -761,6 +770,7 @@ impl<'a> Dyntex<'a> {
         }
     }
 
+    /// Set the position of a sprite
     pub fn set_position(&mut self, handle: &SpriteHandle, position: (f32, f32)) {
         let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
@@ -786,12 +796,15 @@ impl<'a> Dyntex<'a> {
         }
     }
 
-    pub fn set_rotation(&mut self, handle: &SpriteHandle, rotation: f32) {
+    /// Set the rotation of a sprite
+    ///
+    /// Positive rotation goes counter-clockwise. The value of the rotation is in radians.
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &SpriteHandle, rotation: T) {
         let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
                 use std::mem::transmute;
-                let rot = &transmute::<f32, [u8; 4]>(rotation);
+                let rot = &transmute::<f32, [u8; 4]>(rotation.into().0);
 
                 let mut idx = (handle.1 * 4 * 10 * 4) as usize;
 
@@ -807,6 +820,8 @@ impl<'a> Dyntex<'a> {
     }
 
     /// Translate all sprites that depend on a given texture
+    ///
+    /// Convenience method that translates all sprites associated with the given texture.
     pub fn sprite_translate_all(&mut self, tex: &TextureHandle, dxdy: (f32, f32)) {
         let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
@@ -823,6 +838,8 @@ impl<'a> Dyntex<'a> {
     }
 
     /// Rotate all sprites that depend on a given texture
+    ///
+    /// Convenience method that rotates all sprites associated with the given texture.
     pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, tex: &TextureHandle, deg: T) {
         let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
@@ -1533,7 +1550,7 @@ mod tests {
         let options = TextureOptions::default();
         let testure = dyntex.push_texture(TESTURE, options);
         let sprite = dyntex.push_sprite(&testure, Sprite::default());
-        dyntex.set_rotation(&sprite, 0.3);
+        dyntex.set_rotation(&sprite, Rad(0.3));
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "set_single_sprite_rotation", img);
