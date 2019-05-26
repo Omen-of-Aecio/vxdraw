@@ -786,6 +786,150 @@ impl<'a> Dyntex<'a> {
             }
         }
     }
+
+    pub fn set_rotation(&mut self, handle: &SpriteHandle, rotation: f32) {
+        let s = &mut * self.windowing;
+        if let Some(stex) = s.dyntexs.get_mut(handle.0) {
+            unsafe {
+                use std::mem::transmute;
+                let rot = &transmute::<f32, [u8; 4]>(rotation);
+
+                let mut idx = (handle.1 * 4 * 10 * 4) as usize;
+
+                stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
+                idx += 40;
+                stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
+                idx += 40;
+                stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
+                idx += 40;
+                stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
+            }
+        }
+    }
+
+    /// Translate all sprites that depend on a given texture
+    pub fn sprite_translate_all(&mut self, tex: &TextureHandle, dxdy: (f32, f32)) {
+        let s = &mut * self.windowing;
+        if let Some(stex) = s.dyntexs.get_mut(tex.0) {
+            unsafe {
+                for mock in stex.mockbuffer.chunks_mut(40) {
+                    use std::mem::transmute;
+                    let x = transmute::<&[u8], &[f32]>(&mock[5 * 4..6 * 4]);
+                    let y = transmute::<&[u8], &[f32]>(&mock[6 * 4..7 * 4]);
+                    mock[5 * 4..6 * 4].copy_from_slice(&transmute::<f32, [u8; 4]>(x[0] + dxdy.0));
+                    mock[6 * 4..7 * 4].copy_from_slice(&transmute::<f32, [u8; 4]>(y[0] + dxdy.1));
+                }
+            }
+        }
+    }
+
+    /// Rotate all sprites that depend on a given texture
+    pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, tex: &TextureHandle, deg: T) {
+        let s = &mut * self.windowing;
+        if let Some(stex) = s.dyntexs.get_mut(tex.0) {
+            unsafe {
+                for mock in stex.mockbuffer.chunks_mut(40) {
+                    use std::mem::transmute;
+                    let deggy = transmute::<&[u8], &[f32]>(&mock[28..32]);
+                    mock[28..32].copy_from_slice(&transmute::<f32, [u8; 4]>(deggy[0] + deg.into().0));
+                }
+            }
+        }
+    }
+
+    pub fn set_uv(&mut self, handle: &SpriteHandle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
+        let s = &mut * self.windowing;
+        if let Some(stex) = s.dyntexs.get_mut(handle.0) {
+            if handle.1 < stex.count as usize {
+                unsafe {
+                    let mut idx = (handle.1 * 4 * 10 * 4) as usize;
+
+                    use std::mem::transmute;
+                    let begin0 = &transmute::<f32, [u8; 4]>(uv_begin.0);
+                    let begin1 = &transmute::<f32, [u8; 4]>(uv_begin.1);
+                    let end0 = &transmute::<f32, [u8; 4]>(uv_end.0);
+                    let end1 = &transmute::<f32, [u8; 4]>(uv_end.1);
+
+                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
+                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
+                    idx += 40;
+                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
+                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
+                    idx += 40;
+                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
+                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
+                    idx += 40;
+                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
+                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
+                }
+            }
+        }
+    }
+
+    pub fn set_uvs2<'b>(
+        &mut self,
+        mut uvs: impl Iterator<Item = (&'b SpriteHandle, (f32, f32), (f32, f32))>,
+    ) {
+        let s = &mut * self.windowing;
+        if let Some(first) = uvs.next() {
+            if let Some(ref mut stex) = s.dyntexs.get_mut((first.0).0) {
+                let current_texture_handle = (first.0).0;
+                unsafe {
+                    if (first.0).1 < stex.count as usize {
+                        let mut idx = ((first.0).1 * 4 * 10 * 4) as usize;
+                        let uv_begin = first.1;
+                        let uv_end = first.2;
+
+                        use std::mem::transmute;
+                        let begin0 = &transmute::<f32, [u8; 4]>(uv_begin.0);
+                        let begin1 = &transmute::<f32, [u8; 4]>(uv_begin.1);
+                        let end0 = &transmute::<f32, [u8; 4]>(uv_end.0);
+                        let end1 = &transmute::<f32, [u8; 4]>(uv_end.1);
+
+                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
+                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
+                        idx += 40;
+                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
+                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
+                        idx += 40;
+                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
+                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
+                        idx += 40;
+                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
+                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
+                    }
+                    for handle in uvs {
+                        if (handle.0).0 != current_texture_handle {
+                            panic!["The texture handles of each sprite must be identical"];
+                        }
+                        if (handle.0).1 < stex.count as usize {
+                            let mut idx = ((handle.0).1 * 4 * 10 * 4) as usize;
+                            let uv_begin = handle.1;
+                            let uv_end = handle.2;
+
+                            use std::mem::transmute;
+                            let begin0 = &transmute::<f32, [u8; 4]>(uv_begin.0);
+                            let begin1 = &transmute::<f32, [u8; 4]>(uv_begin.1);
+                            let end0 = &transmute::<f32, [u8; 4]>(uv_end.0);
+                            let end1 = &transmute::<f32, [u8; 4]>(uv_end.1);
+
+                            stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
+                            stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
+                            idx += 40;
+                            stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
+                            stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
+                            idx += 40;
+                            stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
+                            stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
+                            idx += 40;
+                            stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
+                            stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ---
@@ -887,145 +1031,6 @@ fn destroy_texture(s: &mut Windowing, mut dyntex: SingleTexture) {
 }
 
 // ---
-
-pub fn set_rotation(s: &mut Windowing, handle: &SpriteHandle, rotation: f32) {
-    if let Some(stex) = s.dyntexs.get_mut(handle.0) {
-        unsafe {
-            use std::mem::transmute;
-            let rot = &transmute::<f32, [u8; 4]>(rotation);
-
-            let mut idx = (handle.1 * 4 * 10 * 4) as usize;
-
-            stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
-            idx += 40;
-            stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
-            idx += 40;
-            stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
-            idx += 40;
-            stex.mockbuffer[idx + 7 * 4..idx + 8 * 4].copy_from_slice(rot);
-        }
-    }
-}
-
-/// Translate all sprites that depend on a given texture
-pub fn sprite_translate_all(s: &mut Windowing, tex: &TextureHandle, dxdy: (f32, f32)) {
-    if let Some(stex) = s.dyntexs.get_mut(tex.0) {
-        unsafe {
-            for mock in stex.mockbuffer.chunks_mut(40) {
-                use std::mem::transmute;
-                let x = transmute::<&[u8], &[f32]>(&mock[5 * 4..6 * 4]);
-                let y = transmute::<&[u8], &[f32]>(&mock[6 * 4..7 * 4]);
-                mock[5 * 4..6 * 4].copy_from_slice(&transmute::<f32, [u8; 4]>(x[0] + dxdy.0));
-                mock[6 * 4..7 * 4].copy_from_slice(&transmute::<f32, [u8; 4]>(y[0] + dxdy.1));
-            }
-        }
-    }
-}
-
-/// Rotate all sprites that depend on a given texture
-pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut Windowing, tex: &TextureHandle, deg: T) {
-    if let Some(stex) = s.dyntexs.get_mut(tex.0) {
-        unsafe {
-            for mock in stex.mockbuffer.chunks_mut(40) {
-                use std::mem::transmute;
-                let deggy = transmute::<&[u8], &[f32]>(&mock[28..32]);
-                mock[28..32].copy_from_slice(&transmute::<f32, [u8; 4]>(deggy[0] + deg.into().0));
-            }
-        }
-    }
-}
-
-pub fn set_uv(s: &mut Windowing, handle: &SpriteHandle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
-    if let Some(stex) = s.dyntexs.get_mut(handle.0) {
-        if handle.1 < stex.count as usize {
-            unsafe {
-                let mut idx = (handle.1 * 4 * 10 * 4) as usize;
-
-                use std::mem::transmute;
-                let begin0 = &transmute::<f32, [u8; 4]>(uv_begin.0);
-                let begin1 = &transmute::<f32, [u8; 4]>(uv_begin.1);
-                let end0 = &transmute::<f32, [u8; 4]>(uv_end.0);
-                let end1 = &transmute::<f32, [u8; 4]>(uv_end.1);
-
-                stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
-                stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
-                idx += 40;
-                stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
-                stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
-                idx += 40;
-                stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
-                stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
-                idx += 40;
-                stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
-                stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
-            }
-        }
-    }
-}
-
-pub fn set_uvs2<'a>(
-    s: &mut Windowing,
-    mut uvs: impl Iterator<Item = (&'a SpriteHandle, (f32, f32), (f32, f32))>,
-) {
-    if let Some(first) = uvs.next() {
-        if let Some(ref mut stex) = s.dyntexs.get_mut((first.0).0) {
-            let current_texture_handle = (first.0).0;
-            unsafe {
-                if (first.0).1 < stex.count as usize {
-                    let mut idx = ((first.0).1 * 4 * 10 * 4) as usize;
-                    let uv_begin = first.1;
-                    let uv_end = first.2;
-
-                    use std::mem::transmute;
-                    let begin0 = &transmute::<f32, [u8; 4]>(uv_begin.0);
-                    let begin1 = &transmute::<f32, [u8; 4]>(uv_begin.1);
-                    let end0 = &transmute::<f32, [u8; 4]>(uv_end.0);
-                    let end1 = &transmute::<f32, [u8; 4]>(uv_end.1);
-
-                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
-                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
-                    idx += 40;
-                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
-                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
-                    idx += 40;
-                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
-                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
-                    idx += 40;
-                    stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
-                    stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
-                }
-                for handle in uvs {
-                    if (handle.0).0 != current_texture_handle {
-                        panic!["The texture handles of each sprite must be identical"];
-                    }
-                    if (handle.0).1 < stex.count as usize {
-                        let mut idx = ((handle.0).1 * 4 * 10 * 4) as usize;
-                        let uv_begin = handle.1;
-                        let uv_end = handle.2;
-
-                        use std::mem::transmute;
-                        let begin0 = &transmute::<f32, [u8; 4]>(uv_begin.0);
-                        let begin1 = &transmute::<f32, [u8; 4]>(uv_begin.1);
-                        let end0 = &transmute::<f32, [u8; 4]>(uv_end.0);
-                        let end1 = &transmute::<f32, [u8; 4]>(uv_end.1);
-
-                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
-                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
-                        idx += 40;
-                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(begin0);
-                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
-                        idx += 40;
-                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
-                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(end1);
-                        idx += 40;
-                        stex.mockbuffer[idx + 3 * 4..idx + 4 * 4].copy_from_slice(end0);
-                        stex.mockbuffer[idx + 4 * 4..idx + 5 * 4].copy_from_slice(begin1);
-                    }
-                }
-            }
-        }
-    }
-}
 
 #[cfg(feature = "gfx_tests")]
 #[cfg(test)]
@@ -1212,7 +1217,7 @@ mod tests {
                 ..base
             },
         );
-        sprite_translate_all(&mut windowing, &tex, (0.25, 0.35));
+        dyntex.sprite_translate_all(&tex, (0.25, 0.35));
 
         let prspect = gen_perspective(&windowing);
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1223,7 +1228,8 @@ mod tests {
     fn rotated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = windowing.dyntex().push_texture(
+        let mut dyntex = windowing.dyntex();
+        let tex = dyntex.push_texture(
             LOGO,
             TextureOptions {
                 depth_test: false,
@@ -1237,7 +1243,7 @@ mod tests {
             ..Sprite::default()
         };
 
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, -0.5),
@@ -1245,7 +1251,7 @@ mod tests {
                 ..base
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, -0.5),
@@ -1253,7 +1259,7 @@ mod tests {
                 ..base
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, 0.5),
@@ -1261,7 +1267,7 @@ mod tests {
                 ..base
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, 0.5),
@@ -1269,7 +1275,7 @@ mod tests {
                 ..base
             },
         );
-        sprite_rotate_all(&mut windowing, &tex, Deg(90.0));
+        dyntex.sprite_rotate_all(&tex, Deg(90.0));
 
         let prspect = gen_perspective(&windowing);
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1491,20 +1497,20 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
+        let mut dyntex = windowing.dyntex();
+
         let options = TextureOptions::default();
-        let testure = windowing.dyntex().push_texture(TESTURE, options);
+        let testure = dyntex.push_texture(TESTURE, options);
+        let sprite = dyntex.push_sprite(&testure, Sprite::default());
 
-        let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
-
-        set_uvs2(
-            &mut windowing,
+        dyntex.set_uvs2(
             std::iter::once((&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0))),
         );
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
 
-        set_uv(&mut windowing, &sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
+        windowing.dyntex().set_uv(&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
@@ -1516,10 +1522,11 @@ mod tests {
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
+        let mut dyntex = windowing.dyntex();
         let options = TextureOptions::default();
-        let testure = windowing.dyntex().push_texture(TESTURE, options);
-        let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
-        set_rotation(&mut windowing, &sprite, 0.3);
+        let testure = dyntex.push_texture(TESTURE, options);
+        let sprite = dyntex.push_sprite(&testure, Sprite::default());
+        dyntex.set_rotation(&sprite, 0.3);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "set_single_sprite_rotation", img);
@@ -1644,8 +1651,7 @@ mod tests {
                 counter = 0;
             }
 
-            set_uvs2(
-                &mut windowing,
+            windowing.dyntex().set_uvs2(
                 fireballs.iter().map(|id| (id, uv_begin, uv_end)),
             );
             draw_frame(&mut windowing, &prspect);
