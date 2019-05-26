@@ -107,6 +107,7 @@ pub struct ColoredQuadList {
 pub enum DrawType {
     StreamingTexture { id: usize },
     DynamicTexture { id: usize },
+    Quad { id: usize },
 }
 
 pub struct VxDraw {
@@ -118,7 +119,7 @@ pub struct VxDraw {
     pub draw_order: Vec<DrawType>,
     pub strtexs: Vec<StreamingTexture>,
     pub dyntexs: Vec<SingleTexture>,
-    pub quads: Option<ColoredQuadList>,
+    pub quads: Vec<ColoredQuadList>,
     pub debtris: Option<DebugTriangleData>,
     //
     pub current_frame: usize,
@@ -217,22 +218,20 @@ impl Drop for VxDraw {
                     .destroy_render_pass(ManuallyDrop::into_inner(read(&debtris.render_pass)));
             }
 
-            if let Some(mut quads) = self.quads.take() {
-                self.device.destroy_buffer(quads.quads_buffer);
-                self.device.free_memory(quads.quads_memory);
-                self.device.destroy_buffer(quads.quads_buffer_indices);
-                self.device.free_memory(quads.quads_memory_indices);
-                for dsl in quads.descriptor_set.drain(..) {
+            for mut quad in self.quads.drain(..) {
+                self.device.destroy_buffer(quad.quads_buffer);
+                self.device.free_memory(quad.quads_memory);
+                self.device.destroy_buffer(quad.quads_buffer_indices);
+                self.device.free_memory(quad.quads_memory_indices);
+                for dsl in quad.descriptor_set.drain(..) {
                     self.device.destroy_descriptor_set_layout(dsl);
                 }
                 self.device
-                    .destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&quads.pipeline)));
+                    .destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&quad.pipeline)));
                 self.device
-                    .destroy_pipeline_layout(ManuallyDrop::into_inner(read(
-                        &quads.pipeline_layout,
-                    )));
+                    .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&quad.pipeline_layout)));
                 self.device
-                    .destroy_render_pass(ManuallyDrop::into_inner(read(&quads.render_pass)));
+                    .destroy_render_pass(ManuallyDrop::into_inner(read(&quad.render_pass)));
             }
 
             self.device.destroy_command_pool(

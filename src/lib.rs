@@ -506,7 +506,7 @@ impl VxDraw {
             swapconfig: swap_config,
             strtexs: vec![],
             dyntexs: vec![],
-            quads: None,
+            quads: vec![],
             depth_images,
             depth_image_views,
             depth_image_requirements,
@@ -518,7 +518,6 @@ impl VxDraw {
             log,
         };
         debtri::create_debug_triangle(&mut vx);
-        quads::create_quad(&mut vx);
         vx
     }
 
@@ -952,26 +951,28 @@ impl VxDraw {
                                 });
                                 enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
                             }
+                            DrawType::Quad { id } => {
+                                if let Some(ref quad) = self.quads.get(*id) {
+                                    enc.bind_graphics_pipeline(&quad.pipeline);
+                                    enc.push_graphics_constants(
+                                        &quad.pipeline_layout,
+                                        pso::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &*(view.as_ptr() as *const [u32; 16]),
+                                    );
+                                    let buffers: ArrayVec<[_; 1]> =
+                                        [(&quad.quads_buffer, 0)].into();
+                                    enc.bind_vertex_buffers(0, buffers);
+                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                        buffer: &quad.quads_buffer_indices,
+                                        offset: 0,
+                                        index_type: gfx_hal::IndexType::U16,
+                                    });
+                                    enc.draw_indexed(0..quad.count as u32 * 6, 0, 0..1);
+                                }
+                            }
                         }
                     }
-                    if let Some(ref quads) = self.quads {
-                        enc.bind_graphics_pipeline(&quads.pipeline);
-                        enc.push_graphics_constants(
-                            &quads.pipeline_layout,
-                            pso::ShaderStageFlags::VERTEX,
-                            0,
-                            &*(view.as_ptr() as *const [u32; 16]),
-                        );
-                        let buffers: ArrayVec<[_; 1]> = [(&quads.quads_buffer, 0)].into();
-                        enc.bind_vertex_buffers(0, buffers);
-                        enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                            buffer: &quads.quads_buffer_indices,
-                            offset: 0,
-                            index_type: gfx_hal::IndexType::U16,
-                        });
-                        enc.draw_indexed(0..quads.count as u32 * 6, 0, 0..1);
-                    }
-
                     if let Some(ref debtris) = self.debtris {
                         if !debtris.hidden {
                             enc.bind_graphics_pipeline(&debtris.pipeline);

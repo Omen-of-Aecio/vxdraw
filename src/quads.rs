@@ -1,5 +1,5 @@
 use super::utils::*;
-use crate::data::{ColoredQuadList, VxDraw};
+use crate::data::{ColoredQuadList, DrawType, VxDraw};
 use cgmath::Rad;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -14,7 +14,8 @@ use std::mem::{size_of, transmute, ManuallyDrop};
 
 // ---
 
-pub struct QuadHandle(usize);
+pub struct Layer(usize);
+pub struct QuadHandle(usize, usize);
 
 #[derive(Clone, Copy)]
 pub struct Quad {
@@ -62,8 +63,8 @@ const QUAD_BYTE_SIZE: usize = PTS_PER_QUAD * BYTES_PER_VTX;
 
 // ---
 
-pub fn push(s: &mut VxDraw, quad: Quad) -> QuadHandle {
-    let overrun = if let Some(ref mut quads) = s.quads {
+pub fn push(s: &mut VxDraw, layer: &Layer, quad: Quad) -> QuadHandle {
+    let overrun = if let Some(ref mut quads) = s.quads.get(layer.0) {
         Some((quads.count + 1) * QUAD_BYTE_SIZE > quads.capacity as usize)
     } else {
         None
@@ -72,7 +73,7 @@ pub fn push(s: &mut VxDraw, quad: Quad) -> QuadHandle {
         // Do reallocation here
         assert_eq![false, overrun];
     }
-    if let Some(ref mut quads) = s.quads {
+    if let Some(ref mut quads) = s.quads.get_mut(layer.0) {
         let device = &s.device;
 
         let width = quad.width;
@@ -146,14 +147,14 @@ pub fn push(s: &mut VxDraw, quad: Quad) -> QuadHandle {
                 .release_mapping_writer(data_target)
                 .expect("Couldn't release the mapping writer!");
         }
-        QuadHandle(quads.count - 1)
+        QuadHandle(layer.0, quads.count - 1)
     } else {
         unreachable![]
     }
 }
 
-pub fn quad_pop(s: &mut VxDraw) {
-    if let Some(ref mut quads) = s.quads {
+pub fn quad_pop(s: &mut VxDraw, layer: &Layer) {
+    if let Some(ref mut quads) = s.quads.get_mut(layer.0) {
         unsafe {
             s.device
                 .wait_for_fences(
@@ -167,8 +168,8 @@ pub fn quad_pop(s: &mut VxDraw) {
     }
 }
 
-pub fn pop_n_quads(s: &mut VxDraw, n: usize) {
-    if let Some(ref mut quads) = s.quads {
+pub fn pop_n_quads(s: &mut VxDraw, layer: &Layer, n: usize) {
+    if let Some(ref mut quads) = s.quads.get_mut(layer.0) {
         unsafe {
             s.device
                 .wait_for_fences(
@@ -182,7 +183,17 @@ pub fn pop_n_quads(s: &mut VxDraw, n: usize) {
     }
 }
 
-pub fn create_quad(s: &mut VxDraw) {
+pub struct QuadOptions {
+    depth_test: bool,
+}
+
+impl Default for QuadOptions {
+    fn default() -> Self {
+        Self { depth_test: false }
+    }
+}
+
+pub fn create_quad(s: &mut VxDraw, options: QuadOptions) -> Layer {
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.vert.spirv"];
 
     pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.frag.spirv"];
@@ -272,9 +283,13 @@ pub fn create_quad(s: &mut VxDraw) {
     };
 
     let depth_stencil = pso::DepthStencilDesc {
-        depth: pso::DepthTest::On {
-            fun: pso::Comparison::LessEqual,
-            write: true,
+        depth: if options.depth_test {
+            pso::DepthTest::On {
+                fun: pso::Comparison::LessEqual,
+                write: true,
+            }
+        } else {
+            pso::DepthTest::Off
         },
         depth_bounds: false,
         stencil: pso::StencilTest::Off,
@@ -409,15 +424,19 @@ pub fn create_quad(s: &mut VxDraw) {
         pipeline_layout: ManuallyDrop::new(quad_pipeline_layout),
         render_pass: ManuallyDrop::new(quad_render_pass),
     };
-    s.quads = Some(quads);
+    s.quads.push(quads);
+    s.draw_order.push(DrawType::Quad {
+        id: s.quads.len() - 1,
+    });
+    Layer(s.quads.len() - 1)
 }
 
 pub fn translate(s: &mut VxDraw, handle: &QuadHandle, movement: (f32, f32)) {
     let device = &s.device;
-    if let Some(ref mut quads) = s.quads {
+    if let Some(ref mut quads) = s.quads.get(handle.0) {
         unsafe {
             let aligned = perfect_mapping_alignment(Align {
-                access_offset: handle.0 as u64 * QUAD_BYTE_SIZE as u64,
+                access_offset: handle.1 as u64 * QUAD_BYTE_SIZE as u64,
                 how_many_bytes_you_need: QUAD_BYTE_SIZE as u64,
                 non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
                 memory_size: quads.memory_requirements.size,
@@ -470,10 +489,10 @@ pub fn translate(s: &mut VxDraw, handle: &QuadHandle, movement: (f32, f32)) {
 
 pub fn set_position(s: &mut VxDraw, handle: &QuadHandle, position: (f32, f32)) {
     let device = &s.device;
-    if let Some(ref mut quads) = s.quads {
+    if let Some(ref mut quads) = s.quads.get(handle.0) {
         unsafe {
             let aligned = perfect_mapping_alignment(Align {
-                access_offset: handle.0 as u64 * QUAD_BYTE_SIZE as u64,
+                access_offset: handle.1 as u64 * QUAD_BYTE_SIZE as u64,
                 how_many_bytes_you_need: QUAD_BYTE_SIZE as u64,
                 non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
                 memory_size: quads.memory_requirements.size,
@@ -513,9 +532,9 @@ pub fn set_position(s: &mut VxDraw, handle: &QuadHandle, position: (f32, f32)) {
     }
 }
 
-pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, deg: T) {
+pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, layer: &Layer, deg: T) {
     let device = &s.device;
-    if let Some(ref mut quads) = s.quads {
+    if let Some(ref mut quads) = s.quads.get(layer.0) {
         unsafe {
             device
                 .wait_for_fences(
@@ -559,9 +578,8 @@ pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, deg: T) {
 }
 
 pub fn set_quad_color(s: &mut VxDraw, inst: &QuadHandle, rgba: [u8; 4]) {
-    let inst = inst.0;
     let device = &s.device;
-    if let Some(ref mut quads) = s.quads {
+    if let Some(ref mut quads) = s.quads.get(inst.0) {
         unsafe {
             device
                 .wait_for_fences(
@@ -576,7 +594,7 @@ pub fn set_quad_color(s: &mut VxDraw, inst: &QuadHandle, rgba: [u8; 4]) {
                 .acquire_mapping_writer::<f32>(&quads.quads_memory, 0..quads.capacity)
                 .expect("Failed to acquire a memory writer!");
 
-            let mut idx = inst * QUAD_BYTE_SIZE / size_of::<f32>();
+            let mut idx = inst.1 * QUAD_BYTE_SIZE / size_of::<f32>();
             let rgba = &transmute::<[u8; 4], [f32; 1]>(rgba);
             data_target[idx + 3..idx + 4].copy_from_slice(rgba);
             idx += 7;
@@ -594,9 +612,9 @@ pub fn set_quad_color(s: &mut VxDraw, inst: &QuadHandle, rgba: [u8; 4]) {
 
 // ---
 
-#[cfg(feature = "gfx_tests")]
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::*;
     use cgmath::Deg;
     use logger::{Generic, GenericLogger, Logger};
@@ -611,7 +629,8 @@ mod tests {
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        quads::push(&mut vx, quad);
+        let layer = quads::create_quad(&mut vx, QuadOptions::default());
+        quads::push(&mut vx, &layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad", img);
@@ -627,7 +646,8 @@ mod tests {
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        let handle = quads::push(&mut vx, quad);
+        let layer = quads::create_quad(&mut vx, QuadOptions::default());
+        let handle = quads::push(&mut vx, &layer, quad);
         quads::translate(&mut vx, &handle, (0.25, 0.4));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -644,17 +664,19 @@ mod tests {
         quad.scale = 0.2;
         quad.colors[0].0 = 255;
         quad.colors[3].0 = 255;
-        quads::push(&mut vx, quad);
+
+        let layer = quads::create_quad(&mut vx, QuadOptions::default());
+        quads::push(&mut vx, &layer, quad);
 
         let mut quad = quads::Quad::default();
         quad.scale = 0.2;
         quad.origin = (-1.0, -1.0);
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
-        quads::push(&mut vx, quad);
+        quads::push(&mut vx, &layer, quad);
 
         // when
-        quads::quad_rotate_all(&mut vx, Deg(30.0));
+        quads::quad_rotate_all(&mut vx, &layer, Deg(30.0));
 
         // then
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -680,8 +702,8 @@ mod tests {
                     (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
                 bottomleft.translation =
                     (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                debtri::push(&mut vx, topright);
-                debtri::push(&mut vx, bottomleft);
+                vx.debtri().push(topright);
+                vx.debtri().push(bottomleft);
             }
         }
 
@@ -704,21 +726,29 @@ mod tests {
         }
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
-        quads::push(&mut vx, quad);
+
+        let layer = quads::create_quad(
+            &mut vx,
+            QuadOptions {
+                depth_test: true,
+                ..QuadOptions::default()
+            },
+        );
+        quads::push(&mut vx, &layer, quad);
 
         for i in 0..4 {
             quad.colors[i] = (255, 0, 0, 255);
         }
         quad.depth = 0.5;
         quad.translation = (0.0, 0.0);
-        quads::push(&mut vx, quad);
+        quads::push(&mut vx, &layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
 
         // ---
 
-        quads::pop_n_quads(&mut vx, 2);
+        quads::pop_n_quads(&mut vx, &layer, 2);
 
         // ---
 
@@ -727,16 +757,47 @@ mod tests {
         }
         quad.depth = 0.5;
         quad.translation = (0.0, 0.0);
-        quads::push(&mut vx, quad);
+        quads::push(&mut vx, &layer, quad);
 
         for i in 0..4 {
             quad.colors[i] = (0, 255, 0, 255);
         }
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
-        quads::push(&mut vx, quad);
+        quads::push(&mut vx, &layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
+    }
+
+    #[test]
+    fn quad_layering() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let mut quad = quads::Quad {
+            scale: 0.5,
+            ..quads::Quad::default()
+        };
+
+        for i in 0..4 {
+            quad.colors[i] = (0, 255, 0, 255);
+        }
+        quad.depth = 0.0;
+        quad.translation = (0.25, 0.25);
+
+        let layer1 = quads::create_quad(&mut vx, QuadOptions::default());
+        let layer2 = quads::create_quad(&mut vx, QuadOptions::default());
+
+        quads::push(&mut vx, &layer2, quad);
+
+        quad.scale = 0.6;
+        for i in 0..4 {
+            quad.colors[i] = (0, 0, 255, 255);
+        }
+        quads::push(&mut vx, &layer1, quad);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "quad_layering", img);
     }
 }
