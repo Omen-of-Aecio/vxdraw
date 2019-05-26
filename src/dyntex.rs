@@ -1,3 +1,9 @@
+//! This module contains methods to control dynamic textures
+//!
+//! A dynamic texture is a texture from which you can spawn sprites. The `dynamic` part of the name
+//! refers to the sprites. A sprite is a rectangular view into the texture. The sprites can be
+//! changed freely during runtime. This allows movement of sprites, animations, and warping of
+//! their form.
 use super::utils::*;
 use crate::data::{DrawType, SingleTexture, VxDraw};
 use ::image as load_image;
@@ -29,6 +35,10 @@ pub struct Dyntex<'a> {
 }
 
 impl<'a> Dyntex<'a> {
+    /// Prepare to edit dynamic textures
+    ///
+    /// You're not supposed to use this function directly (although you can).
+    /// The recommended way of spawning a dyntex is via [VxDraw::dyntex()].
     pub fn new(s: &'a mut VxDraw) -> Self {
         Self { windowing: s }
     }

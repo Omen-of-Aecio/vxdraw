@@ -1,7 +1,23 @@
+//! Main VxDraw module
+//!
+//! To get started, spawn a window and draw a debug triangle!
+//! ```
+//! use cgmath::{prelude::*, Matrix4};
+//! use logger::{Generic, GenericLogger, Logger};
+//! use vxdraw::{ShowWindow, VxDraw};
+//! fn main() {
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(), ShowWindow::Enable);
+//!     vxdraw::debtri::push(&mut vx, vxdraw::debtri::DebugTriangle::default());
+//!     vx.draw_frame(&Matrix4::identity());
+//!
+//!     // So the window does not instantly disappear
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
+//! ```
 #![feature(test)]
 extern crate test;
 
-use crate::data::{DrawType, VxDraw};
+pub use crate::data::{DrawType, VxDraw};
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -123,6 +139,9 @@ fn set_window_size(window: &glutin::Window, show: ShowWindow) -> Extent2D {
 }
 
 impl VxDraw {
+    /// Spawn a new VxDraw context with a window
+    ///
+    /// This method sets up all that is necessary for drawing.
     pub fn new(mut log: Logpass, show: ShowWindow) -> VxDraw {
         #[cfg(feature = "gl")]
         static BACKEND: &str = "OpenGL";
@@ -503,6 +522,7 @@ impl VxDraw {
         windowing
     }
 
+    /// Get the size of the display window in floats
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
         let dpi_factor = self.window.get_hidpi_factor();
         let (w, h): (u32, u32) = self
@@ -514,11 +534,13 @@ impl VxDraw {
         (w, h)
     }
 
+    /// Get the size of the display window in floats
     pub fn get_window_size_in_pixels_float(&self) -> (f32, f32) {
         let pixels = self.get_window_size_in_pixels();
         (pixels.0 as f32, pixels.1 as f32)
     }
 
+    /// Set the size of the display window
     pub fn set_window_size(&mut self, size: (u32, u32)) {
         let dpi_factor = self.window.get_hidpi_factor();
         self.window.set_inner_size(LogicalSize {
@@ -527,10 +549,13 @@ impl VxDraw {
         });
     }
 
+    /// Get a handle to all dynamic textures, allows editing, removal, or creation of new dynamic
+    /// textures. See [Dyntex] for more details.
     pub fn dyntex(&mut self) -> dyntex::Dyntex {
         dyntex::Dyntex::new(self)
     }
 
+    /// Collect all pending input events to this window
     pub fn collect_input(&mut self) -> Vec<Event> {
         let mut inputs = vec![];
         self.events_loop.poll_events(|evt| {
@@ -539,14 +564,20 @@ impl VxDraw {
         inputs
     }
 
+    /// Draw a frame but also copy the resulting image out
     pub fn draw_frame_copy_framebuffer(&mut self, view: &Matrix4<f32>) -> Vec<u8> {
         self.draw_frame_internal(view, copy_image_to_rgb)
     }
 
+    /// Draw a single frame and present it to the screen
+    ///
+    /// The view matrix is used to translate all elements on the screen with the exception of debug
+    /// triangles and layers that have their own view.
     pub fn draw_frame(&mut self, view: &Matrix4<f32>) {
         self.draw_frame_internal(view, |_, _| {});
     }
 
+    /// Recreate the swapchain, must be called after a window resize
     fn window_resized_recreate_swapchain(&mut self) {
         self.device.wait_idle().unwrap();
         {
@@ -721,6 +752,7 @@ impl VxDraw {
         }
     }
 
+    /// Internal drawing routine
     fn draw_frame_internal<T>(
         &mut self,
         view: &Matrix4<f32>,
