@@ -591,7 +591,7 @@ mod tests {
         push(&mut windowing, tri);
         utils::add_4_screencorners(&mut windowing);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "simple_triangle", img);
     }
@@ -608,7 +608,7 @@ mod tests {
         set_rotation(&mut windowing, &handle, Deg(30.0));
         set_position(&mut windowing, &handle, (0.25, 0.5));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "test_single_triangle_api", img);
     }
 
@@ -624,7 +624,7 @@ mod tests {
         let idx = push(&mut windowing, tri);
         set_color(&mut windowing, &idx, [255, 0, 255, 255]);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "simple_triangle_change_color", img);
     }
@@ -643,7 +643,7 @@ mod tests {
             }
         }
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "debug_triangle_corners_widescreen", img);
     }
@@ -662,7 +662,7 @@ mod tests {
             }
         }
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "debug_triangle_corners_tallscreen", img);
     }
@@ -680,7 +680,7 @@ mod tests {
             let _idx = push(&mut windowing, tri);
         }
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "circle_of_triangles", img);
     }
@@ -703,7 +703,7 @@ mod tests {
             }
         }
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "triangle_in_corner", img);
     }
 
@@ -714,7 +714,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "windmills", img);
     }
@@ -726,7 +726,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "windmills_ignore_perspective", img);
     }
@@ -743,7 +743,7 @@ mod tests {
         set_color(&mut windowing, &handles[499], [0, 0, 255, 255]);
         set_color(&mut windowing, &handles[999], [0, 0, 0, 255]);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "windmills_change_color", img);
     }
@@ -758,7 +758,7 @@ mod tests {
         for _ in 0..30 {
             rotate_all(&mut windowing, Deg(-1.0f32));
         }
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut windowing, "rotating_windmills_drawing_invariant", img);
         utils::remove_windmills(&mut windowing);
@@ -766,9 +766,9 @@ mod tests {
         utils::add_windmills(&mut windowing, false);
         for _ in 0..30 {
             rotate_all(&mut windowing, Deg(-1.0f32));
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         }
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "rotating_windmills_drawing_invariant", img);
     }
 
@@ -779,7 +779,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, true);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "windmills_given_initial_rotation", img);
     }
 
@@ -795,7 +795,7 @@ mod tests {
         utils::add_4_screencorners(&mut windowing);
 
         b.iter(|| {
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 
@@ -808,7 +808,7 @@ mod tests {
         utils::add_windmills(&mut windowing, false);
 
         b.iter(|| {
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 
@@ -834,7 +834,7 @@ mod tests {
 
         b.iter(|| {
             rotate_all(&mut windowing, Deg(1.0f32));
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 

@@ -1228,7 +1228,7 @@ mod tests {
         );
         push_sprite(&mut windowing, &id, Sprite::default());
         fill_with_perlin_noise(&mut windowing, &id, [0.0, 0.0, 0.0]);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "generate_map_randomly", img);
     }
 
@@ -1273,7 +1273,7 @@ mod tests {
             (0, 0, 0, 0),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_blocks", img);
     }
 
@@ -1302,7 +1302,7 @@ mod tests {
             (0, 0, 255, 255),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_blocks_off_by_one", img);
 
         strtex::streaming_texture_set_pixels_block(
@@ -1337,7 +1337,7 @@ mod tests {
             (255, 0, 255, 255),
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_blocks_off_by_one", img);
     }
 
@@ -1453,12 +1453,12 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_z_ordering", img);
 
         strtex::remove_texture(&mut windowing, strtex1);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "streaming_texture_z_ordering_removed", img);
     }
 
@@ -1481,7 +1481,7 @@ mod tests {
                 black_box(2),
                 (255, 0, 0, 255),
             );
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 

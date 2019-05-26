@@ -1037,7 +1037,7 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "overlapping_dyntex_respect_z_order", img);
     }
 
@@ -1051,7 +1051,7 @@ mod tests {
         windowing.dyntex().push_sprite(&tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_texture", img);
     }
 
@@ -1065,7 +1065,7 @@ mod tests {
         windowing.dyntex().push_sprite(&tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_texture_adheres_to_view", img);
     }
 
@@ -1090,7 +1090,7 @@ mod tests {
         );
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture", img);
     }
 
@@ -1116,7 +1116,7 @@ mod tests {
         dyntex.set_position(&sprite, (0.5, 0.3));
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture_set_position", img);
     }
 
@@ -1175,7 +1175,7 @@ mod tests {
         dyntex.sprite_translate_all(&tex, (0.25, 0.35));
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "translated_texture", img);
     }
 
@@ -1233,7 +1233,7 @@ mod tests {
         dyntex.sprite_rotate_all(&tex, Deg(90.0));
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "rotated_texture", img);
     }
 
@@ -1260,7 +1260,7 @@ mod tests {
         }
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "many_sprites", img);
     }
 
@@ -1296,7 +1296,7 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene", img);
     }
 
@@ -1334,7 +1334,7 @@ mod tests {
 
         dyntex.remove_sprite(middle);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_middle", img);
     }
 
@@ -1372,7 +1372,7 @@ mod tests {
 
         dyntex.remove_texture(player);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(
             &mut windowing,
             "three_layer_scene_remove_middle_texture",
@@ -1381,7 +1381,7 @@ mod tests {
 
         windowing.dyntex().remove_texture(tree);
 
-        draw_frame(&mut windowing, &prspect);
+        windowing.draw_frame(&prspect);
     }
 
     #[test]
@@ -1419,12 +1419,12 @@ mod tests {
 
         dyntex.remove_texture(tree);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_last_texture", img);
 
         windowing.dyntex().remove_texture(player);
 
-        draw_frame(&mut windowing, &prspect);
+        windowing.draw_frame(&prspect);
     }
 
     #[test]
@@ -1442,7 +1442,7 @@ mod tests {
 
         windowing.dyntex().push_sprite(&forest, Sprite::default());
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "fixed_perspective", img);
     }
 
@@ -1464,14 +1464,14 @@ mod tests {
             (2.0 / 3.0, 1.0),
         )));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
 
         windowing
             .dyntex()
             .set_uv(&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
     }
 
@@ -1487,7 +1487,7 @@ mod tests {
         let sprite = dyntex.push_sprite(&testure, Sprite::default());
         dyntex.set_rotation(&sprite, Rad(0.3));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "set_single_sprite_rotation", img);
     }
 
@@ -1506,7 +1506,7 @@ mod tests {
             dyntex.remove_sprite(sprite);
         }
 
-        draw_frame(&mut windowing, &prspect);
+        windowing.draw_frame(&prspect);
     }
 
     #[bench]
@@ -1529,7 +1529,7 @@ mod tests {
 
         let prspect = gen_perspective(&windowing);
         b.iter(|| {
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 
@@ -1559,7 +1559,7 @@ mod tests {
 
         let prspect = gen_perspective(&windowing);
         b.iter(|| {
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 
@@ -1617,7 +1617,7 @@ mod tests {
             windowing
                 .dyntex()
                 .set_uvs(fireballs.iter().map(|id| (id, uv_begin, uv_end)));
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 

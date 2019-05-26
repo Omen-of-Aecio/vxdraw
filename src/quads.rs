@@ -613,7 +613,7 @@ mod tests {
 
         quads::push(&mut windowing, quad);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_quad", img);
     }
 
@@ -630,7 +630,7 @@ mod tests {
         let handle = quads::push(&mut windowing, quad);
         quads::translate(&mut windowing, &handle, (0.25, 0.4));
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "simple_quad_translated", img);
     }
 
@@ -657,7 +657,7 @@ mod tests {
         quads::quad_rotate_all(&mut windowing, Deg(30.0));
 
         // then
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(
             &mut windowing,
             "simple_quad_rotated_with_exotic_origin",
@@ -689,7 +689,7 @@ mod tests {
             }
         }
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "a_bunch_of_quads", img);
     }
 
@@ -717,7 +717,7 @@ mod tests {
         quad.translation = (0.0, 0.0);
         quads::push(&mut windowing, quad);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "overlapping_quads_respect_z_order", img);
 
         // ---
@@ -740,7 +740,7 @@ mod tests {
         quad.translation = (0.25, 0.25);
         quads::push(&mut windowing, quad);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "overlapping_quads_respect_z_order", img);
     }
 }

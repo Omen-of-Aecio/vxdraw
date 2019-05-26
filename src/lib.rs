@@ -530,456 +530,465 @@ impl VxDraw {
     pub fn dyntex(&mut self) -> dyntex::Dyntex {
         dyntex::Dyntex::new(self)
     }
-}
 
-pub fn collect_input(windowing: &mut VxDraw) -> Vec<Event> {
-    let mut inputs = vec![];
-    windowing.events_loop.poll_events(|evt| {
-        inputs.push(evt);
-    });
-    inputs
-}
-
-pub fn draw_frame_copy_framebuffer(s: &mut VxDraw, view: &Matrix4<f32>) -> Vec<u8> {
-    draw_frame_internal(s, view, copy_image_to_rgb)
-}
-
-pub fn draw_frame(s: &mut VxDraw, view: &Matrix4<f32>) {
-    draw_frame_internal(s, view, |_, _| {});
-}
-
-fn window_resized_recreate_swapchain(s: &mut VxDraw) {
-    s.device.wait_idle().unwrap();
-    {
-        let (caps, _formats, _present_modes) = s.surf.compatibility(&s.adapter.physical_device);
-        debug![s.log, "vxdraw", "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
+    pub fn collect_input(&mut self) -> Vec<Event> {
+        let mut inputs = vec![];
+        self.events_loop.poll_events(|evt| {
+            inputs.push(evt);
+        });
+        inputs
     }
 
-    let pixels = s.get_window_size_in_pixels();
-    info![s.log, "vxdraw", "New window size"; "size" => InDebug(&pixels)];
-
-    s.swapconfig.extent = Extent2D {
-        width: pixels.0,
-        height: pixels.1,
-    };
-
-    let (swapchain, images) = unsafe {
-        s.device
-            .create_swapchain(&mut s.surf, s.swapconfig.clone(), None)
-    }
-    .expect("Unable to create swapchain");
-
-    unsafe {
-        s.device
-            .destroy_swapchain(std::mem::replace(&mut s.swapchain, swapchain));
-        // s.device .destroy_swapchain(ManuallyDrop::into_inner(core::ptr::read(&s.swapchain)));
+    pub fn draw_frame_copy_framebuffer(&mut self, view: &Matrix4<f32>) -> Vec<u8> {
+        self.draw_frame_internal(view, copy_image_to_rgb)
     }
 
-    let images_string = format!["{:#?}", images];
-    debug![s.log, "vxdraw", "Image information"; "images" => images_string];
+    pub fn draw_frame(&mut self, view: &Matrix4<f32>) {
+        self.draw_frame_internal(view, |_, _| {});
+    }
 
-    let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
-    let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
-    let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
-    let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
+    fn window_resized_recreate_swapchain(&mut self) {
+        self.device.wait_idle().unwrap();
+        {
+            let (caps, _formats, _present_modes) =
+                self.surf.compatibility(&self.adapter.physical_device);
+            debug![self.log, "vxdraw", "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
+        }
 
-    let (image_views, framebuffers) = {
-        let image_views = images
-            .iter()
-            .map(|image| unsafe {
-                s.device
-                    .create_image_view(
-                        &image,
-                        image::ViewKind::D2,
-                        s.swapconfig.format, // MUST be identical to the image's format
-                        Swizzle::NO,
-                        image::SubresourceRange {
+        let pixels = self.get_window_size_in_pixels();
+        info![self.log, "vxdraw", "New window size"; "size" => InDebug(&pixels)];
+
+        self.swapconfig.extent = Extent2D {
+            width: pixels.0,
+            height: pixels.1,
+        };
+
+        let (swapchain, images) = unsafe {
+            self.device
+                .create_swapchain(&mut self.surf, self.swapconfig.clone(), None)
+        }
+        .expect("Unable to create swapchain");
+
+        unsafe {
+            self.device
+                .destroy_swapchain(std::mem::replace(&mut self.swapchain, swapchain));
+            // self.device .destroy_swapchain(ManuallyDrop::into_inner(core::ptr::read(&self.swapchain)));
+        }
+
+        let images_string = format!["{:#?}", images];
+        debug![self.log, "vxdraw", "Image information"; "images" => images_string];
+
+        let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
+        let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
+        let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
+        let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
+
+        let (image_views, framebuffers) = {
+            let image_views = images
+                .iter()
+                .map(|image| unsafe {
+                    self.device
+                        .create_image_view(
+                            &image,
+                            image::ViewKind::D2,
+                            self.swapconfig.format, // MUST be identical to the image's format
+                            Swizzle::NO,
+                            image::SubresourceRange {
+                                aspects: format::Aspects::COLOR,
+                                levels: 0..1,
+                                layers: 0..1,
+                            },
+                        )
+                        .map_err(|_| "Couldn't create the image_view for the image!")
+                })
+                .collect::<Result<Vec<_>, &str>>()
+                .unwrap();
+
+            unsafe {
+                for _ in &image_views {
+                    let mut depth_image = self
+                        .device
+                        .create_image(
+                            image::Kind::D2(
+                                self.swapconfig.extent.width,
+                                self.swapconfig.extent.height,
+                                1,
+                                1,
+                            ),
+                            1,
+                            format::Format::D32Sfloat,
+                            image::Tiling::Optimal,
+                            image::Usage::DEPTH_STENCIL_ATTACHMENT,
+                            image::ViewCapabilities::empty(),
+                        )
+                        .expect("Unable to create depth image");
+                    let requirements = self.device.get_image_requirements(&depth_image);
+                    let memory_type_id = find_memory_type_id(
+                        &self.adapter,
+                        requirements,
+                        memory::Properties::DEVICE_LOCAL,
+                    );
+                    let memory = self
+                        .device
+                        .allocate_memory(memory_type_id, requirements.size)
+                        .expect("Couldn't allocate image memory!");
+                    self.device
+                        .bind_image_memory(&memory, 0, &mut depth_image)
+                        .expect("Couldn't bind the image memory!");
+                    let image_view = self
+                        .device
+                        .create_image_view(
+                            &depth_image,
+                            image::ViewKind::D2,
+                            format::Format::D32Sfloat,
+                            format::Swizzle::NO,
+                            image::SubresourceRange {
+                                aspects: format::Aspects::DEPTH,
+                                levels: 0..1,
+                                layers: 0..1,
+                            },
+                        )
+                        .expect("Couldn't create the image view!");
+                    depth_images.push(depth_image);
+                    depth_image_views.push(image_view);
+                    depth_image_requirements.push(requirements);
+                    depth_image_memories.push(memory);
+                }
+            }
+            let framebuffers: Vec<<back::Backend as Backend>::Framebuffer> = {
+                image_views
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, image_view)| unsafe {
+                        self.device
+                            .create_framebuffer(
+                                &self.render_pass,
+                                vec![image_view, &depth_image_views[idx]],
+                                image::Extent {
+                                    width: self.swapconfig.extent.width,
+                                    height: self.swapconfig.extent.height,
+                                    depth: 1,
+                                },
+                            )
+                            .map_err(|_| "Failed to create a framebuffer!")
+                    })
+                    .collect::<Result<Vec<_>, &str>>()
+                    .unwrap()
+            };
+            (image_views, framebuffers)
+        };
+
+        unsafe {
+            for fb in self.framebuffers.drain(..) {
+                self.device.destroy_framebuffer(fb);
+            }
+            for iv in self.image_views.drain(..) {
+                self.device.destroy_image_view(iv);
+            }
+            for di in self.depth_images.drain(..) {
+                self.device.destroy_image(di);
+            }
+            for div in self.depth_image_views.drain(..) {
+                self.device.destroy_image_view(div);
+            }
+            for div in self.depth_image_memories.drain(..) {
+                self.device.free_memory(div);
+            }
+        }
+
+        {
+            let image_views = format!["{:?}", image_views];
+            debug![self.log, "vxdraw", "Created image views"; "image views" => image_views];
+        }
+
+        let framebuffers_string = format!["{:#?}", framebuffers];
+        debug![self.log, "vxdraw", "Framebuffer information"; "framebuffers" => framebuffers_string];
+
+        self.images = images;
+        self.framebuffers = framebuffers;
+        self.image_views = image_views;
+        self.depth_images = depth_images;
+        self.depth_image_views = depth_image_views;
+        self.depth_image_memories = depth_image_memories;
+        self.render_area.w = self.swapconfig.extent.width as i16;
+        self.render_area.h = self.swapconfig.extent.height as i16;
+
+        unsafe {
+            self.device.destroy_semaphore(std::mem::replace(
+                &mut self.acquire_image_semaphore_free,
+                self.device.create_semaphore().unwrap(),
+            ));
+        }
+    }
+
+    fn draw_frame_internal<T>(
+        &mut self,
+        view: &Matrix4<f32>,
+        postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
+    ) -> T {
+        let postproc_res = unsafe {
+            let swap_image: (_, Option<gfx_hal::window::Suboptimal>) =
+                match self.swapchain.acquire_image(
+                    u64::max_value(),
+                    Some(&*self.acquire_image_semaphore_free),
+                    None,
+                ) {
+                    Ok((index, None)) => (index, None),
+                    Ok((_index, Some(_suboptimal))) => {
+                        info![
+                            self.log,
+                            "vxdraw", "Swapchain in suboptimal state, recreating"
+                        ];
+                        self.window_resized_recreate_swapchain();
+                        return self.draw_frame_internal(view, postproc);
+                    }
+                    Err(gfx_hal::window::AcquireError::OutOfDate) => {
+                        info![self.log, "vxdraw", "Swapchain out of date, recreating"];
+                        self.window_resized_recreate_swapchain();
+                        return self.draw_frame_internal(view, postproc);
+                    }
+                    Err(err) => {
+                        error![self.log, "vxdraw", "Acquire image error"; "error" => err];
+                        unimplemented![]
+                    }
+                };
+
+            core::mem::swap(
+                &mut *self.acquire_image_semaphore_free,
+                &mut self.acquire_image_semaphores[swap_image.0 as usize],
+            );
+
+            self.device
+                .wait_for_fence(
+                    &self.frames_in_flight_fences[self.current_frame],
+                    u64::max_value(),
+                )
+                .unwrap();
+
+            self.device
+                .reset_fence(&self.frames_in_flight_fences[self.current_frame])
+                .unwrap();
+
+            {
+                let current_frame = self.current_frame;
+                let texture_count = self.dyntexs.len();
+                let debugtris_cnt = self.debtris.as_ref().map_or(0, |x| x.triangles_count);
+                let swap_image = swap_image.0;
+                trace![self.log, "vxdraw", "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
+            }
+
+            {
+                let buffer = &mut self.command_buffers[self.current_frame];
+                let clear_values = [
+                    ClearValue::Color(ClearColor::Float([1.0f32, 0.25, 0.5, 0.75])),
+                    ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0)),
+                ];
+                buffer.begin(false);
+                let rect = pso::Rect {
+                    x: 0,
+                    y: 0,
+                    w: self.swapconfig.extent.width as i16,
+                    h: self.swapconfig.extent.height as i16,
+                };
+                buffer.set_viewports(
+                    0,
+                    std::iter::once(pso::Viewport {
+                        rect,
+                        depth: (0.0..1.0),
+                    }),
+                );
+                buffer.set_scissors(0, std::iter::once(&rect));
+                for strtex in self.strtexs.iter() {
+                    let image_barrier = memory::Barrier::Image {
+                        states: (image::Access::empty(), image::Layout::General)
+                            ..(
+                                image::Access::SHADER_READ,
+                                image::Layout::ShaderReadOnlyOptimal,
+                            ),
+                        target: &*strtex.image_buffer,
+                        families: None,
+                        range: image::SubresourceRange {
                             aspects: format::Aspects::COLOR,
                             levels: 0..1,
                             layers: 0..1,
                         },
-                    )
-                    .map_err(|_| "Couldn't create the image_view for the image!")
-            })
-            .collect::<Result<Vec<_>, &str>>()
-            .unwrap();
-
-        unsafe {
-            for _ in &image_views {
-                let mut depth_image = s
-                    .device
-                    .create_image(
-                        image::Kind::D2(
-                            s.swapconfig.extent.width,
-                            s.swapconfig.extent.height,
-                            1,
-                            1,
-                        ),
-                        1,
-                        format::Format::D32Sfloat,
-                        image::Tiling::Optimal,
-                        image::Usage::DEPTH_STENCIL_ATTACHMENT,
-                        image::ViewCapabilities::empty(),
-                    )
-                    .expect("Unable to create depth image");
-                let requirements = s.device.get_image_requirements(&depth_image);
-                let memory_type_id =
-                    find_memory_type_id(&s.adapter, requirements, memory::Properties::DEVICE_LOCAL);
-                let memory = s
-                    .device
-                    .allocate_memory(memory_type_id, requirements.size)
-                    .expect("Couldn't allocate image memory!");
-                s.device
-                    .bind_image_memory(&memory, 0, &mut depth_image)
-                    .expect("Couldn't bind the image memory!");
-                let image_view = s
-                    .device
-                    .create_image_view(
-                        &depth_image,
-                        image::ViewKind::D2,
-                        format::Format::D32Sfloat,
-                        format::Swizzle::NO,
-                        image::SubresourceRange {
-                            aspects: format::Aspects::DEPTH,
+                    };
+                    buffer.pipeline_barrier(
+                        pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
+                        memory::Dependencies::empty(),
+                        &[image_barrier],
+                    );
+                    // Submit automatically makes host writes available for the device
+                    let image_barrier = memory::Barrier::Image {
+                        states: (image::Access::empty(), image::Layout::ShaderReadOnlyOptimal)
+                            ..(image::Access::empty(), image::Layout::General),
+                        target: &*strtex.image_buffer,
+                        families: None,
+                        range: image::SubresourceRange {
+                            aspects: format::Aspects::COLOR,
                             levels: 0..1,
                             layers: 0..1,
                         },
-                    )
-                    .expect("Couldn't create the image view!");
-                depth_images.push(depth_image);
-                depth_image_views.push(image_view);
-                depth_image_requirements.push(requirements);
-                depth_image_memories.push(memory);
-            }
-        }
-        let framebuffers: Vec<<back::Backend as Backend>::Framebuffer> = {
-            image_views
-                .iter()
-                .enumerate()
-                .map(|(idx, image_view)| unsafe {
-                    s.device
-                        .create_framebuffer(
-                            &s.render_pass,
-                            vec![image_view, &depth_image_views[idx]],
-                            image::Extent {
-                                width: s.swapconfig.extent.width,
-                                height: s.swapconfig.extent.height,
-                                depth: 1,
-                            },
-                        )
-                        .map_err(|_| "Failed to create a framebuffer!")
-                })
-                .collect::<Result<Vec<_>, &str>>()
-                .unwrap()
-        };
-        (image_views, framebuffers)
-    };
-
-    unsafe {
-        for fb in s.framebuffers.drain(..) {
-            s.device.destroy_framebuffer(fb);
-        }
-        for iv in s.image_views.drain(..) {
-            s.device.destroy_image_view(iv);
-        }
-        for di in s.depth_images.drain(..) {
-            s.device.destroy_image(di);
-        }
-        for div in s.depth_image_views.drain(..) {
-            s.device.destroy_image_view(div);
-        }
-        for div in s.depth_image_memories.drain(..) {
-            s.device.free_memory(div);
-        }
-    }
-
-    {
-        let image_views = format!["{:?}", image_views];
-        debug![s.log, "vxdraw", "Created image views"; "image views" => image_views];
-    }
-
-    let framebuffers_string = format!["{:#?}", framebuffers];
-    debug![s.log, "vxdraw", "Framebuffer information"; "framebuffers" => framebuffers_string];
-
-    s.images = images;
-    s.framebuffers = framebuffers;
-    s.image_views = image_views;
-    s.depth_images = depth_images;
-    s.depth_image_views = depth_image_views;
-    s.depth_image_memories = depth_image_memories;
-    s.render_area.w = s.swapconfig.extent.width as i16;
-    s.render_area.h = s.swapconfig.extent.height as i16;
-
-    unsafe {
-        s.device.destroy_semaphore(std::mem::replace(
-            &mut s.acquire_image_semaphore_free,
-            s.device.create_semaphore().unwrap(),
-        ));
-    }
-}
-
-fn draw_frame_internal<T>(
-    s: &mut VxDraw,
-    view: &Matrix4<f32>,
-    postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
-) -> T {
-    let postproc_res = unsafe {
-        let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match s.swapchain.acquire_image(
-            u64::max_value(),
-            Some(&*s.acquire_image_semaphore_free),
-            None,
-        ) {
-            Ok((index, None)) => (index, None),
-            Ok((_index, Some(_suboptimal))) => {
-                info![s.log, "vxdraw", "Swapchain in suboptimal state, recreating"];
-                window_resized_recreate_swapchain(s);
-                return draw_frame_internal(s, view, postproc);
-            }
-            Err(gfx_hal::window::AcquireError::OutOfDate) => {
-                info![s.log, "vxdraw", "Swapchain out of date, recreating"];
-                window_resized_recreate_swapchain(s);
-                return draw_frame_internal(s, view, postproc);
-            }
-            Err(err) => {
-                error![s.log, "vxdraw", "Acquire image error"; "error" => err];
-                unimplemented![]
-            }
-        };
-
-        core::mem::swap(
-            &mut *s.acquire_image_semaphore_free,
-            &mut s.acquire_image_semaphores[swap_image.0 as usize],
-        );
-
-        s.device
-            .wait_for_fence(
-                &s.frames_in_flight_fences[s.current_frame],
-                u64::max_value(),
-            )
-            .unwrap();
-
-        s.device
-            .reset_fence(&s.frames_in_flight_fences[s.current_frame])
-            .unwrap();
-
-        {
-            let current_frame = s.current_frame;
-            let texture_count = s.dyntexs.len();
-            let debugtris_cnt = s.debtris.as_ref().map_or(0, |x| x.triangles_count);
-            let swap_image = swap_image.0;
-            trace![s.log, "vxdraw", "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
-        }
-
-        {
-            let buffer = &mut s.command_buffers[s.current_frame];
-            let clear_values = [
-                ClearValue::Color(ClearColor::Float([1.0f32, 0.25, 0.5, 0.75])),
-                ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0)),
-            ];
-            buffer.begin(false);
-            let rect = pso::Rect {
-                x: 0,
-                y: 0,
-                w: s.swapconfig.extent.width as i16,
-                h: s.swapconfig.extent.height as i16,
-            };
-            buffer.set_viewports(
-                0,
-                std::iter::once(pso::Viewport {
-                    rect,
-                    depth: (0.0..1.0),
-                }),
-            );
-            buffer.set_scissors(0, std::iter::once(&rect));
-            for strtex in s.strtexs.iter() {
-                let image_barrier = memory::Barrier::Image {
-                    states: (image::Access::empty(), image::Layout::General)
-                        ..(
-                            image::Access::SHADER_READ,
-                            image::Layout::ShaderReadOnlyOptimal,
-                        ),
-                    target: &*strtex.image_buffer,
-                    families: None,
-                    range: image::SubresourceRange {
-                        aspects: format::Aspects::COLOR,
-                        levels: 0..1,
-                        layers: 0..1,
-                    },
-                };
-                buffer.pipeline_barrier(
-                    pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
-                    memory::Dependencies::empty(),
-                    &[image_barrier],
-                );
-                // Submit automatically makes host writes available for the device
-                let image_barrier = memory::Barrier::Image {
-                    states: (image::Access::empty(), image::Layout::ShaderReadOnlyOptimal)
-                        ..(image::Access::empty(), image::Layout::General),
-                    target: &*strtex.image_buffer,
-                    families: None,
-                    range: image::SubresourceRange {
-                        aspects: format::Aspects::COLOR,
-                        levels: 0..1,
-                        layers: 0..1,
-                    },
-                };
-                buffer.pipeline_barrier(
-                    pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
-                    memory::Dependencies::empty(),
-                    &[image_barrier],
-                );
-            }
-            {
-                let mut enc = buffer.begin_render_pass_inline(
-                    &s.render_pass,
-                    &s.framebuffers[swap_image.0 as usize],
-                    s.render_area,
-                    clear_values.iter(),
-                );
-                for draw_cmd in s.draw_order.iter() {
-                    match draw_cmd {
-                        DrawType::StreamingTexture { id } => {
-                            let strtex = &s.strtexs[*id];
-                            enc.bind_graphics_pipeline(&strtex.pipeline);
-                            enc.push_graphics_constants(
-                                &strtex.pipeline_layout,
-                                pso::ShaderStageFlags::VERTEX,
-                                0,
-                                &*(view.as_ptr() as *const [u32; 16]),
-                            );
-                            enc.bind_graphics_descriptor_sets(
-                                &strtex.pipeline_layout,
-                                0,
-                                Some(&*strtex.descriptor_set),
-                                &[],
-                            );
-                            let buffers: ArrayVec<[_; 1]> = [(&*strtex.vertex_buffer, 0)].into();
-                            enc.bind_vertex_buffers(0, buffers);
-                            enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                buffer: &strtex.vertex_buffer_indices,
-                                offset: 0,
-                                index_type: gfx_hal::IndexType::U16,
-                            });
-                            enc.draw_indexed(0..strtex.count * 6, 0, 0..1);
-                        }
-                        DrawType::DynamicTexture { id } => {
-                            let dyntex = &s.dyntexs[*id];
-                            enc.bind_graphics_pipeline(&dyntex.pipeline);
-                            if let Some(persp) = dyntex.fixed_perspective {
+                    };
+                    buffer.pipeline_barrier(
+                        pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
+                        memory::Dependencies::empty(),
+                        &[image_barrier],
+                    );
+                }
+                {
+                    let mut enc = buffer.begin_render_pass_inline(
+                        &self.render_pass,
+                        &self.framebuffers[swap_image.0 as usize],
+                        self.render_area,
+                        clear_values.iter(),
+                    );
+                    for draw_cmd in self.draw_order.iter() {
+                        match draw_cmd {
+                            DrawType::StreamingTexture { id } => {
+                                let strtex = &self.strtexs[*id];
+                                enc.bind_graphics_pipeline(&strtex.pipeline);
                                 enc.push_graphics_constants(
-                                    &dyntex.pipeline_layout,
-                                    pso::ShaderStageFlags::VERTEX,
-                                    0,
-                                    &*(persp.as_ptr() as *const [u32; 16]),
-                                );
-                            } else {
-                                enc.push_graphics_constants(
-                                    &dyntex.pipeline_layout,
+                                    &strtex.pipeline_layout,
                                     pso::ShaderStageFlags::VERTEX,
                                     0,
                                     &*(view.as_ptr() as *const [u32; 16]),
                                 );
+                                enc.bind_graphics_descriptor_sets(
+                                    &strtex.pipeline_layout,
+                                    0,
+                                    Some(&*strtex.descriptor_set),
+                                    &[],
+                                );
+                                let buffers: ArrayVec<[_; 1]> =
+                                    [(&*strtex.vertex_buffer, 0)].into();
+                                enc.bind_vertex_buffers(0, buffers);
+                                enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer: &strtex.vertex_buffer_indices,
+                                    offset: 0,
+                                    index_type: gfx_hal::IndexType::U16,
+                                });
+                                enc.draw_indexed(0..strtex.count * 6, 0, 0..1);
                             }
-                            enc.bind_graphics_descriptor_sets(
-                                &dyntex.pipeline_layout,
-                                0,
-                                Some(&*dyntex.descriptor_set),
-                                &[],
-                            );
-                            let mut data_target = s
-                                .device
-                                .acquire_mapping_writer::<u8>(
-                                    &dyntex.texture_vertex_memory,
-                                    0..dyntex.texture_vertex_requirements.size,
-                                )
-                                .expect("Unable to get mapping writer");
-                            data_target[..dyntex.mockbuffer.len()]
-                                .copy_from_slice(&dyntex.mockbuffer);
-                            s.device
-                                .release_mapping_writer(data_target)
-                                .expect("Unable to release mapping writer");
-                            let buffers: ArrayVec<[_; 1]> =
-                                [(&*dyntex.texture_vertex_buffer, 0)].into();
-                            enc.bind_vertex_buffers(0, buffers);
-                            enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                buffer: &dyntex.texture_vertex_buffer_indices,
-                                offset: 0,
-                                index_type: gfx_hal::IndexType::U16,
-                            });
-                            enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
+                            DrawType::DynamicTexture { id } => {
+                                let dyntex = &self.dyntexs[*id];
+                                enc.bind_graphics_pipeline(&dyntex.pipeline);
+                                if let Some(persp) = dyntex.fixed_perspective {
+                                    enc.push_graphics_constants(
+                                        &dyntex.pipeline_layout,
+                                        pso::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &*(persp.as_ptr() as *const [u32; 16]),
+                                    );
+                                } else {
+                                    enc.push_graphics_constants(
+                                        &dyntex.pipeline_layout,
+                                        pso::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &*(view.as_ptr() as *const [u32; 16]),
+                                    );
+                                }
+                                enc.bind_graphics_descriptor_sets(
+                                    &dyntex.pipeline_layout,
+                                    0,
+                                    Some(&*dyntex.descriptor_set),
+                                    &[],
+                                );
+                                let mut data_target = self
+                                    .device
+                                    .acquire_mapping_writer::<u8>(
+                                        &dyntex.texture_vertex_memory,
+                                        0..dyntex.texture_vertex_requirements.size,
+                                    )
+                                    .expect("Unable to get mapping writer");
+                                data_target[..dyntex.mockbuffer.len()]
+                                    .copy_from_slice(&dyntex.mockbuffer);
+                                self.device
+                                    .release_mapping_writer(data_target)
+                                    .expect("Unable to release mapping writer");
+                                let buffers: ArrayVec<[_; 1]> =
+                                    [(&*dyntex.texture_vertex_buffer, 0)].into();
+                                enc.bind_vertex_buffers(0, buffers);
+                                enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer: &dyntex.texture_vertex_buffer_indices,
+                                    offset: 0,
+                                    index_type: gfx_hal::IndexType::U16,
+                                });
+                                enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
+                            }
                         }
                     }
-                }
-                if let Some(ref quads) = s.quads {
-                    enc.bind_graphics_pipeline(&quads.pipeline);
-                    enc.push_graphics_constants(
-                        &quads.pipeline_layout,
-                        pso::ShaderStageFlags::VERTEX,
-                        0,
-                        &*(view.as_ptr() as *const [u32; 16]),
-                    );
-                    let buffers: ArrayVec<[_; 1]> = [(&quads.quads_buffer, 0)].into();
-                    enc.bind_vertex_buffers(0, buffers);
-                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                        buffer: &quads.quads_buffer_indices,
-                        offset: 0,
-                        index_type: gfx_hal::IndexType::U16,
-                    });
-                    enc.draw_indexed(0..quads.count as u32 * 6, 0, 0..1);
-                }
+                    if let Some(ref quads) = self.quads {
+                        enc.bind_graphics_pipeline(&quads.pipeline);
+                        enc.push_graphics_constants(
+                            &quads.pipeline_layout,
+                            pso::ShaderStageFlags::VERTEX,
+                            0,
+                            &*(view.as_ptr() as *const [u32; 16]),
+                        );
+                        let buffers: ArrayVec<[_; 1]> = [(&quads.quads_buffer, 0)].into();
+                        enc.bind_vertex_buffers(0, buffers);
+                        enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                            buffer: &quads.quads_buffer_indices,
+                            offset: 0,
+                            index_type: gfx_hal::IndexType::U16,
+                        });
+                        enc.draw_indexed(0..quads.count as u32 * 6, 0, 0..1);
+                    }
 
-                if let Some(ref debtris) = s.debtris {
-                    enc.bind_graphics_pipeline(&debtris.pipeline);
-                    let ratio =
-                        s.swapconfig.extent.width as f32 / s.swapconfig.extent.height as f32;
-                    enc.push_graphics_constants(
-                        &debtris.pipeline_layout,
-                        pso::ShaderStageFlags::VERTEX,
-                        0,
-                        &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
-                    );
-                    let count = debtris.triangles_count;
-                    let buffers: ArrayVec<[_; 1]> = [(&debtris.triangles_buffer, 0)].into();
-                    enc.bind_vertex_buffers(0, buffers);
-                    enc.draw(0..(count * 3) as u32, 0..1);
+                    if let Some(ref debtris) = self.debtris {
+                        enc.bind_graphics_pipeline(&debtris.pipeline);
+                        let ratio = self.swapconfig.extent.width as f32
+                            / self.swapconfig.extent.height as f32;
+                        enc.push_graphics_constants(
+                            &debtris.pipeline_layout,
+                            pso::ShaderStageFlags::VERTEX,
+                            0,
+                            &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
+                        );
+                        let count = debtris.triangles_count;
+                        let buffers: ArrayVec<[_; 1]> = [(&debtris.triangles_buffer, 0)].into();
+                        enc.bind_vertex_buffers(0, buffers);
+                        enc.draw(0..(count * 3) as u32, 0..1);
+                    }
                 }
+                buffer.finish();
             }
-            buffer.finish();
-        }
 
-        let command_buffers = &s.command_buffers[s.current_frame];
-        let wait_semaphores: ArrayVec<[_; 1]> = [(
-            &s.acquire_image_semaphores[swap_image.0 as usize],
-            pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-        )]
-        .into();
-        {
-            let present_wait_semaphore = &s.present_wait_semaphores[s.current_frame];
-            let signal_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
-            let submission = Submission {
-                command_buffers: once(command_buffers),
-                wait_semaphores,
-                signal_semaphores,
-            };
-            s.queue_group.queues[0].submit(
-                submission,
-                Some(&s.frames_in_flight_fences[s.current_frame]),
-            );
-        }
-        let postproc_res = postproc(s, swap_image.0);
-        let present_wait_semaphore = &s.present_wait_semaphores[s.current_frame];
-        let present_wait_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
-        s.swapchain
-            .present(
-                &mut s.queue_group.queues[0],
-                swap_image.0,
-                present_wait_semaphores,
-            )
-            .unwrap();
+            let command_buffers = &self.command_buffers[self.current_frame];
+            let wait_semaphores: ArrayVec<[_; 1]> = [(
+                &self.acquire_image_semaphores[swap_image.0 as usize],
+                pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+            )]
+            .into();
+            {
+                let present_wait_semaphore = &self.present_wait_semaphores[self.current_frame];
+                let signal_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
+                let submission = Submission {
+                    command_buffers: once(command_buffers),
+                    wait_semaphores,
+                    signal_semaphores,
+                };
+                self.queue_group.queues[0].submit(
+                    submission,
+                    Some(&self.frames_in_flight_fences[self.current_frame]),
+                );
+            }
+            let postproc_res = postproc(self, swap_image.0);
+            let present_wait_semaphore = &self.present_wait_semaphores[self.current_frame];
+            let present_wait_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
+            self.swapchain
+                .present(
+                    &mut self.queue_group.queues[0],
+                    swap_image.0,
+                    present_wait_semaphores,
+                )
+                .unwrap();
+            postproc_res
+        };
+        self.current_frame = (self.current_frame + 1) % self.max_frames_in_flight;
         postproc_res
-    };
-    s.current_frame = (s.current_frame + 1) % s.max_frames_in_flight;
-    postproc_res
+    }
 }
 
 // ---
@@ -1010,7 +1019,7 @@ mod tests {
         let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_with_test", img);
     }
@@ -1028,16 +1037,16 @@ mod tests {
         };
         debtri::push(&mut windowing, large_triangle);
 
-        draw_frame(&mut windowing, &prspect);
+        windowing.draw_frame(&prspect);
 
         windowing.set_window_size((1500, 1000));
 
-        draw_frame(&mut windowing, &prspect);
-        draw_frame(&mut windowing, &prspect);
-        draw_frame(&mut windowing, &prspect);
+        windowing.draw_frame(&prspect);
+        windowing.draw_frame(&prspect);
+        windowing.draw_frame(&prspect);
 
         let prspect = gen_perspective(&windowing);
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
 
         assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_resize", img);
     }
@@ -1060,7 +1069,7 @@ mod tests {
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        collect_input(&mut windowing);
+        windowing.collect_input();
     }
 
     #[test]
@@ -1079,7 +1088,7 @@ mod tests {
             }
             let rot =
                 prspect * Matrix4::from_axis_angle(Vector3::new(0.0f32, 0.0, 1.0), Deg(i as f32));
-            draw_frame(&mut windowing, &rot);
+            windowing.draw_frame(&rot);
             // std::thread::sleep(std::time::Duration::new(0, 80_000_000));
         }
     }
@@ -1175,7 +1184,7 @@ mod tests {
             },
         );
 
-        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+        let img = windowing.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut windowing, "strtex_and_dyntex_respect_draw_order", img);
     }
 
@@ -1188,7 +1197,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         b.iter(|| {
-            draw_frame(&mut windowing, &prspect);
+            windowing.draw_frame(&prspect);
         });
     }
 }
