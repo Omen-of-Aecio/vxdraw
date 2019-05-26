@@ -1,5 +1,5 @@
 use super::utils::*;
-use crate::data::{ColoredQuadList, Windowing};
+use crate::data::{ColoredQuadList, VxDraw};
 use cgmath::Rad;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -62,7 +62,7 @@ const QUAD_BYTE_SIZE: usize = PTS_PER_QUAD * BYTES_PER_VTX;
 
 // ---
 
-pub fn push(s: &mut Windowing, quad: Quad) -> QuadHandle {
+pub fn push(s: &mut VxDraw, quad: Quad) -> QuadHandle {
     let overrun = if let Some(ref mut quads) = s.quads {
         Some((quads.count + 1) * QUAD_BYTE_SIZE > quads.capacity as usize)
     } else {
@@ -152,7 +152,7 @@ pub fn push(s: &mut Windowing, quad: Quad) -> QuadHandle {
     }
 }
 
-pub fn quad_pop(s: &mut Windowing) {
+pub fn quad_pop(s: &mut VxDraw) {
     if let Some(ref mut quads) = s.quads {
         unsafe {
             s.device
@@ -167,7 +167,7 @@ pub fn quad_pop(s: &mut Windowing) {
     }
 }
 
-pub fn pop_n_quads(s: &mut Windowing, n: usize) {
+pub fn pop_n_quads(s: &mut VxDraw, n: usize) {
     if let Some(ref mut quads) = s.quads {
         unsafe {
             s.device
@@ -182,7 +182,7 @@ pub fn pop_n_quads(s: &mut Windowing, n: usize) {
     }
 }
 
-pub fn create_quad(s: &mut Windowing) {
+pub fn create_quad(s: &mut VxDraw) {
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.vert.spirv"];
 
     pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.frag.spirv"];
@@ -412,7 +412,7 @@ pub fn create_quad(s: &mut Windowing) {
     s.quads = Some(quads);
 }
 
-pub fn translate(s: &mut Windowing, handle: &QuadHandle, movement: (f32, f32)) {
+pub fn translate(s: &mut VxDraw, handle: &QuadHandle, movement: (f32, f32)) {
     let device = &s.device;
     if let Some(ref mut quads) = s.quads {
         unsafe {
@@ -468,7 +468,7 @@ pub fn translate(s: &mut Windowing, handle: &QuadHandle, movement: (f32, f32)) {
     }
 }
 
-pub fn set_position(s: &mut Windowing, handle: &QuadHandle, position: (f32, f32)) {
+pub fn set_position(s: &mut VxDraw, handle: &QuadHandle, position: (f32, f32)) {
     let device = &s.device;
     if let Some(ref mut quads) = s.quads {
         unsafe {
@@ -513,7 +513,7 @@ pub fn set_position(s: &mut Windowing, handle: &QuadHandle, position: (f32, f32)
     }
 }
 
-pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut Windowing, deg: T) {
+pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, deg: T) {
     let device = &s.device;
     if let Some(ref mut quads) = s.quads {
         unsafe {
@@ -558,7 +558,7 @@ pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut Windowing, deg: T) {
     }
 }
 
-pub fn set_quad_color(s: &mut Windowing, inst: &QuadHandle, rgba: [u8; 4]) {
+pub fn set_quad_color(s: &mut VxDraw, inst: &QuadHandle, rgba: [u8; 4]) {
     let inst = inst.0;
     let device = &s.device;
     if let Some(ref mut quads) = s.quads {
@@ -604,7 +604,7 @@ mod tests {
     #[test]
     fn simple_quad() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -620,7 +620,7 @@ mod tests {
     #[test]
     fn simple_quad_translated() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -637,7 +637,7 @@ mod tests {
     #[test]
     fn simple_quad_rotated_with_exotic_origin() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut quad = quads::Quad::default();
@@ -668,7 +668,7 @@ mod tests {
     #[test]
     fn a_bunch_of_quads() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
@@ -696,7 +696,7 @@ mod tests {
     #[test]
     fn overlapping_quads_respect_z_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let mut quad = quads::Quad {
             scale: 0.5,

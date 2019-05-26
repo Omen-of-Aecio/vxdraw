@@ -1,4 +1,4 @@
-use crate::data::Windowing;
+use crate::data::VxDraw;
 use cgmath::Matrix4;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -41,7 +41,7 @@ pub fn find_memory_type_id<B: gfx_hal::Backend>(
 }
 
 pub fn make_vertex_buffer_with_data(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     data: &[f32],
 ) -> (
     <back::Backend as Backend>::Buffer,
@@ -77,7 +77,7 @@ pub fn make_vertex_buffer_with_data(
 }
 
 pub fn make_index_buffer_with_data(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     data: &[f32],
 ) -> (
     <back::Backend as Backend>::Buffer,
@@ -113,7 +113,7 @@ pub fn make_index_buffer_with_data(
 }
 
 pub fn make_transfer_buffer_of_size(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     size: u64,
 ) -> (
     <back::Backend as Backend>::Buffer,
@@ -139,7 +139,7 @@ pub fn make_transfer_buffer_of_size(
 }
 
 pub fn make_transfer_img_of_size(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     w: u32,
     h: u32,
 ) -> (
@@ -173,7 +173,7 @@ pub fn make_transfer_img_of_size(
 }
 
 pub fn make_vertex_buffer_with_data_on_gpu(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     data: &[f32],
 ) -> (
     <back::Backend as Backend>::Buffer,
@@ -290,7 +290,7 @@ pub fn make_centered_equilateral_triangle() -> [f32; 6] {
     tri
 }
 
-pub fn gen_perspective(s: &Windowing) -> Matrix4<f32> {
+pub fn gen_perspective(s: &VxDraw) -> Matrix4<f32> {
     let size = s.swapconfig.extent;
     let w_over_h = size.width as f32 / size.height as f32;
     let h_over_w = size.height as f32 / size.width as f32;
@@ -301,10 +301,7 @@ pub fn gen_perspective(s: &Windowing) -> Matrix4<f32> {
     }
 }
 
-pub fn copy_image_to_rgb(
-    s: &mut Windowing,
-    image_index: gfx_hal::window::SwapImageIndex,
-) -> Vec<u8> {
+pub fn copy_image_to_rgb(s: &mut VxDraw, image_index: gfx_hal::window::SwapImageIndex) -> Vec<u8> {
     let width = s.swapconfig.extent.width;
     let height = s.swapconfig.extent.height;
 
@@ -531,7 +528,7 @@ pub fn perfect_mapping_alignment(align: Align) -> AlignResult {
 }
 
 #[cfg(test)]
-pub fn assert_swapchain_eq(windowing: &mut Windowing, name: &str, rgb: Vec<u8>) {
+pub fn assert_swapchain_eq(windowing: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
     use load_image::ImageDecoder;
     use std::io::Read;
@@ -640,7 +637,7 @@ pub fn assert_swapchain_eq(windowing: &mut Windowing, name: &str, rgb: Vec<u8>) 
 
 #[cfg(test)]
 pub fn add_windmills(
-    windowing: &mut Windowing,
+    windowing: &mut VxDraw,
     rand_rotat: bool,
 ) -> Vec<super::debtri::DebugTriangleHandle> {
     use rand::Rng;
@@ -664,11 +661,11 @@ pub fn add_windmills(
     debtris
 }
 
-pub fn remove_windmills(windowing: &mut Windowing) {
+pub fn remove_windmills(windowing: &mut VxDraw) {
     super::debtri::pop_many(windowing, 1000);
 }
 
-pub fn add_4_screencorners(windowing: &mut Windowing) {
+pub fn add_4_screencorners(windowing: &mut VxDraw) {
     super::debtri::push(
         windowing,
         super::debtri::DebugTriangle::from([-1.0f32, -1.0, 0.0, -1.0, -1.0, 0.0]),

@@ -108,7 +108,7 @@ pub enum DrawType {
     DynamicTexture { id: usize },
 }
 
-pub struct Windowing {
+pub struct VxDraw {
     #[cfg(not(feature = "gl"))]
     pub window: winit::Window,
 
@@ -164,7 +164,7 @@ pub struct Windowing {
 
 // ---
 
-impl Drop for Windowing {
+impl Drop for VxDraw {
     fn drop(&mut self) {
         let _ = self.device.wait_idle();
 

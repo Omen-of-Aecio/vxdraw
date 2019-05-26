@@ -1,5 +1,5 @@
 use super::utils::*;
-use crate::data::{DrawType, StreamingTexture, Windowing};
+use crate::data::{DrawType, StreamingTexture, VxDraw};
 use arrayvec::ArrayVec;
 use cgmath::Matrix4;
 use core::ptr;
@@ -94,7 +94,7 @@ impl Default for Sprite {
 
 // ---
 
-pub fn push_texture(s: &mut Windowing, options: TextureOptions) -> TextureHandle {
+pub fn push_texture(s: &mut VxDraw, options: TextureOptions) -> TextureHandle {
     let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
         make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
 
@@ -498,7 +498,7 @@ pub fn push_texture(s: &mut Windowing, options: TextureOptions) -> TextureHandle
     TextureHandle(s.strtexs.len() - 1)
 }
 
-pub fn remove_texture(s: &mut Windowing, texture: TextureHandle) {
+pub fn remove_texture(s: &mut VxDraw, texture: TextureHandle) {
     let mut index = None;
     for (idx, x) in s.draw_order.iter().enumerate() {
         match x {
@@ -520,7 +520,7 @@ pub fn remove_texture(s: &mut Windowing, texture: TextureHandle) {
     }
 }
 
-fn destroy_texture(s: &mut Windowing, mut strtex: StreamingTexture) {
+fn destroy_texture(s: &mut VxDraw, mut strtex: StreamingTexture) {
     unsafe {
         s.device.destroy_buffer(ManuallyDrop::into_inner(ptr::read(
             &strtex.vertex_buffer_indices,
@@ -555,7 +555,7 @@ fn destroy_texture(s: &mut Windowing, mut strtex: StreamingTexture) {
 }
 
 /// Add a sprite (a rectangular view of a texture) to the system
-pub fn push_sprite(s: &mut Windowing, handle: &TextureHandle, sprite: Sprite) -> SpriteHandle {
+pub fn push_sprite(s: &mut VxDraw, handle: &TextureHandle, sprite: Sprite) -> SpriteHandle {
     let tex = &mut s.strtexs[handle.0];
     let device = &s.device;
 
@@ -635,7 +635,7 @@ pub fn push_sprite(s: &mut Windowing, handle: &TextureHandle, sprite: Sprite) ->
 // ---
 
 pub fn streaming_texture_set_pixels(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     id: &TextureHandle,
     modifier: impl Iterator<Item = (u32, u32, (u8, u8, u8, u8))>,
 ) {
@@ -685,7 +685,7 @@ pub fn streaming_texture_set_pixels(
 }
 
 pub fn streaming_texture_set_pixels_block(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     id: &TextureHandle,
     start: (u32, u32),
     wh: (u32, u32),
@@ -754,7 +754,7 @@ pub fn streaming_texture_set_pixels_block(
 }
 
 pub fn streaming_texture_set_pixel(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     id: &TextureHandle,
     w: u32,
     h: u32,
@@ -805,11 +805,7 @@ pub fn streaming_texture_set_pixel(
     }
 }
 
-pub fn read(
-    s: &mut Windowing,
-    id: &TextureHandle,
-    mut map: impl FnMut(&[(u8, u8, u8, u8)], usize),
-) {
+pub fn read(s: &mut VxDraw, id: &TextureHandle, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
     if let Some(ref strtex) = s.strtexs.get(id.0) {
         unsafe {
             let subres = s.device.get_image_subresource_footprint(
@@ -837,7 +833,7 @@ pub fn read(
 }
 
 pub fn write(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     id: &TextureHandle,
     mut map: impl FnMut(&mut [(u8, u8, u8, u8)], usize),
 ) {
@@ -869,7 +865,7 @@ pub fn write(
     }
 }
 
-pub fn fill_with_perlin_noise(s: &mut Windowing, blitid: &TextureHandle, seed: [f32; 3]) {
+pub fn fill_with_perlin_noise(s: &mut VxDraw, blitid: &TextureHandle, seed: [f32; 3]) {
     static VERTEX_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.vert.spirv");
     static FRAGMENT_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.frag.spirv");
     let w = s.strtexs[blitid.0].width;
@@ -1223,7 +1219,7 @@ mod tests {
     #[test]
     fn generate_map_randomly() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(
@@ -1239,7 +1235,7 @@ mod tests {
     #[test]
     fn streaming_texture_blocks() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(
@@ -1284,7 +1280,7 @@ mod tests {
     #[test]
     fn streaming_texture_blocks_off_by_one() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(&mut windowing, TextureOptions::default_with_size(10, 1));
@@ -1348,7 +1344,7 @@ mod tests {
     #[test]
     fn use_read() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
         strtex::streaming_texture_set_pixel(&mut windowing, &id, 3, 2, (0, 123, 0, 255));
@@ -1362,7 +1358,7 @@ mod tests {
     #[test]
     fn use_write() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
         strtex::streaming_texture_set_pixel(&mut windowing, &id, 3, 2, (0, 123, 0, 255));
@@ -1380,7 +1376,7 @@ mod tests {
     #[test]
     fn streaming_texture_weird_pixel_accesses() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(&mut windowing, TextureOptions::default_with_size(20, 20));
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
@@ -1403,7 +1399,7 @@ mod tests {
     #[test]
     fn streaming_texture_weird_block_accesses() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(&mut windowing, TextureOptions::default_with_size(64, 64));
         push_sprite(&mut windowing, &id, strtex::Sprite::default());
@@ -1427,7 +1423,7 @@ mod tests {
     #[test]
     fn streaming_texture_respects_z_ordering() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let strtex1 = push_texture(&mut windowing, TextureOptions::default_with_size(10, 10));
@@ -1471,7 +1467,7 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_single_pixel_while_drawing(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let id = push_texture(&mut windowing, TextureOptions::default_with_size(50, 50));
@@ -1492,7 +1488,7 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_500x500_area(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
@@ -1515,7 +1511,7 @@ mod tests {
     fn bench_streaming_texture_set_500x500_area_using_iterator(b: &mut Bencher) {
         use itertools::Itertools;
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,
@@ -1537,7 +1533,7 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_single_pixel(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = push_texture(
             &mut windowing,

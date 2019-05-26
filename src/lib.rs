@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 
-use crate::data::{DrawType, Windowing};
+use crate::data::{DrawType, VxDraw};
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -122,8 +122,8 @@ fn set_window_size(window: &glutin::Window, show: ShowWindow) -> Extent2D {
     }
 }
 
-impl Windowing {
-    pub fn new(mut log: Logpass, show: ShowWindow) -> Windowing {
+impl VxDraw {
+    pub fn new(mut log: Logpass, show: ShowWindow) -> VxDraw {
         #[cfg(feature = "gl")]
         static BACKEND: &str = "OpenGL";
         #[cfg(feature = "vulkan")]
@@ -450,7 +450,7 @@ impl Windowing {
             .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
             .collect();
 
-        let mut windowing = Windowing {
+        let mut windowing = VxDraw {
             acquire_image_semaphores,
             acquire_image_semaphore_free: ManuallyDrop::new(
                 device
@@ -532,7 +532,7 @@ impl Windowing {
     }
 }
 
-pub fn collect_input(windowing: &mut Windowing) -> Vec<Event> {
+pub fn collect_input(windowing: &mut VxDraw) -> Vec<Event> {
     let mut inputs = vec![];
     windowing.events_loop.poll_events(|evt| {
         inputs.push(evt);
@@ -540,15 +540,15 @@ pub fn collect_input(windowing: &mut Windowing) -> Vec<Event> {
     inputs
 }
 
-pub fn draw_frame_copy_framebuffer(s: &mut Windowing, view: &Matrix4<f32>) -> Vec<u8> {
+pub fn draw_frame_copy_framebuffer(s: &mut VxDraw, view: &Matrix4<f32>) -> Vec<u8> {
     draw_frame_internal(s, view, copy_image_to_rgb)
 }
 
-pub fn draw_frame(s: &mut Windowing, view: &Matrix4<f32>) {
+pub fn draw_frame(s: &mut VxDraw, view: &Matrix4<f32>) {
     draw_frame_internal(s, view, |_, _| {});
 }
 
-fn window_resized_recreate_swapchain(s: &mut Windowing) {
+fn window_resized_recreate_swapchain(s: &mut VxDraw) {
     s.device.wait_idle().unwrap();
     {
         let (caps, _formats, _present_modes) = s.surf.compatibility(&s.adapter.physical_device);
@@ -719,9 +719,9 @@ fn window_resized_recreate_swapchain(s: &mut Windowing) {
 }
 
 fn draw_frame_internal<T>(
-    s: &mut Windowing,
+    s: &mut VxDraw,
     view: &Matrix4<f32>,
-    postproc: fn(&mut Windowing, gfx_hal::window::SwapImageIndex) -> T,
+    postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
 ) -> T {
     let postproc_res = unsafe {
         let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match s.swapchain.acquire_image(
@@ -1000,14 +1000,14 @@ mod tests {
     #[test]
     fn setup_and_teardown() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let _ = Windowing::new(logger, ShowWindow::Headless1k);
+        let _ = VxDraw::new(logger, ShowWindow::Headless1k);
     }
 
     #[test]
     fn setup_and_teardown_draw_clear() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
 
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
@@ -1018,7 +1018,7 @@ mod tests {
     #[test]
     fn setup_and_teardown_draw_resize() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let large_triangle = {
@@ -1045,7 +1045,7 @@ mod tests {
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let (buffer, memory, _) =
             make_vertex_buffer_with_data_on_gpu(&mut windowing, &vec![1.0f32; 10_000]);
@@ -1059,14 +1059,14 @@ mod tests {
     #[test]
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         collect_input(&mut windowing);
     }
 
     #[test]
     fn tearing_test() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let _tri = make_centered_equilateral_triangle();
@@ -1088,12 +1088,12 @@ mod tests {
     fn correct_perspective() {
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = Windowing::new(logger, ShowWindow::Headless1k);
+            let windowing = VxDraw::new(logger, ShowWindow::Headless1k);
             assert_eq![Matrix4::identity(), gen_perspective(&windowing)];
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = Windowing::new(logger, ShowWindow::Headless1x2k);
+            let windowing = VxDraw::new(logger, ShowWindow::Headless1x2k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
                 gen_perspective(&windowing)
@@ -1101,7 +1101,7 @@ mod tests {
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
+            let windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
                 gen_perspective(&windowing)
@@ -1112,7 +1112,7 @@ mod tests {
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let options = dyntex::TextureOptions {
@@ -1184,7 +1184,7 @@ mod tests {
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         b.iter(|| {

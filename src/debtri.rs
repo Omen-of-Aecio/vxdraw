@@ -1,5 +1,5 @@
 use super::utils::*;
-use crate::data::{ColoredTriangleList, Windowing};
+use crate::data::{ColoredTriangleList, VxDraw};
 use cgmath::Rad;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -90,8 +90,8 @@ const TRI_BYTE_SIZE: usize = PTS_PER_TRI * BYTES_PER_VTX;
 
 // ---
 
-// TODO Remove the dependency on Windowing, just use Device
-pub fn create_debug_triangle(s: &mut Windowing) {
+// TODO Remove the dependency on VxDraw, just use Device
+pub fn create_debug_triangle(s: &mut VxDraw) {
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
 
     pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.frag.spirv"];
@@ -321,7 +321,7 @@ pub fn create_debug_triangle(s: &mut Windowing) {
 /// Add a new debug triangle to the renderer
 ///
 /// The new triangle will be drawn upon the next invocation of `draw_frame`
-pub fn push(s: &mut Windowing, triangle: DebugTriangle) -> DebugTriangleHandle {
+pub fn push(s: &mut VxDraw, triangle: DebugTriangle) -> DebugTriangleHandle {
     let overrun = if let Some(ref mut debtris) = s.debtris {
         Some((debtris.triangles_count + 1) * TRI_BYTE_SIZE > debtris.capacity as usize)
     } else {
@@ -365,7 +365,7 @@ pub fn push(s: &mut Windowing, triangle: DebugTriangle) -> DebugTriangleHandle {
 }
 
 /// Remove the last added debug triangle from rendering
-pub fn pop(s: &mut Windowing) {
+pub fn pop(s: &mut VxDraw) {
     if let Some(ref mut debtris) = s.debtris {
         // TODO deallocate and move the buffer if it's small enough
         unsafe {
@@ -382,7 +382,7 @@ pub fn pop(s: &mut Windowing) {
 }
 
 /// Remove the last N added debug triangle from rendering
-pub fn pop_many(s: &mut Windowing, n: usize) {
+pub fn pop_many(s: &mut VxDraw, n: usize) {
     if let Some(ref mut debtris) = s.debtris {
         unsafe {
             s.device
@@ -399,7 +399,7 @@ pub fn pop_many(s: &mut Windowing, n: usize) {
 
 // ---
 
-pub fn set_position(s: &mut Windowing, inst: &DebugTriangleHandle, pos: (f32, f32)) {
+pub fn set_position(s: &mut VxDraw, inst: &DebugTriangleHandle, pos: (f32, f32)) {
     let inst = inst.0;
     let device = &s.device;
     if let Some(ref mut debtris) = s.debtris {
@@ -430,7 +430,7 @@ pub fn set_position(s: &mut Windowing, inst: &DebugTriangleHandle, pos: (f32, f3
     }
 }
 
-pub fn set_scale(s: &mut Windowing, inst: &DebugTriangleHandle, scale: f32) {
+pub fn set_scale(s: &mut VxDraw, inst: &DebugTriangleHandle, scale: f32) {
     let inst = inst.0;
     let device = &s.device;
     if let Some(ref mut debtris) = s.debtris {
@@ -461,11 +461,7 @@ pub fn set_scale(s: &mut Windowing, inst: &DebugTriangleHandle, scale: f32) {
     }
 }
 
-pub fn set_rotation<T: Copy + Into<Rad<f32>>>(
-    s: &mut Windowing,
-    inst: &DebugTriangleHandle,
-    deg: T,
-) {
+pub fn set_rotation<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, inst: &DebugTriangleHandle, deg: T) {
     let inst = inst.0;
     let device = &s.device;
     if let Some(ref mut debtris) = s.debtris {
@@ -497,7 +493,7 @@ pub fn set_rotation<T: Copy + Into<Rad<f32>>>(
     }
 }
 
-pub fn set_color(s: &mut Windowing, inst: &DebugTriangleHandle, rgba: [u8; 4]) {
+pub fn set_color(s: &mut VxDraw, inst: &DebugTriangleHandle, rgba: [u8; 4]) {
     let inst = inst.0;
     let device = &s.device;
     if let Some(ref mut debtris) = s.debtris {
@@ -532,7 +528,7 @@ pub fn set_color(s: &mut Windowing, inst: &DebugTriangleHandle, rgba: [u8; 4]) {
 // ---
 
 /// Rotate all debug triangles
-pub fn rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut Windowing, deg: T) {
+pub fn rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut VxDraw, deg: T) {
     let device = &s.device;
     if let Some(ref mut debtris) = s.debtris {
         unsafe {
@@ -588,7 +584,7 @@ mod tests {
     #[test]
     fn simple_triangle() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
@@ -603,7 +599,7 @@ mod tests {
     #[test]
     fn test_single_triangle_api() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
@@ -621,7 +617,7 @@ mod tests {
     #[test]
     fn simple_triangle_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
@@ -636,7 +632,7 @@ mod tests {
     #[test]
     fn debug_triangle_corners_widescreen() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&windowing);
 
         for i in [-1f32, 1f32].iter() {
@@ -655,7 +651,7 @@ mod tests {
     #[test]
     fn debug_triangle_corners_tallscreen() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1x2k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1x2k);
         let prspect = gen_perspective(&windowing);
 
         for i in [-1f32, 1f32].iter() {
@@ -674,7 +670,7 @@ mod tests {
     #[test]
     fn circle_of_triangles() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&windowing);
 
         for i in 0..360 {
@@ -692,7 +688,7 @@ mod tests {
     #[test]
     fn triangle_in_corner() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let mut tri = DebugTriangle::default();
@@ -714,7 +710,7 @@ mod tests {
     #[test]
     fn windmills() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -726,7 +722,7 @@ mod tests {
     #[test]
     fn windmills_ignore_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless2x1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -738,7 +734,7 @@ mod tests {
     #[test]
     fn windmills_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         let handles = utils::add_windmills(&mut windowing, false);
@@ -755,7 +751,7 @@ mod tests {
     #[test]
     fn rotating_windmills_drawing_invariant() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -779,7 +775,7 @@ mod tests {
     #[test]
     fn windmills_given_initial_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, true);
@@ -792,7 +788,7 @@ mod tests {
     #[bench]
     fn bench_simple_triangle(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         push(&mut windowing, DebugTriangle::default());
@@ -806,7 +802,7 @@ mod tests {
     #[bench]
     fn bench_still_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -819,7 +815,7 @@ mod tests {
     #[bench]
     fn bench_windmills_set_color(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let handles = utils::add_windmills(&mut windowing, false);
 
@@ -831,7 +827,7 @@ mod tests {
     #[bench]
     fn bench_rotating_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
         utils::add_windmills(&mut windowing, false);
@@ -845,7 +841,7 @@ mod tests {
     #[bench]
     fn bench_rotating_windmills_no_render(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = Windowing::new(logger, ShowWindow::Headless1k);
+        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
 
         utils::add_windmills(&mut windowing, false);
 
