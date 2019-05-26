@@ -142,8 +142,8 @@ impl Windowing {
     pub fn set_window_size(&mut self, size: (u32, u32)) {
         let dpi_factor = self.window.get_hidpi_factor();
         self.window.set_inner_size(LogicalSize {
-            width: size.0 as f64 / dpi_factor,
-            height: size.1 as f64 / dpi_factor,
+            width: f64::from(size.0) / dpi_factor,
+            height: f64::from(size.1) / dpi_factor,
         });
     }
 

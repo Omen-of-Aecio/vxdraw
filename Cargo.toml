@@ -37,3 +37,9 @@ dx12 = ["gfx-backend-dx12"]
 gl = ["gfx-backend-gl", "glutin"]
 metal = ["gfx-backend-metal"]
 vulkan = ["gfx-backend-vulkan"]
+
+[profile.bench]
+debug = true
+lto = true
+opt-level = 3
+overflow-checks = false

@@ -22,7 +22,6 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use std::io::Read;
 use std::mem::{size_of, ManuallyDrop};
 
 pub struct Dyntex<'a> {

@@ -19,7 +19,6 @@ use gfx_hal::{
     Backend, Primitive,
 };
 use logger::debug;
-use std::io::Read;
 use std::iter::once;
 use std::mem::{size_of, ManuallyDrop};
 

@@ -10,7 +10,6 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
-use std::io::Read;
 use std::mem::{size_of, transmute, ManuallyDrop};
 
 // ---
