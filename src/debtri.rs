@@ -597,32 +597,32 @@ mod tests {
     #[test]
     fn simple_triangle() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        windowing.debtri().push(tri);
-        utils::add_4_screencorners(&mut windowing);
+        vx.debtri().push(tri);
+        utils::add_4_screencorners(&mut vx);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "simple_triangle", img);
+        utils::assert_swapchain_eq(&mut vx, "simple_triangle", img);
     }
 
     #[test]
     fn test_single_triangle_api() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        let handle = windowing.debtri().push(tri);
-        set_scale(&mut windowing, &handle, 0.1);
-        set_rotation(&mut windowing, &handle, Deg(30.0));
-        set_position(&mut windowing, &handle, (0.25, 0.5));
+        let handle = vx.debtri().push(tri);
+        set_scale(&mut vx, &handle, 0.1);
+        set_rotation(&mut vx, &handle, Deg(30.0));
+        set_position(&mut vx, &handle, (0.25, 0.5));
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "test_single_triangle_api", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "test_single_triangle_api", img);
     }
 
     // ---
@@ -630,79 +630,79 @@ mod tests {
     #[test]
     fn simple_triangle_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        let idx = windowing.debtri().push(tri);
-        set_color(&mut windowing, &idx, [255, 0, 255, 255]);
+        let idx = vx.debtri().push(tri);
+        set_color(&mut vx, &idx, [255, 0, 255, 255]);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "simple_triangle_change_color", img);
+        utils::assert_swapchain_eq(&mut vx, "simple_triangle_change_color", img);
     }
 
     #[test]
     fn debug_triangle_corners_widescreen() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let prspect = gen_perspective(&vx);
 
         for i in [-1f32, 1f32].iter() {
             for j in [-1f32, 1f32].iter() {
                 let mut tri = DebugTriangle::default();
                 tri.translation = (*i, *j);
-                let _idx = windowing.debtri().push(tri);
+                let _idx = vx.debtri().push(tri);
             }
         }
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "debug_triangle_corners_widescreen", img);
+        utils::assert_swapchain_eq(&mut vx, "debug_triangle_corners_widescreen", img);
     }
 
     #[test]
     fn debug_triangle_corners_tallscreen() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1x2k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
+        let prspect = gen_perspective(&vx);
 
         for i in [-1f32, 1f32].iter() {
             for j in [-1f32, 1f32].iter() {
                 let mut tri = DebugTriangle::default();
                 tri.translation = (*i, *j);
-                let _idx = windowing.debtri().push(tri);
+                let _idx = vx.debtri().push(tri);
             }
         }
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "debug_triangle_corners_tallscreen", img);
+        utils::assert_swapchain_eq(&mut vx, "debug_triangle_corners_tallscreen", img);
     }
 
     #[test]
     fn circle_of_triangles() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let prspect = gen_perspective(&vx);
 
         for i in 0..360 {
             let mut tri = DebugTriangle::default();
             tri.translation = ((i as f32).cos(), (i as f32).sin());
             tri.scale = 0.1f32;
-            let _idx = windowing.debtri().push(tri);
+            let _idx = vx.debtri().push(tri);
         }
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "circle_of_triangles", img);
+        utils::assert_swapchain_eq(&mut vx, "circle_of_triangles", img);
     }
 
     #[test]
     fn triangle_in_corner() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let mut tri = DebugTriangle::default();
         tri.scale = 0.1f32;
@@ -712,88 +712,88 @@ mod tests {
         for j in 0..31 {
             for i in 0..31 {
                 tri.translation = (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                windowing.debtri().push(tri);
+                vx.debtri().push(tri);
             }
         }
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "triangle_in_corner", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "triangle_in_corner", img);
     }
 
     #[test]
     fn windmills() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        utils::add_windmills(&mut windowing, false);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        utils::add_windmills(&mut vx, false);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "windmills", img);
+        utils::assert_swapchain_eq(&mut vx, "windmills", img);
     }
 
     #[test]
     fn windmills_ignore_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let prspect = gen_perspective(&vx);
 
-        utils::add_windmills(&mut windowing, false);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        utils::add_windmills(&mut vx, false);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "windmills_ignore_perspective", img);
+        utils::assert_swapchain_eq(&mut vx, "windmills_ignore_perspective", img);
     }
 
     #[test]
     fn windmills_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        let handles = utils::add_windmills(&mut windowing, false);
-        set_color(&mut windowing, &handles[0], [255, 0, 0, 255]);
-        set_color(&mut windowing, &handles[249], [0, 255, 0, 255]);
-        set_color(&mut windowing, &handles[499], [0, 0, 255, 255]);
-        set_color(&mut windowing, &handles[999], [0, 0, 0, 255]);
+        let handles = utils::add_windmills(&mut vx, false);
+        set_color(&mut vx, &handles[0], [255, 0, 0, 255]);
+        set_color(&mut vx, &handles[249], [0, 255, 0, 255]);
+        set_color(&mut vx, &handles[499], [0, 0, 255, 255]);
+        set_color(&mut vx, &handles[999], [0, 0, 0, 255]);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "windmills_change_color", img);
+        utils::assert_swapchain_eq(&mut vx, "windmills_change_color", img);
     }
 
     #[test]
     fn rotating_windmills_drawing_invariant() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        utils::add_windmills(&mut windowing, false);
+        utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
-            rotate_all(&mut windowing, Deg(-1.0f32));
+            rotate_all(&mut vx, Deg(-1.0f32));
         }
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        utils::assert_swapchain_eq(&mut windowing, "rotating_windmills_drawing_invariant", img);
-        utils::remove_windmills(&mut windowing);
+        utils::assert_swapchain_eq(&mut vx, "rotating_windmills_drawing_invariant", img);
+        utils::remove_windmills(&mut vx);
 
-        utils::add_windmills(&mut windowing, false);
+        utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
-            rotate_all(&mut windowing, Deg(-1.0f32));
-            windowing.draw_frame(&prspect);
+            rotate_all(&mut vx, Deg(-1.0f32));
+            vx.draw_frame(&prspect);
         }
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "rotating_windmills_drawing_invariant", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "rotating_windmills_drawing_invariant", img);
     }
 
     #[test]
     fn windmills_given_initial_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        utils::add_windmills(&mut windowing, true);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "windmills_given_initial_rotation", img);
+        utils::add_windmills(&mut vx, true);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "windmills_given_initial_rotation", img);
     }
 
     // ---
@@ -801,65 +801,65 @@ mod tests {
     #[bench]
     fn bench_simple_triangle(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        windowing.debtri().push(DebugTriangle::default());
-        utils::add_4_screencorners(&mut windowing);
+        vx.debtri().push(DebugTriangle::default());
+        utils::add_4_screencorners(&mut vx);
 
         b.iter(|| {
-            windowing.draw_frame(&prspect);
+            vx.draw_frame(&prspect);
         });
     }
 
     #[bench]
     fn bench_still_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        utils::add_windmills(&mut windowing, false);
+        utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            windowing.draw_frame(&prspect);
+            vx.draw_frame(&prspect);
         });
     }
 
     #[bench]
     fn bench_windmills_set_color(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        let handles = utils::add_windmills(&mut windowing, false);
+        let handles = utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            set_color(&mut windowing, &handles[0], black_box([0, 0, 0, 255]));
+            set_color(&mut vx, &handles[0], black_box([0, 0, 0, 255]));
         });
     }
 
     #[bench]
     fn bench_rotating_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        utils::add_windmills(&mut windowing, false);
+        utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            rotate_all(&mut windowing, Deg(1.0f32));
-            windowing.draw_frame(&prspect);
+            rotate_all(&mut vx, Deg(1.0f32));
+            vx.draw_frame(&prspect);
         });
     }
 
     #[bench]
     fn bench_rotating_windmills_no_render(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        utils::add_windmills(&mut windowing, false);
+        utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            rotate_all(&mut windowing, Deg(1.0f32));
+            rotate_all(&mut vx, Deg(1.0f32));
         });
     }
 }

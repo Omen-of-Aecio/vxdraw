@@ -31,7 +31,7 @@ use gfx_hal::{
 use std::mem::{size_of, ManuallyDrop};
 
 pub struct Dyntex<'a> {
-    windowing: &'a mut VxDraw,
+    vx: &'a mut VxDraw,
 }
 
 impl<'a> Dyntex<'a> {
@@ -40,7 +40,7 @@ impl<'a> Dyntex<'a> {
     /// You're not supposed to use this function directly (although you can).
     /// The recommended way of spawning a dyntex is via [VxDraw::dyntex()].
     pub fn new(s: &'a mut VxDraw) -> Self {
-        Self { windowing: s }
+        Self { vx: s }
     }
 
     /// Add a texture to the system
@@ -57,7 +57,7 @@ impl<'a> Dyntex<'a> {
     /// To make sure transparency works correctly you can turn off the depth test for foreground
     /// objects and ensure that the foreground texture is allocated last.
     pub fn push_texture(&mut self, img_data: &[u8], options: TextureOptions) -> TextureHandle {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         let device = &*s.device;
 
         let img = load_image::load_from_memory_with_format(&img_data[..], load_image::PNG)
@@ -582,7 +582,7 @@ impl<'a> Dyntex<'a> {
     /// The sprite is automatically drawn on each [draw] call, and must be removed by
     /// [remove_sprite] to stop it from being drawn.
     pub fn push_sprite(&mut self, texture: &TextureHandle, sprite: Sprite) -> SpriteHandle {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         let tex = &mut s.dyntexs[texture.0];
 
         // Derive xy from the sprite's initial UV
@@ -680,7 +680,7 @@ impl<'a> Dyntex<'a> {
     /// All lingering sprite handles that were spawned using this texture handle will be
     /// invalidated.
     pub fn remove_texture(&mut self, texture: TextureHandle) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
             match x {
@@ -704,7 +704,7 @@ impl<'a> Dyntex<'a> {
 
     /// Removes a single sprite, making it not be drawn
     pub fn remove_sprite(&mut self, handle: SpriteHandle) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(dyntex) = s.dyntexs.get_mut(handle.0) {
             let idx = (handle.1 * 4 * 10 * 4) as usize;
             let zero = unsafe { std::mem::transmute::<f32, [u8; 4]>(0.0) };
@@ -717,7 +717,7 @@ impl<'a> Dyntex<'a> {
 
     /// Set the position of a sprite
     pub fn set_position(&mut self, handle: &SpriteHandle, position: (f32, f32)) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
                 use std::mem::transmute;
@@ -745,7 +745,7 @@ impl<'a> Dyntex<'a> {
     ///
     /// Positive rotation goes counter-clockwise. The value of the rotation is in radians.
     pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &SpriteHandle, rotation: T) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
                 use std::mem::transmute;
@@ -768,7 +768,7 @@ impl<'a> Dyntex<'a> {
     ///
     /// Convenience method that translates all sprites associated with the given texture.
     pub fn sprite_translate_all(&mut self, tex: &TextureHandle, dxdy: (f32, f32)) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
             unsafe {
                 for mock in stex.mockbuffer.chunks_mut(40) {
@@ -786,7 +786,7 @@ impl<'a> Dyntex<'a> {
     ///
     /// Convenience method that rotates all sprites associated with the given texture.
     pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, tex: &TextureHandle, deg: T) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
             unsafe {
                 for mock in stex.mockbuffer.chunks_mut(40) {
@@ -800,7 +800,7 @@ impl<'a> Dyntex<'a> {
     }
 
     pub fn set_uv(&mut self, handle: &SpriteHandle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             if handle.1 < stex.count as usize {
                 unsafe {
@@ -832,7 +832,7 @@ impl<'a> Dyntex<'a> {
         &mut self,
         mut uvs: impl Iterator<Item = (&'b SpriteHandle, (f32, f32), (f32, f32))>,
     ) {
-        let s = &mut *self.windowing;
+        let s = &mut *self.vx;
         if let Some(first) = uvs.next() {
             if let Some(ref mut stex) = s.dyntexs.get_mut((first.0).0) {
                 let current_texture_handle = (first.0).0;
@@ -1018,10 +1018,10 @@ mod tests {
     #[test]
     fn overlapping_dyntex_respect_z_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
 
         let tree = dyntex.push_texture(TREE, TextureOptions::default());
         let logo = dyntex.push_texture(LOGO, TextureOptions::default());
@@ -1031,14 +1031,14 @@ mod tests {
             ..Sprite::default()
         };
 
-        windowing.dyntex().push_sprite(
+        vx.dyntex().push_sprite(
             &tree,
             Sprite {
                 depth: 0.5,
                 ..sprite
             },
         );
-        windowing.dyntex().push_sprite(
+        vx.dyntex().push_sprite(
             &logo,
             Sprite {
                 depth: 0.6,
@@ -1047,46 +1047,42 @@ mod tests {
             },
         );
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "overlapping_dyntex_respect_z_order", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "overlapping_dyntex_respect_z_order", img);
     }
 
     #[test]
     fn simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let tex = dyntex.push_texture(LOGO, TextureOptions::default());
-        windowing.dyntex().push_sprite(&tex, Sprite::default());
+        vx.dyntex().push_sprite(&tex, Sprite::default());
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "simple_texture", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_texture", img);
     }
 
     #[test]
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let tex = windowing
-            .dyntex()
-            .push_texture(LOGO, TextureOptions::default());
-        windowing.dyntex().push_sprite(&tex, Sprite::default());
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let tex = vx.dyntex().push_texture(LOGO, TextureOptions::default());
+        vx.dyntex().push_sprite(&tex, Sprite::default());
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "simple_texture_adheres_to_view", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_texture_adheres_to_view", img);
     }
 
     #[test]
     fn colored_simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = windowing
-            .dyntex()
-            .push_texture(LOGO, TextureOptions::default());
-        windowing.dyntex().push_sprite(
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let tex = vx.dyntex().push_texture(LOGO, TextureOptions::default());
+        vx.dyntex().push_sprite(
             &tex,
             Sprite {
                 colors: [
@@ -1099,17 +1095,17 @@ mod tests {
             },
         );
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "colored_simple_texture", img);
     }
 
     #[test]
     fn colored_simple_texture_set_position() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let tex = dyntex.push_texture(LOGO, TextureOptions::default());
         let sprite = dyntex.push_sprite(
             &tex,
@@ -1125,16 +1121,16 @@ mod tests {
         );
         dyntex.set_position(&sprite, (0.5, 0.3));
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "colored_simple_texture_set_position", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "colored_simple_texture_set_position", img);
     }
 
     #[test]
     fn translated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = windowing.dyntex().push_texture(
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let tex = vx.dyntex().push_texture(
             LOGO,
             TextureOptions {
                 depth_test: false,
@@ -1148,7 +1144,7 @@ mod tests {
             ..Sprite::default()
         };
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
 
         dyntex.push_sprite(
             &tex,
@@ -1184,16 +1180,16 @@ mod tests {
         );
         dyntex.sprite_translate_all(&tex, (0.25, 0.35));
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "translated_texture", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "translated_texture", img);
     }
 
     #[test]
     fn rotated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let mut dyntex = windowing.dyntex();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut dyntex = vx.dyntex();
         let tex = dyntex.push_texture(
             LOGO,
             TextureOptions {
@@ -1242,16 +1238,16 @@ mod tests {
         );
         dyntex.sprite_rotate_all(&tex, Deg(90.0));
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "rotated_texture", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "rotated_texture", img);
     }
 
     #[test]
     fn many_sprites() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = windowing.dyntex().push_texture(
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let tex = vx.dyntex().push_texture(
             LOGO,
             TextureOptions {
                 depth_test: false,
@@ -1259,7 +1255,7 @@ mod tests {
             },
         );
         for i in 0..360 {
-            windowing.dyntex().push_sprite(
+            vx.dyntex().push_sprite(
                 &tex,
                 Sprite {
                     rotation: ((i * 10) as f32 / 180f32 * PI),
@@ -1269,35 +1265,35 @@ mod tests {
             );
         }
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "many_sprites", img);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "many_sprites", img);
     }
 
     #[test]
     fn three_layer_scene() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let options = TextureOptions {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let forest = dyntex.push_texture(FOREST, options);
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        windowing.dyntex().push_sprite(&forest, Sprite::default());
-        windowing.dyntex().push_sprite(
+        vx.dyntex().push_sprite(&forest, Sprite::default());
+        vx.dyntex().push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        windowing.dyntex().push_sprite(
+        vx.dyntex().push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1306,21 +1302,21 @@ mod tests {
             },
         );
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "three_layer_scene", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "three_layer_scene", img);
     }
 
     #[test]
     fn three_layer_scene_remove_middle() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let options = TextureOptions {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let forest = dyntex.push_texture(FOREST, options);
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
@@ -1344,21 +1340,21 @@ mod tests {
 
         dyntex.remove_sprite(middle);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_middle", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_middle", img);
     }
 
     #[test]
     fn three_layer_scene_remove_middle_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let options = TextureOptions {
             depth_test: false,
             ..TextureOptions::default()
         };
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let forest = dyntex.push_texture(FOREST, options);
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
@@ -1382,30 +1378,26 @@ mod tests {
 
         dyntex.remove_texture(player);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(
-            &mut windowing,
-            "three_layer_scene_remove_middle_texture",
-            img,
-        );
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_middle_texture", img);
 
-        windowing.dyntex().remove_texture(tree);
+        vx.dyntex().remove_texture(tree);
 
-        windowing.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
     }
 
     #[test]
     fn three_layer_scene_remove_last_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let options = TextureOptions {
             depth_test: false,
             ..TextureOptions::default()
         };
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let forest = dyntex.push_texture(FOREST, options);
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
@@ -1429,40 +1421,40 @@ mod tests {
 
         dyntex.remove_texture(tree);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_last_texture", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_last_texture", img);
 
-        windowing.dyntex().remove_texture(player);
+        vx.dyntex().remove_texture(player);
 
-        windowing.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
     }
 
     #[test]
     fn fixed_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = Matrix4::from_scale(0.0) * gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let prspect = Matrix4::from_scale(0.0) * gen_perspective(&vx);
 
         let options = TextureOptions {
             depth_test: false,
             fixed_perspective: Some(Matrix4::identity()),
             ..TextureOptions::default()
         };
-        let forest = windowing.dyntex().push_texture(FOREST, options);
+        let forest = vx.dyntex().push_texture(FOREST, options);
 
-        windowing.dyntex().push_sprite(&forest, Sprite::default());
+        vx.dyntex().push_sprite(&forest, Sprite::default());
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "fixed_perspective", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "fixed_perspective", img);
     }
 
     #[test]
     fn change_of_uv_works_for_first() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
 
         let options = TextureOptions::default();
         let testure = dyntex.push_texture(TESTURE, options);
@@ -1474,60 +1466,57 @@ mod tests {
             (2.0 / 3.0, 1.0),
         )));
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "change_of_uv_works_for_first", img);
 
-        windowing
-            .dyntex()
+        vx.dyntex()
             .set_uv(&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "change_of_uv_works_for_first", img);
     }
 
     #[test]
     fn set_single_sprite_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         let options = TextureOptions::default();
         let testure = dyntex.push_texture(TESTURE, options);
         let sprite = dyntex.push_sprite(&testure, Sprite::default());
         dyntex.set_rotation(&sprite, Rad(0.3));
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "set_single_sprite_rotation", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "set_single_sprite_rotation", img);
     }
 
     #[test]
     fn push_and_pop_often_avoid_allocating_out_of_bounds() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let options = TextureOptions::default();
-        let testure = windowing.dyntex().push_texture(TESTURE, options);
+        let testure = vx.dyntex().push_texture(TESTURE, options);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         for _ in 0..100_000 {
             let sprite = dyntex.push_sprite(&testure, Sprite::default());
             dyntex.remove_sprite(sprite);
         }
 
-        windowing.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
     }
 
     #[bench]
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = windowing
-            .dyntex()
-            .push_texture(LOGO, TextureOptions::default());
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let tex = vx.dyntex().push_texture(LOGO, TextureOptions::default());
         for i in 0..1000 {
-            windowing.dyntex().push_sprite(
+            vx.dyntex().push_sprite(
                 &tex,
                 Sprite {
                     rotation: ((i * 10) as f32 / 180f32 * PI),
@@ -1537,26 +1526,24 @@ mod tests {
             );
         }
 
-        let prspect = gen_perspective(&windowing);
+        let prspect = gen_perspective(&vx);
         b.iter(|| {
-            windowing.draw_frame(&prspect);
+            vx.draw_frame(&prspect);
         });
     }
 
     #[bench]
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = windowing
-            .dyntex()
-            .push_texture(LOGO, TextureOptions::default());
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let tex = vx.dyntex().push_texture(LOGO, TextureOptions::default());
         let mut rng = random::new(0);
         for i in 0..1000 {
             let (dx, dy) = (
                 rng.gen_range(-1.0f32, 1.0f32),
                 rng.gen_range(-1.0f32, 1.0f32),
             );
-            windowing.dyntex().push_sprite(
+            vx.dyntex().push_sprite(
                 &tex,
                 Sprite {
                     translation: (dx, dy),
@@ -1567,19 +1554,19 @@ mod tests {
             );
         }
 
-        let prspect = gen_perspective(&windowing);
+        let prspect = gen_perspective(&vx);
         b.iter(|| {
-            windowing.draw_frame(&prspect);
+            vx.draw_frame(&prspect);
         });
     }
 
     #[bench]
     fn animated_fireballs_20x20_uvs2(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        let fireball_texture = windowing.dyntex().push_texture(
+        let fireball_texture = vx.dyntex().push_texture(
             FIREBALL,
             TextureOptions {
                 depth_test: false,
@@ -1590,7 +1577,7 @@ mod tests {
         let mut fireballs = vec![];
         for idx in -10..10 {
             for jdx in -10..10 {
-                fireballs.push(windowing.dyntex().push_sprite(
+                fireballs.push(vx.dyntex().push_sprite(
                     &fireball_texture,
                     Sprite {
                         width: 0.68,
@@ -1624,22 +1611,21 @@ mod tests {
                 counter = 0;
             }
 
-            windowing
-                .dyntex()
+            vx.dyntex()
                 .set_uvs(fireballs.iter().map(|id| (id, uv_begin, uv_end)));
-            windowing.draw_frame(&prspect);
+            vx.draw_frame(&prspect);
         });
     }
 
     #[bench]
     fn bench_push_and_pop_sprite(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let options = TextureOptions::default();
-        let testure = windowing.dyntex().push_texture(TESTURE, options);
+        let testure = vx.dyntex().push_texture(TESTURE, options);
 
-        let mut dyntex = windowing.dyntex();
+        let mut dyntex = vx.dyntex();
         b.iter(|| {
             let sprite = dyntex.push_sprite(&testure, Sprite::default());
             dyntex.remove_sprite(sprite);
@@ -1649,8 +1635,8 @@ mod tests {
     #[bench]
     fn bench_push_and_pop_texture(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let mut dyntex = windowing.dyntex();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut dyntex = vx.dyntex();
 
         b.iter(|| {
             let options = TextureOptions::default();

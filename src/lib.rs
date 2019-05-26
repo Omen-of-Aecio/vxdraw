@@ -469,7 +469,7 @@ impl VxDraw {
             .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
             .collect();
 
-        let mut windowing = VxDraw {
+        let mut vx = VxDraw {
             acquire_image_semaphores,
             acquire_image_semaphore_free: ManuallyDrop::new(
                 device
@@ -517,9 +517,9 @@ impl VxDraw {
             window,
             log,
         };
-        debtri::create_debug_triangle(&mut windowing);
-        quads::create_quad(&mut windowing);
-        windowing
+        debtri::create_debug_triangle(&mut vx);
+        quads::create_quad(&mut vx);
+        vx
     }
 
     /// Get the size of the display window in floats
@@ -1052,80 +1052,80 @@ mod tests {
     fn setup_and_teardown_draw_clear() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
 
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_with_test", img);
+        assert_swapchain_eq(&mut vx, "setup_and_teardown_draw_with_test", img);
     }
 
     #[test]
     fn setup_and_teardown_draw_resize() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let large_triangle = {
             let mut tri = debtri::DebugTriangle::default();
             tri.scale = 3.7;
             tri
         };
-        windowing.debtri().push(large_triangle);
+        vx.debtri().push(large_triangle);
 
-        windowing.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
 
-        windowing.set_window_size((1500, 1000));
+        vx.set_window_size((1500, 1000));
 
-        windowing.draw_frame(&prspect);
-        windowing.draw_frame(&prspect);
-        windowing.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
+        vx.draw_frame(&prspect);
 
-        let prspect = gen_perspective(&windowing);
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
+        let prspect = gen_perspective(&vx);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
 
-        assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_resize", img);
+        assert_swapchain_eq(&mut vx, "setup_and_teardown_draw_resize", img);
     }
 
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let (buffer, memory, _) =
-            make_vertex_buffer_with_data_on_gpu(&mut windowing, &vec![1.0f32; 10_000]);
+            make_vertex_buffer_with_data_on_gpu(&mut vx, &vec![1.0f32; 10_000]);
 
         unsafe {
-            windowing.device.destroy_buffer(buffer);
-            windowing.device.free_memory(memory);
+            vx.device.destroy_buffer(buffer);
+            vx.device.free_memory(memory);
         }
     }
 
     #[test]
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        windowing.collect_input();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        vx.collect_input();
     }
 
     #[test]
     fn tearing_test() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let _tri = make_centered_equilateral_triangle();
-        let mut debtri = windowing.debtri();
+        let mut debtri = vx.debtri();
         debtri.push(debtri::DebugTriangle::default());
         for i in 0..=360 {
             if i % 2 == 0 {
-                add_4_screencorners(&mut windowing);
+                add_4_screencorners(&mut vx);
             } else {
-                debtri::pop_many(&mut windowing, 4);
+                debtri::pop_many(&mut vx, 4);
             }
             let rot =
                 prspect * Matrix4::from_axis_angle(Vector3::new(0.0f32, 0.0, 1.0), Deg(i as f32));
-            windowing.draw_frame(&rot);
+            vx.draw_frame(&rot);
             // std::thread::sleep(std::time::Duration::new(0, 80_000_000));
         }
     }
@@ -1134,23 +1134,23 @@ mod tests {
     fn correct_perspective() {
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-            assert_eq![Matrix4::identity(), gen_perspective(&windowing)];
+            let vx = VxDraw::new(logger, ShowWindow::Headless1k);
+            assert_eq![Matrix4::identity(), gen_perspective(&vx)];
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = VxDraw::new(logger, ShowWindow::Headless1x2k);
+            let vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
-                gen_perspective(&windowing)
+                gen_perspective(&vx)
             ];
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_logpass();
-            let windowing = VxDraw::new(logger, ShowWindow::Headless2x1k);
+            let vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
-                gen_perspective(&windowing)
+                gen_perspective(&vx)
             ];
         }
     }
@@ -1158,16 +1158,16 @@ mod tests {
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let options = dyntex::TextureOptions {
             depth_test: false,
             ..dyntex::TextureOptions::default()
         };
-        let tex1 = windowing.dyntex().push_texture(TESTURE, options);
+        let tex1 = vx.dyntex().push_texture(TESTURE, options);
         let tex2 = strtex::push_texture(
-            &mut windowing,
+            &mut vx,
             strtex::TextureOptions {
                 depth_test: false,
                 width: 1,
@@ -1175,9 +1175,9 @@ mod tests {
                 ..strtex::TextureOptions::default()
             },
         );
-        let tex3 = windowing.dyntex().push_texture(TESTURE, options);
+        let tex3 = vx.dyntex().push_texture(TESTURE, options);
         let tex4 = strtex::push_texture(
-            &mut windowing,
+            &mut vx,
             strtex::TextureOptions {
                 depth_test: false,
                 width: 1,
@@ -1186,10 +1186,10 @@ mod tests {
             },
         );
 
-        strtex::streaming_texture_set_pixel(&mut windowing, &tex2, 0, 0, (255, 0, 255, 255));
-        strtex::streaming_texture_set_pixel(&mut windowing, &tex4, 0, 0, (255, 255, 255, 255));
+        strtex::streaming_texture_set_pixel(&mut vx, &tex2, 0, 0, (255, 0, 255, 255));
+        strtex::streaming_texture_set_pixel(&mut vx, &tex4, 0, 0, (255, 255, 255, 255));
 
-        windowing.dyntex().push_sprite(
+        vx.dyntex().push_sprite(
             &tex1,
             dyntex::Sprite {
                 rotation: 0.0,
@@ -1197,14 +1197,14 @@ mod tests {
             },
         );
         strtex::push_sprite(
-            &mut windowing,
+            &mut vx,
             &tex2,
             strtex::Sprite {
                 rotation: 0.5,
                 ..strtex::Sprite::default()
             },
         );
-        windowing.dyntex().push_sprite(
+        vx.dyntex().push_sprite(
             &tex3,
             dyntex::Sprite {
                 rotation: 1.0,
@@ -1212,7 +1212,7 @@ mod tests {
             },
         );
         strtex::push_sprite(
-            &mut windowing,
+            &mut vx,
             &tex4,
             strtex::Sprite {
                 scale: 0.5,
@@ -1221,8 +1221,8 @@ mod tests {
             },
         );
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "strtex_and_dyntex_respect_draw_order", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "strtex_and_dyntex_respect_draw_order", img);
     }
 
     // ---
@@ -1230,11 +1230,11 @@ mod tests {
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         b.iter(|| {
-            windowing.draw_frame(&prspect);
+            vx.draw_frame(&prspect);
         });
     }
 }

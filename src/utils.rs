@@ -528,7 +528,7 @@ pub fn perfect_mapping_alignment(align: Align) -> AlignResult {
 }
 
 #[cfg(test)]
-pub fn assert_swapchain_eq(windowing: &mut VxDraw, name: &str, rgb: Vec<u8>) {
+pub fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
     use load_image::ImageDecoder;
     use std::io::Read;
@@ -546,8 +546,8 @@ pub fn assert_swapchain_eq(windowing: &mut VxDraw, name: &str, rgb: Vec<u8>) {
         let enc = load_image::png::PNGEncoder::new(file);
         enc.encode(
             &rgb,
-            windowing.swapconfig.extent.width,
-            windowing.swapconfig.extent.height,
+            vx.swapconfig.extent.width,
+            vx.swapconfig.extent.height,
             load_image::ColorType::RGB(8),
         )
         .expect("Unable to encode PNG file");
@@ -570,8 +570,8 @@ pub fn assert_swapchain_eq(windowing: &mut VxDraw, name: &str, rgb: Vec<u8>) {
 
     assert_eq![
         (
-            u64::from(windowing.swapconfig.extent.width),
-            u64::from(windowing.swapconfig.extent.height),
+            u64::from(vx.swapconfig.extent.width),
+            u64::from(vx.swapconfig.extent.height),
         ),
         dec.dimensions(),
         "The swapchain image and the preset correct image MUST be of the exact same size"
@@ -608,8 +608,8 @@ pub fn assert_swapchain_eq(windowing: &mut VxDraw, name: &str, rgb: Vec<u8>) {
         let enc = load_image::png::PNGEncoder::new(file);
         enc.encode(
             &diff,
-            windowing.swapconfig.extent.width,
-            windowing.swapconfig.extent.height,
+            vx.swapconfig.extent.width,
+            vx.swapconfig.extent.height,
             load_image::ColorType::RGB(8),
         )
         .expect("Unable to encode PNG file");
@@ -636,10 +636,7 @@ pub fn assert_swapchain_eq(windowing: &mut VxDraw, name: &str, rgb: Vec<u8>) {
 }
 
 #[cfg(test)]
-pub fn add_windmills(
-    windowing: &mut VxDraw,
-    rand_rotat: bool,
-) -> Vec<super::debtri::DebugTriangleHandle> {
+pub fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::DebugTriangleHandle> {
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     let mut rng = random::new(0);
@@ -656,26 +653,26 @@ pub fn add_windmills(
         }
         tri.scale = scale;
         tri.translation = (dx, dy);
-        debtris.push(windowing.debtri().push(tri));
+        debtris.push(vx.debtri().push(tri));
     }
     debtris
 }
 
-pub fn remove_windmills(windowing: &mut VxDraw) {
-    super::debtri::pop_many(windowing, 1000);
+pub fn remove_windmills(vx: &mut VxDraw) {
+    super::debtri::pop_many(vx, 1000);
 }
 
-pub fn add_4_screencorners(windowing: &mut VxDraw) {
-    windowing.debtri().push(super::debtri::DebugTriangle::from([
+pub fn add_4_screencorners(vx: &mut VxDraw) {
+    vx.debtri().push(super::debtri::DebugTriangle::from([
         -1.0f32, -1.0, 0.0, -1.0, -1.0, 0.0,
     ]));
-    windowing.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().push(super::debtri::DebugTriangle::from([
         -1.0f32, 1.0, 0.0, 1.0, -1.0, 0.0,
     ]));
-    windowing.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().push(super::debtri::DebugTriangle::from([
         1.0f32, -1.0, 0.0, -1.0, 1.0, 0.0,
     ]));
-    windowing.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().push(super::debtri::DebugTriangle::from([
         1.0f32, 1.0, 0.0, 1.0, 1.0, 0.0,
     ]));
 }

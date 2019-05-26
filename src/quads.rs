@@ -604,72 +604,68 @@ mod tests {
     #[test]
     fn simple_quad() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::default();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "simple_quad", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad", img);
     }
 
     #[test]
     fn simple_quad_translated() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::default();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        let handle = quads::push(&mut windowing, quad);
-        quads::translate(&mut windowing, &handle, (0.25, 0.4));
+        let handle = quads::push(&mut vx, quad);
+        quads::translate(&mut vx, &handle, (0.25, 0.4));
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "simple_quad_translated", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_translated", img);
     }
 
     #[test]
     fn simple_quad_rotated_with_exotic_origin() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::default();
         quad.scale = 0.2;
         quad.colors[0].0 = 255;
         quad.colors[3].0 = 255;
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
         let mut quad = quads::Quad::default();
         quad.scale = 0.2;
         quad.origin = (-1.0, -1.0);
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
         // when
-        quads::quad_rotate_all(&mut windowing, Deg(30.0));
+        quads::quad_rotate_all(&mut vx, Deg(30.0));
 
         // then
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(
-            &mut windowing,
-            "simple_quad_rotated_with_exotic_origin",
-            img,
-        );
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_rotated_with_exotic_origin", img);
     }
 
     #[test]
     fn a_bunch_of_quads() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
 
         let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
         let mut bottomleft = debtri::DebugTriangle::from([-1.0, -1.0, -1.0, 1.0, 1.0, 1.0]);
@@ -684,20 +680,20 @@ mod tests {
                     (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
                 bottomleft.translation =
                     (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                debtri::push(&mut windowing, topright);
-                debtri::push(&mut windowing, bottomleft);
+                debtri::push(&mut vx, topright);
+                debtri::push(&mut vx, bottomleft);
             }
         }
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "a_bunch_of_quads", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "a_bunch_of_quads", img);
     }
 
     #[test]
     fn overlapping_quads_respect_z_order() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&windowing);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
         let mut quad = quads::Quad {
             scale: 0.5,
             ..quads::Quad::default()
@@ -708,21 +704,21 @@ mod tests {
         }
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
         for i in 0..4 {
             quad.colors[i] = (255, 0, 0, 255);
         }
         quad.depth = 0.5;
         quad.translation = (0.0, 0.0);
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "overlapping_quads_respect_z_order", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
 
         // ---
 
-        quads::pop_n_quads(&mut windowing, 2);
+        quads::pop_n_quads(&mut vx, 2);
 
         // ---
 
@@ -731,16 +727,16 @@ mod tests {
         }
         quad.depth = 0.5;
         quad.translation = (0.0, 0.0);
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
         for i in 0..4 {
             quad.colors[i] = (0, 255, 0, 255);
         }
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
-        quads::push(&mut windowing, quad);
+        quads::push(&mut vx, quad);
 
-        let img = windowing.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut windowing, "overlapping_quads_respect_z_order", img);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
     }
 }
