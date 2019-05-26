@@ -726,6 +726,30 @@ impl<'a> Dyntex<'a> {
         }
         SpriteHandle(texture.0, index as usize)
     }
+
+    pub fn remove_texture(&mut self, texture: TextureHandle) {
+        let s = &mut*self.windowing;
+        let mut index = None;
+        for (idx, x) in s.draw_order.iter().enumerate() {
+            match x {
+                DrawType::DynamicTexture { id } if *id == texture.0 => {
+                    index = Some(idx);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(idx) = index {
+            s.draw_order.remove(idx);
+            // Can't delete here always because other textures may still be referring to later dyntexs,
+            // only when this is the last texture.
+            if s.dyntexs.len() == texture.0 + 1 {
+                let dyntex = s.dyntexs.pop().unwrap();
+                destroy_texture(s, dyntex);
+            }
+        }
+    }
+
 }
 
 // ---
@@ -789,28 +813,6 @@ impl Default for TextureOptions {
 }
 
 // ---
-
-pub fn remove_texture(s: &mut Windowing, texture: TextureHandle) {
-    let mut index = None;
-    for (idx, x) in s.draw_order.iter().enumerate() {
-        match x {
-            DrawType::DynamicTexture { id } if *id == texture.0 => {
-                index = Some(idx);
-                break;
-            }
-            _ => {}
-        }
-    }
-    if let Some(idx) = index {
-        s.draw_order.remove(idx);
-        // Can't delete here always because other textures may still be referring to later dyntexs,
-        // only when this is the last texture.
-        if s.dyntexs.len() == texture.0 + 1 {
-            let dyntex = s.dyntexs.pop().unwrap();
-            destroy_texture(s, dyntex);
-        }
-    }
-}
 
 fn destroy_texture(s: &mut Windowing, mut dyntex: SingleTexture) {
     unsafe {
@@ -1149,7 +1151,9 @@ mod tests {
             ..Sprite::default()
         };
 
-        windowing.dyntex().push_sprite(
+        let mut dyntex = windowing.dyntex();
+
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, -0.5),
@@ -1157,7 +1161,7 @@ mod tests {
                 ..base
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, -0.5),
@@ -1165,7 +1169,7 @@ mod tests {
                 ..base
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (-0.5, 0.5),
@@ -1173,7 +1177,7 @@ mod tests {
                 ..base
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tex,
             Sprite {
                 translation: (0.5, 0.5),
@@ -1361,15 +1365,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        windowing.dyntex().push_sprite(&forest, Sprite::default());
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(&forest, Sprite::default());
+        dyntex.push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1378,7 +1382,7 @@ mod tests {
             },
         );
 
-        remove_texture(&mut windowing, player);
+        dyntex.remove_texture(player);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(
@@ -1387,7 +1391,7 @@ mod tests {
             img,
         );
 
-        remove_texture(&mut windowing, tree);
+        windowing.dyntex().remove_texture(tree);
 
         draw_frame(&mut windowing, &prspect);
     }
@@ -1408,15 +1412,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        windowing.dyntex().push_sprite(&forest, Sprite::default());
-        windowing.dyntex().push_sprite(
+       dyntex.push_sprite(&forest, Sprite::default());
+       dyntex.push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        windowing.dyntex().push_sprite(
+       dyntex.push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1425,12 +1429,12 @@ mod tests {
             },
         );
 
-        remove_texture(&mut windowing, tree);
+        dyntex.remove_texture(tree);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_last_texture", img);
 
-        remove_texture(&mut windowing, player);
+        windowing.dyntex().remove_texture(player);
 
         draw_frame(&mut windowing, &prspect);
     }
