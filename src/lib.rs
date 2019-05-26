@@ -548,8 +548,16 @@ impl VxDraw {
         });
     }
 
+    /// Get a handle to all debug triangles, allows editing, removal, or creation of debtris
+    /// See [Debtri] for more details.
     pub fn debtri(&mut self) -> debtri::Debtri {
         debtri::Debtri::new(self)
+    }
+
+    /// Get a handle to all quads, allows editing, removal, or creation of new quads and
+    /// layers. See [Quads] for more details.
+    pub fn quads(&mut self) -> quads::Quads {
+        quads::Quads::new(self)
     }
 
     /// Get a handle to all dynamic textures, allows editing, removal, or creation of new dynamic
