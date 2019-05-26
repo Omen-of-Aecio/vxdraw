@@ -750,6 +750,17 @@ impl<'a> Dyntex<'a> {
         }
     }
 
+    pub fn remove_sprite(&mut self, handle: SpriteHandle) {
+        let s = &mut* self.windowing;
+        if let Some(dyntex) = s.dyntexs.get_mut(handle.0) {
+            let idx = (handle.1 * 4 * 10 * 4) as usize;
+            let zero = unsafe { std::mem::transmute::<f32, [u8; 4]>(0.0) };
+            for idx in (0..=3).map(|x| (x * 40) + idx) {
+                dyntex.mockbuffer[idx + 32..idx + 36].copy_from_slice(&zero);
+            }
+            dyntex.removed.push(handle.1);
+        }
+    }
 }
 
 // ---
@@ -847,17 +858,6 @@ fn destroy_texture(s: &mut Windowing, mut dyntex: SingleTexture) {
             .destroy_sampler(ManuallyDrop::into_inner(read(&dyntex.sampler)));
         s.device
             .destroy_image_view(ManuallyDrop::into_inner(read(&dyntex.image_view)));
-    }
-}
-
-pub fn remove_sprite(s: &mut Windowing, handle: SpriteHandle) {
-    if let Some(dyntex) = s.dyntexs.get_mut(handle.0) {
-        let idx = (handle.1 * 4 * 10 * 4) as usize;
-        let zero = unsafe { std::mem::transmute::<f32, [u8; 4]>(0.0) };
-        for idx in (0..=3).map(|x| (x * 40) + idx) {
-            dyntex.mockbuffer[idx + 32..idx + 36].copy_from_slice(&zero);
-        }
-        dyntex.removed.push(handle.1);
     }
 }
 
@@ -1327,15 +1327,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-        windowing.dyntex().push_sprite(&forest, Sprite::default());
-        let middle = windowing.dyntex().push_sprite(
+        dyntex.push_sprite(&forest, Sprite::default());
+        let middle = dyntex.push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-        windowing.dyntex().push_sprite(
+        dyntex.push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1344,7 +1344,7 @@ mod tests {
             },
         );
 
-        remove_sprite(&mut windowing, middle);
+        dyntex.remove_sprite(middle);
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "three_layer_scene_remove_middle", img);
@@ -1507,9 +1507,10 @@ mod tests {
         let options = TextureOptions::default();
         let testure = windowing.dyntex().push_texture(TESTURE, options);
 
+        let mut dyntex = windowing.dyntex();
         for _ in 0..100_000 {
-            let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
-            remove_sprite(&mut windowing, sprite);
+            let sprite = dyntex.push_sprite(&testure, Sprite::default());
+            dyntex.remove_sprite(sprite);
         }
 
         draw_frame(&mut windowing, &prspect);
@@ -1632,9 +1633,10 @@ mod tests {
         let options = TextureOptions::default();
         let testure = windowing.dyntex().push_texture(TESTURE, options);
 
+        let mut dyntex = windowing.dyntex();
         b.iter(|| {
-            let sprite = windowing.dyntex().push_sprite(&testure, Sprite::default());
-            remove_sprite(&mut windowing, sprite);
+            let sprite = dyntex.push_sprite(&testure, Sprite::default());
+            dyntex.remove_sprite(sprite);
         });
     }
 }
