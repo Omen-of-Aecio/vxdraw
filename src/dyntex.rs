@@ -1692,4 +1692,17 @@ mod tests {
             dyntex.remove_sprite(sprite);
         });
     }
+
+    #[bench]
+    fn bench_push_and_pop_texture(b: &mut Bencher) {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let mut dyntex = windowing.dyntex();
+
+        b.iter(|| {
+            let options = TextureOptions::default();
+            let testure = dyntex.push_texture(TESTURE, options);
+            dyntex.remove_texture(testure);
+        });
+    }
 }
