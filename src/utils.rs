@@ -543,19 +543,23 @@ pub fn assert_swapchain_eq(windowing: &mut Windowing, name: &str, rgb: Vec<u8>) 
     let diffname = String::from("_build/vxdraw_results/") + name + "#diff.png";
     let appendname = String::from("_build/vxdraw_results/") + name + "#sum.png";
 
-    let file = std::fs::File::create(&genname).expect("Unable to create file");
-    let enc = load_image::png::PNGEncoder::new(file);
-    enc.encode(
-        &rgb,
-        windowing.swapconfig.extent.width,
-        windowing.swapconfig.extent.height,
-        load_image::ColorType::RGB(8),
-    )
-    .expect("Unable to encode PNG file");
+    let store_generated_image = || {
+        let file = std::fs::File::create(&genname).expect("Unable to create file");
+
+        let enc = load_image::png::PNGEncoder::new(file);
+        enc.encode(
+            &rgb,
+            windowing.swapconfig.extent.width,
+            windowing.swapconfig.extent.height,
+            load_image::ColorType::RGB(8),
+        )
+        .expect("Unable to encode PNG file");
+    };
 
     let correct = match std::fs::File::open(&correctname) {
         Ok(x) => x,
         Err(err) => {
+            store_generated_image();
             std::process::Command::new("feh")
                 .args(&[genname])
                 .output()
@@ -597,6 +601,8 @@ pub fn assert_swapchain_eq(windowing: &mut Windowing, name: &str, rgb: Vec<u8>) 
     }
 
     if correct_bytes != rgb {
+        store_generated_image();
+
         let mut diff = Vec::with_capacity(correct_bytes.len());
         for (idx, byte) in correct_bytes.iter().enumerate() {
             diff.push(absdiff(*byte, rgb[idx]));
