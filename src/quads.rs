@@ -340,12 +340,6 @@ pub fn create_quad(s: &mut Windowing) {
             targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
         }
     };
-    let extent = image::Extent {
-        width: s.swapconfig.extent.width,
-        height: s.swapconfig.extent.height,
-        depth: 1,
-    }
-    .rect();
     let quad_render_pass = {
         let attachment = pass::Attachment {
             format: Some(s.format),
@@ -384,11 +378,8 @@ pub fn create_quad(s: &mut Windowing) {
         .expect("Can't create render pass")
     };
     let baked_states = pso::BakedStates {
-        viewport: Some(pso::Viewport {
-            rect: extent,
-            depth: (0.0..1.0),
-        }),
-        scissor: Some(extent),
+        viewport: None,
+        scissor: None,
         blend_color: None,
         depth_bounds: None,
     };

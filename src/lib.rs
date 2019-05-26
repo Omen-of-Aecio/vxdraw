@@ -23,7 +23,7 @@ use gfx_hal::{
     window::{Extent2D, PresentMode::*, Surface, Swapchain},
     Backend, Instance, SwapchainConfig,
 };
-use logger::{debug, info, trace, warn, InDebug, InDebugPretty, Logpass};
+use logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
 use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowBuilder};
@@ -124,14 +124,27 @@ fn set_window_size(window: &glutin::Window, show: ShowWindow) -> Extent2D {
 
 impl Windowing {
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
-        (self.swapconfig.extent.width, self.swapconfig.extent.height)
+        let dpi_factor = self.window.get_hidpi_factor();
+        let (w, h): (u32, u32) = self
+            .window
+            .get_inner_size()
+            .unwrap()
+            .to_physical(dpi_factor)
+            .into();
+        (w, h)
     }
 
     pub fn get_window_size_in_pixels_float(&self) -> (f32, f32) {
-        (
-            self.swapconfig.extent.width as f32,
-            self.swapconfig.extent.height as f32,
-        )
+        let pixels = self.get_window_size_in_pixels();
+        (pixels.0 as f32, pixels.1 as f32)
+    }
+
+    pub fn set_window_size(&mut self, size: (u32, u32)) {
+        let dpi_factor = self.window.get_hidpi_factor();
+        self.window.set_inner_size(LogicalSize {
+            width: size.0 as f64 / dpi_factor,
+            height: size.1 as f64 / dpi_factor,
+        });
     }
 
     pub fn dyntex(&mut self) -> dyntex::Dyntex {
@@ -528,20 +541,203 @@ pub fn draw_frame(s: &mut Windowing, view: &Matrix4<f32>) {
     draw_frame_internal(s, view, |_, _| {});
 }
 
+fn window_resized_recreate_swapchain(s: &mut Windowing) {
+    s.device.wait_idle().unwrap();
+    {
+        let (caps, _formats, _present_modes) = s.surf.compatibility(&s.adapter.physical_device);
+        debug![s.log, "vxdraw", "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
+    }
+
+    let pixels = s.get_window_size_in_pixels();
+    info![s.log, "vxdraw", "New window size"; "size" => InDebug(&pixels)];
+
+    s.swapconfig.extent = Extent2D {
+        width: pixels.0,
+        height: pixels.1,
+    };
+
+    let (swapchain, images) = unsafe {
+        s.device
+            .create_swapchain(&mut s.surf, s.swapconfig.clone(), None)
+    }
+    .expect("Unable to create swapchain");
+
+    unsafe {
+        s.device
+            .destroy_swapchain(std::mem::replace(&mut s.swapchain, swapchain));
+        // s.device .destroy_swapchain(ManuallyDrop::into_inner(core::ptr::read(&s.swapchain)));
+    }
+
+    let images_string = format!["{:#?}", images];
+    debug![s.log, "vxdraw", "Image information"; "images" => images_string];
+
+    let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
+    let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
+    let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
+    let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
+
+    let (image_views, framebuffers) = {
+        let image_views = images
+            .iter()
+            .map(|image| unsafe {
+                s.device
+                    .create_image_view(
+                        &image,
+                        image::ViewKind::D2,
+                        s.swapconfig.format, // MUST be identical to the image's format
+                        Swizzle::NO,
+                        image::SubresourceRange {
+                            aspects: format::Aspects::COLOR,
+                            levels: 0..1,
+                            layers: 0..1,
+                        },
+                    )
+                    .map_err(|_| "Couldn't create the image_view for the image!")
+            })
+            .collect::<Result<Vec<_>, &str>>()
+            .unwrap();
+
+        unsafe {
+            for _ in &image_views {
+                let mut depth_image = s
+                    .device
+                    .create_image(
+                        image::Kind::D2(
+                            s.swapconfig.extent.width,
+                            s.swapconfig.extent.height,
+                            1,
+                            1,
+                        ),
+                        1,
+                        format::Format::D32Sfloat,
+                        image::Tiling::Optimal,
+                        image::Usage::DEPTH_STENCIL_ATTACHMENT,
+                        image::ViewCapabilities::empty(),
+                    )
+                    .expect("Unable to create depth image");
+                let requirements = s.device.get_image_requirements(&depth_image);
+                let memory_type_id =
+                    find_memory_type_id(&s.adapter, requirements, memory::Properties::DEVICE_LOCAL);
+                let memory = s
+                    .device
+                    .allocate_memory(memory_type_id, requirements.size)
+                    .expect("Couldn't allocate image memory!");
+                s.device
+                    .bind_image_memory(&memory, 0, &mut depth_image)
+                    .expect("Couldn't bind the image memory!");
+                let image_view = s
+                    .device
+                    .create_image_view(
+                        &depth_image,
+                        image::ViewKind::D2,
+                        format::Format::D32Sfloat,
+                        format::Swizzle::NO,
+                        image::SubresourceRange {
+                            aspects: format::Aspects::DEPTH,
+                            levels: 0..1,
+                            layers: 0..1,
+                        },
+                    )
+                    .expect("Couldn't create the image view!");
+                depth_images.push(depth_image);
+                depth_image_views.push(image_view);
+                depth_image_requirements.push(requirements);
+                depth_image_memories.push(memory);
+            }
+        }
+        let framebuffers: Vec<<back::Backend as Backend>::Framebuffer> = {
+            image_views
+                .iter()
+                .enumerate()
+                .map(|(idx, image_view)| unsafe {
+                    s.device
+                        .create_framebuffer(
+                            &s.render_pass,
+                            vec![image_view, &depth_image_views[idx]],
+                            image::Extent {
+                                width: s.swapconfig.extent.width,
+                                height: s.swapconfig.extent.height,
+                                depth: 1,
+                            },
+                        )
+                        .map_err(|_| "Failed to create a framebuffer!")
+                })
+                .collect::<Result<Vec<_>, &str>>()
+                .unwrap()
+        };
+        (image_views, framebuffers)
+    };
+
+    unsafe {
+        for fb in s.framebuffers.drain(..) {
+            s.device.destroy_framebuffer(fb);
+        }
+        for iv in s.image_views.drain(..) {
+            s.device.destroy_image_view(iv);
+        }
+        for di in s.depth_images.drain(..) {
+            s.device.destroy_image(di);
+        }
+        for div in s.depth_image_views.drain(..) {
+            s.device.destroy_image_view(div);
+        }
+        for div in s.depth_image_memories.drain(..) {
+            s.device.free_memory(div);
+        }
+    }
+
+    {
+        let image_views = format!["{:?}", image_views];
+        debug![s.log, "vxdraw", "Created image views"; "image views" => image_views];
+    }
+
+    let framebuffers_string = format!["{:#?}", framebuffers];
+    debug![s.log, "vxdraw", "Framebuffer information"; "framebuffers" => framebuffers_string];
+
+    s.images = images;
+    s.framebuffers = framebuffers;
+    s.image_views = image_views;
+    s.depth_images = depth_images;
+    s.depth_image_views = depth_image_views;
+    s.depth_image_memories = depth_image_memories;
+    s.render_area.w = s.swapconfig.extent.width as i16;
+    s.render_area.h = s.swapconfig.extent.height as i16;
+
+    unsafe {
+        s.device.destroy_semaphore(std::mem::replace(
+            &mut s.acquire_image_semaphore_free,
+            s.device.create_semaphore().unwrap(),
+        ));
+    }
+}
+
 fn draw_frame_internal<T>(
     s: &mut Windowing,
     view: &Matrix4<f32>,
     postproc: fn(&mut Windowing, gfx_hal::window::SwapImageIndex) -> T,
 ) -> T {
     let postproc_res = unsafe {
-        let swap_image = s
-            .swapchain
-            .acquire_image(
-                u64::max_value(),
-                Some(&*s.acquire_image_semaphore_free),
-                None,
-            )
-            .unwrap();
+        let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match s.swapchain.acquire_image(
+            u64::max_value(),
+            Some(&*s.acquire_image_semaphore_free),
+            None,
+        ) {
+            Ok((index, None)) => (index, None),
+            Ok((_index, Some(_suboptimal))) => {
+                info![s.log, "vxdraw", "Swapchain in suboptimal state, recreating"];
+                window_resized_recreate_swapchain(s);
+                return draw_frame_internal(s, view, postproc);
+            }
+            Err(gfx_hal::window::AcquireError::OutOfDate) => {
+                info![s.log, "vxdraw", "Swapchain out of date, recreating"];
+                window_resized_recreate_swapchain(s);
+                return draw_frame_internal(s, view, postproc);
+            }
+            Err(err) => {
+                error![s.log, "vxdraw", "Acquire image error"; "error" => err];
+                unimplemented![]
+            }
+        };
 
         core::mem::swap(
             &mut *s.acquire_image_semaphore_free,
@@ -574,6 +770,20 @@ fn draw_frame_internal<T>(
                 ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0)),
             ];
             buffer.begin(false);
+            let rect = pso::Rect {
+                x: 0,
+                y: 0,
+                w: s.swapconfig.extent.width as i16,
+                h: s.swapconfig.extent.height as i16,
+            };
+            buffer.set_viewports(
+                0,
+                std::iter::once(pso::Viewport {
+                    rect,
+                    depth: (0.0..1.0),
+                }),
+            );
+            buffer.set_scissors(0, std::iter::once(&rect));
             for strtex in s.strtexs.iter() {
                 let image_barrier = memory::Barrier::Image {
                     states: (image::Access::empty(), image::Layout::General)
@@ -796,6 +1006,33 @@ mod tests {
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
 
         assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_with_test", img);
+    }
+
+    #[test]
+    fn setup_and_teardown_draw_resize() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&windowing);
+
+        let large_triangle = {
+            let mut tri = debtri::DebugTriangle::default();
+            tri.scale = 3.7;
+            tri
+        };
+        debtri::push(&mut windowing, large_triangle);
+
+        draw_frame(&mut windowing, &prspect);
+
+        windowing.set_window_size((1500, 1000));
+
+        draw_frame(&mut windowing, &prspect);
+        draw_frame(&mut windowing, &prspect);
+        draw_frame(&mut windowing, &prspect);
+
+        let prspect = gen_perspective(&windowing);
+        let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
+
+        assert_swapchain_eq(&mut windowing, "setup_and_teardown_draw_resize", img);
     }
 
     #[test]
