@@ -31,9 +31,7 @@ pub struct Dyntex<'a> {
 
 impl<'a> Dyntex<'a> {
     pub fn new(s: &'a mut Windowing) -> Self {
-        Self {
-            windowing: s,
-        }
+        Self { windowing: s }
     }
 
     /// Add a texture to the system
@@ -70,7 +68,8 @@ impl<'a> Dyntex<'a> {
         }
         .unwrap();
         let image_mem_reqs = unsafe { device.get_buffer_requirements(&image_upload_buffer) };
-        let memory_type_id = find_memory_type_id(&s.adapter, image_mem_reqs, Properties::CPU_VISIBLE);
+        let memory_type_id =
+            find_memory_type_id(&s.adapter, image_mem_reqs, Properties::CPU_VISIBLE);
         let image_upload_memory =
             unsafe { device.allocate_memory(memory_type_id, image_mem_reqs.size) }.unwrap();
         unsafe { device.bind_buffer_memory(&image_upload_memory, 0, &mut image_upload_buffer) }
@@ -728,7 +727,7 @@ impl<'a> Dyntex<'a> {
     }
 
     pub fn remove_texture(&mut self, texture: TextureHandle) {
-        let s = &mut*self.windowing;
+        let s = &mut *self.windowing;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
             match x {
@@ -751,7 +750,7 @@ impl<'a> Dyntex<'a> {
     }
 
     pub fn remove_sprite(&mut self, handle: SpriteHandle) {
-        let s = &mut* self.windowing;
+        let s = &mut *self.windowing;
         if let Some(dyntex) = s.dyntexs.get_mut(handle.0) {
             let idx = (handle.1 * 4 * 10 * 4) as usize;
             let zero = unsafe { std::mem::transmute::<f32, [u8; 4]>(0.0) };
@@ -763,7 +762,7 @@ impl<'a> Dyntex<'a> {
     }
 
     pub fn set_position(&mut self, handle: &SpriteHandle, position: (f32, f32)) {
-        let s = &mut* self.windowing;
+        let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
                 use std::mem::transmute;
@@ -788,7 +787,7 @@ impl<'a> Dyntex<'a> {
     }
 
     pub fn set_rotation(&mut self, handle: &SpriteHandle, rotation: f32) {
-        let s = &mut * self.windowing;
+        let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
                 use std::mem::transmute;
@@ -809,7 +808,7 @@ impl<'a> Dyntex<'a> {
 
     /// Translate all sprites that depend on a given texture
     pub fn sprite_translate_all(&mut self, tex: &TextureHandle, dxdy: (f32, f32)) {
-        let s = &mut * self.windowing;
+        let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
             unsafe {
                 for mock in stex.mockbuffer.chunks_mut(40) {
@@ -825,20 +824,21 @@ impl<'a> Dyntex<'a> {
 
     /// Rotate all sprites that depend on a given texture
     pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, tex: &TextureHandle, deg: T) {
-        let s = &mut * self.windowing;
+        let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
             unsafe {
                 for mock in stex.mockbuffer.chunks_mut(40) {
                     use std::mem::transmute;
                     let deggy = transmute::<&[u8], &[f32]>(&mock[28..32]);
-                    mock[28..32].copy_from_slice(&transmute::<f32, [u8; 4]>(deggy[0] + deg.into().0));
+                    mock[28..32]
+                        .copy_from_slice(&transmute::<f32, [u8; 4]>(deggy[0] + deg.into().0));
                 }
             }
         }
     }
 
     pub fn set_uv(&mut self, handle: &SpriteHandle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
-        let s = &mut * self.windowing;
+        let s = &mut *self.windowing;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             if handle.1 < stex.count as usize {
                 unsafe {
@@ -870,7 +870,7 @@ impl<'a> Dyntex<'a> {
         &mut self,
         mut uvs: impl Iterator<Item = (&'b SpriteHandle, (f32, f32), (f32, f32))>,
     ) {
-        let s = &mut * self.windowing;
+        let s = &mut *self.windowing;
         if let Some(first) = uvs.next() {
             if let Some(ref mut stex) = s.dyntexs.get_mut((first.0).0) {
                 let current_texture_handle = (first.0).0;
@@ -1107,7 +1107,9 @@ mod tests {
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless2x1k);
-        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
+        let tex = windowing
+            .dyntex()
+            .push_texture(LOGO, TextureOptions::default());
         windowing.dyntex().push_sprite(&tex, Sprite::default());
 
         let prspect = gen_perspective(&windowing);
@@ -1119,7 +1121,9 @@ mod tests {
     fn colored_simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
+        let tex = windowing
+            .dyntex()
+            .push_texture(LOGO, TextureOptions::default());
         windowing.dyntex().push_sprite(
             &tex,
             Sprite {
@@ -1444,15 +1448,15 @@ mod tests {
         let player = dyntex.push_texture(LOGO, options);
         let tree = dyntex.push_texture(TREE, options);
 
-       dyntex.push_sprite(&forest, Sprite::default());
-       dyntex.push_sprite(
+        dyntex.push_sprite(&forest, Sprite::default());
+        dyntex.push_sprite(
             &player,
             Sprite {
                 scale: 0.4,
                 ..Sprite::default()
             },
         );
-       dyntex.push_sprite(
+        dyntex.push_sprite(
             &tree,
             Sprite {
                 translation: (-0.3, 0.0),
@@ -1502,14 +1506,18 @@ mod tests {
         let testure = dyntex.push_texture(TESTURE, options);
         let sprite = dyntex.push_sprite(&testure, Sprite::default());
 
-        dyntex.set_uvs2(
-            std::iter::once((&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0))),
-        );
+        dyntex.set_uvs2(std::iter::once((
+            &sprite,
+            (1.0 / 3.0, 0.0),
+            (2.0 / 3.0, 1.0),
+        )));
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
 
-        windowing.dyntex().set_uv(&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
+        windowing
+            .dyntex()
+            .set_uv(&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
 
         let img = draw_frame_copy_framebuffer(&mut windowing, &prspect);
         utils::assert_swapchain_eq(&mut windowing, "change_of_uv_works_for_first", img);
@@ -1553,7 +1561,9 @@ mod tests {
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
+        let tex = windowing
+            .dyntex()
+            .push_texture(LOGO, TextureOptions::default());
         for i in 0..1000 {
             windowing.dyntex().push_sprite(
                 &tex,
@@ -1575,7 +1585,9 @@ mod tests {
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut windowing = init_window_with_vulkan(logger, ShowWindow::Headless1k);
-        let tex = windowing.dyntex().push_texture(LOGO, TextureOptions::default());
+        let tex = windowing
+            .dyntex()
+            .push_texture(LOGO, TextureOptions::default());
         let mut rng = random::new(0);
         for i in 0..1000 {
             let (dx, dy) = (
@@ -1650,9 +1662,9 @@ mod tests {
                 counter = 0;
             }
 
-            windowing.dyntex().set_uvs2(
-                fireballs.iter().map(|id| (id, uv_begin, uv_end)),
-            );
+            windowing
+                .dyntex()
+                .set_uvs2(fireballs.iter().map(|id| (id, uv_begin, uv_end)));
             draw_frame(&mut windowing, &prspect);
         });
     }
