@@ -1295,7 +1295,6 @@ pub fn fill_with_perlin_noise(s: &mut Windowing, blitid: &TextureHandle, seed: [
     }
 }
 
-#[cfg(feature = "gfx_tests")]
 #[cfg(test)]
 mod tests {
     use super::*;

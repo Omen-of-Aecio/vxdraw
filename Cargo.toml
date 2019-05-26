@@ -30,7 +30,6 @@ itertools = "0.8"
 default = ["vulkan"]
 dev = []
 dx12 = ["gfx-backend-dx12"]
-gfx_tests = []
 gl = ["gfx-backend-gl", "glutin"]
 metal = ["gfx-backend-metal"]
 vulkan = ["gfx-backend-vulkan"]

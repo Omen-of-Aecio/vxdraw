@@ -767,7 +767,6 @@ fn draw_frame_internal<T>(
 
 // ---
 
-#[cfg(feature = "gfx_tests")]
 #[cfg(test)]
 mod tests {
     use super::*;

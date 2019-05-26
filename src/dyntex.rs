@@ -1032,7 +1032,6 @@ fn destroy_texture(s: &mut Windowing, mut dyntex: SingleTexture) {
 
 // ---
 
-#[cfg(feature = "gfx_tests")]
 #[cfg(test)]
 mod tests {
     use super::*;

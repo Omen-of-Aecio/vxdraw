@@ -530,7 +530,7 @@ pub fn perfect_mapping_alignment(align: Align) -> AlignResult {
     }
 }
 
-#[cfg(feature = "gfx_tests")]
+#[cfg(test)]
 pub fn assert_swapchain_eq(windowing: &mut Windowing, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
     use load_image::ImageDecoder;
@@ -632,7 +632,6 @@ pub fn assert_swapchain_eq(windowing: &mut Windowing, name: &str, rgb: Vec<u8>) 
     }
 }
 
-#[cfg(feature = "gfx_tests")]
 #[cfg(test)]
 pub fn add_windmills(
     windowing: &mut Windowing,

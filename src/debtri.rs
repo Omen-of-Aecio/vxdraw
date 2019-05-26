@@ -635,7 +635,6 @@ pub fn rotate_all<T: Copy + Into<Rad<f32>>>(s: &mut Windowing, deg: T) {
     }
 }
 
-#[cfg(feature = "gfx_tests")]
 #[cfg(test)]
 mod tests {
     use super::*;
