@@ -566,6 +566,12 @@ impl VxDraw {
         dyntex::Dyntex::new(self)
     }
 
+    /// Get a handle to all streaming textures, allows editing, removal, or creation of new
+    /// streaming textures. See [Strtex] for more details.
+    pub fn strtex(&mut self) -> strtex::Strtex {
+        strtex::Strtex::new(self)
+    }
+
     /// Collect all pending input events to this window
     pub fn collect_input(&mut self) -> Vec<Event> {
         let mut inputs = vec![];
@@ -1176,28 +1182,24 @@ mod tests {
             ..dyntex::TextureOptions::default()
         };
         let tex1 = vx.dyntex().push_texture(TESTURE, options);
-        let tex2 = strtex::push_texture(
-            &mut vx,
-            strtex::TextureOptions {
-                depth_test: false,
-                width: 1,
-                height: 1,
-                ..strtex::TextureOptions::default()
-            },
-        );
+        let tex2 = vx.strtex().push_texture(strtex::TextureOptions {
+            depth_test: false,
+            width: 1,
+            height: 1,
+            ..strtex::TextureOptions::default()
+        });
         let tex3 = vx.dyntex().push_texture(TESTURE, options);
-        let tex4 = strtex::push_texture(
-            &mut vx,
-            strtex::TextureOptions {
-                depth_test: false,
-                width: 1,
-                height: 1,
-                ..strtex::TextureOptions::default()
-            },
-        );
+        let tex4 = vx.strtex().push_texture(strtex::TextureOptions {
+            depth_test: false,
+            width: 1,
+            height: 1,
+            ..strtex::TextureOptions::default()
+        });
 
-        strtex::streaming_texture_set_pixel(&mut vx, &tex2, 0, 0, (255, 0, 255, 255));
-        strtex::streaming_texture_set_pixel(&mut vx, &tex4, 0, 0, (255, 255, 255, 255));
+        vx.strtex()
+            .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
+        vx.strtex()
+            .streaming_texture_set_pixel(&tex4, 0, 0, (255, 255, 255, 255));
 
         vx.dyntex().push_sprite(
             &tex1,
@@ -1206,8 +1208,7 @@ mod tests {
                 ..dyntex::Sprite::default()
             },
         );
-        strtex::push_sprite(
-            &mut vx,
+        vx.strtex().push_sprite(
             &tex2,
             strtex::Sprite {
                 rotation: 0.5,
@@ -1221,8 +1222,7 @@ mod tests {
                 ..dyntex::Sprite::default()
             },
         );
-        strtex::push_sprite(
-            &mut vx,
+        vx.strtex().push_sprite(
             &tex4,
             strtex::Sprite {
                 scale: 0.5,
