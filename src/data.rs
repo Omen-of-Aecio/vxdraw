@@ -73,6 +73,7 @@ pub struct SingleTexture {
 }
 
 pub struct DebugTriangleData {
+    pub hidden: bool,
     pub capacity: u64,
     pub triangles_count: usize,
     pub triangles_buffer: <back::Backend as Backend>::Buffer,

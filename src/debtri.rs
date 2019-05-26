@@ -23,6 +23,16 @@ impl<'a> Debtri<'a> {
         Self { vx }
     }
 
+    /// Enable drawing of the debug triangles
+    pub fn show(&mut self) {
+        self.vx.debtris.as_mut().unwrap().hidden = false;
+    }
+
+    /// Disable drawing of the debug triangles
+    pub fn hide(&mut self) {
+        self.vx.debtris.as_mut().unwrap().hidden = true;
+    }
+
     /// Add a new debug triangle to the renderer
     ///
     /// The new triangle will be drawn upon the next invocation of `draw_frame`
@@ -577,6 +587,7 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
         make_vertex_buffer_with_data(s, &[0.0f32; TRI_BYTE_SIZE / 4 * 1000]);
 
     let debtris = DebugTriangleData {
+        hidden: false,
         capacity: dtreqs.size,
         triangles_count: 0,
         triangles_buffer: dtbuffer,
@@ -739,6 +750,25 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut vx, "windmills", img);
+    }
+
+    #[test]
+    fn windmills_hidden() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        utils::add_windmills(&mut vx, false);
+
+        vx.debtri().hide();
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "windmills_hidden", img);
+
+        vx.debtri().show();
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "windmills_hidden_now_shown", img);
     }
 
     #[test]

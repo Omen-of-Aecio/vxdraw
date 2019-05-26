@@ -973,19 +973,21 @@ impl VxDraw {
                     }
 
                     if let Some(ref debtris) = self.debtris {
-                        enc.bind_graphics_pipeline(&debtris.pipeline);
-                        let ratio = self.swapconfig.extent.width as f32
-                            / self.swapconfig.extent.height as f32;
-                        enc.push_graphics_constants(
-                            &debtris.pipeline_layout,
-                            pso::ShaderStageFlags::VERTEX,
-                            0,
-                            &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
-                        );
-                        let count = debtris.triangles_count;
-                        let buffers: ArrayVec<[_; 1]> = [(&debtris.triangles_buffer, 0)].into();
-                        enc.bind_vertex_buffers(0, buffers);
-                        enc.draw(0..(count * 3) as u32, 0..1);
+                        if !debtris.hidden {
+                            enc.bind_graphics_pipeline(&debtris.pipeline);
+                            let ratio = self.swapconfig.extent.width as f32
+                                / self.swapconfig.extent.height as f32;
+                            enc.push_graphics_constants(
+                                &debtris.pipeline_layout,
+                                pso::ShaderStageFlags::VERTEX,
+                                0,
+                                &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
+                            );
+                            let count = debtris.triangles_count;
+                            let buffers: ArrayVec<[_; 1]> = [(&debtris.triangles_buffer, 0)].into();
+                            enc.bind_vertex_buffers(0, buffers);
+                            enc.draw(0..(count * 3) as u32, 0..1);
+                        }
                     }
                 }
                 buffer.finish();
