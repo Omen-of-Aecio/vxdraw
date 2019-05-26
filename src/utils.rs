@@ -636,7 +636,7 @@ pub fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
 }
 
 #[cfg(test)]
-pub fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::DebugTriangleHandle> {
+pub fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::Handle> {
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     let mut rng = random::new(0);

@@ -26,7 +26,7 @@ impl<'a> Debtri<'a> {
     /// Add a new debug triangle to the renderer
     ///
     /// The new triangle will be drawn upon the next invocation of `draw_frame`
-    pub fn push(&mut self, triangle: DebugTriangle) -> DebugTriangleHandle {
+    pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
         let s = &mut *self.vx;
         let overrun = if let Some(ref mut debtris) = s.debtris {
             Some((debtris.triangles_count + 1) * TRI_BYTE_SIZE > debtris.capacity as usize)
@@ -66,7 +66,7 @@ impl<'a> Debtri<'a> {
                     .release_mapping_writer(data_target)
                     .expect("Couldn't release the mapping writer!");
             }
-            DebugTriangleHandle(debtris.triangles_count - 1)
+            Handle(debtris.triangles_count - 1)
         } else {
             unreachable![]
         }
@@ -109,7 +109,7 @@ impl<'a> Debtri<'a> {
 
     // ---
 
-    pub fn set_position(&mut self, inst: &DebugTriangleHandle, pos: (f32, f32)) {
+    pub fn set_position(&mut self, inst: &Handle, pos: (f32, f32)) {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
@@ -141,7 +141,7 @@ impl<'a> Debtri<'a> {
         }
     }
 
-    pub fn set_scale(&mut self, inst: &DebugTriangleHandle, scale: f32) {
+    pub fn set_scale(&mut self, inst: &Handle, scale: f32) {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
@@ -173,7 +173,7 @@ impl<'a> Debtri<'a> {
         }
     }
 
-    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &DebugTriangleHandle, deg: T) {
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &Handle, deg: T) {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
@@ -206,7 +206,7 @@ impl<'a> Debtri<'a> {
         }
     }
 
-    pub fn set_color(&mut self, inst: &DebugTriangleHandle, rgba: [u8; 4]) {
+    pub fn set_color(&mut self, inst: &Handle, rgba: [u8; 4]) {
         let vx = &mut *self.vx;
         let inst = inst.0;
         let device = &vx.device;
@@ -287,7 +287,7 @@ impl<'a> Debtri<'a> {
     }
 }
 
-pub struct DebugTriangleHandle(usize);
+pub struct Handle(usize);
 
 #[derive(Clone, Copy)]
 pub struct DebugTriangle {
