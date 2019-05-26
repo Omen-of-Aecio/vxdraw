@@ -1,3 +1,35 @@
+//! Methods and types to control debug triangles
+//!
+//! A debug triangle is a triangle that ignores all transformations and is always shown on the
+//! screen (except when a triangle's coordinates are outisde the screen). Debug triangles are meant
+//! to be used to quickly find out if a state has been reached (for instance, change the color of a
+//! debug triangle if collision is detected).
+//!
+//! Debug triangles always ignore all layers, and are always shown on top of the entire scene.
+//!
+//! See [debtri::Debtri] for all operations supported on debug triangles.
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use logger::{Generic, GenericLogger, Logger};
+//! use vxdraw::{ShowWindow, VxDraw};
+//! fn main() {
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!
+//!     let tri = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
+//!
+//!     // Turn the triangle white
+//!     vx.debtri().set_color(&tri, [255, 255, 255, 255]);
+//!
+//!     // Rotate the triangle 90 degrees (counter clockwise)
+//!     vx.debtri().set_rotation(&tri, Deg(90.0));
+//!
+//!     // Draw the frame with the identity matrix transformation (meaning no transformations)
+//!     vx.draw_frame(&Matrix4::identity());
+//!
+//!     // Sleep here so the window does not instantly disappear
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
 use super::utils::*;
 use crate::data::{DebugTriangleData, VxDraw};
 use cgmath::Rad;
@@ -14,11 +46,18 @@ use std::mem::{size_of, transmute, ManuallyDrop};
 
 // ---
 
+/// Debug triangles accessor object returned by [VxDraw::debtri]
+///
+/// Merely used for grouping together all operations on debug triangles. This is a very cheap
+/// object to create/destroy (it really does nothing).
 pub struct Debtri<'a> {
     vx: &'a mut VxDraw,
 }
 
 impl<'a> Debtri<'a> {
+    /// Spawn the accessor object from [VxDraw].
+    ///
+    /// This is a very cheap operation.
     pub fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
@@ -35,7 +74,7 @@ impl<'a> Debtri<'a> {
 
     /// Add a new debug triangle to the renderer
     ///
-    /// The new triangle will be drawn upon the next invocation of `draw_frame`
+    /// The new triangle will be drawn upon the next draw.
     pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
         let s = &mut *self.vx;
         let overrun = if let Some(ref mut debtris) = s.debtris {
@@ -83,6 +122,8 @@ impl<'a> Debtri<'a> {
     }
 
     /// Remove the last added debug triangle from rendering
+    ///
+    /// Has no effect if there are no debug triangles.
     pub fn pop(&mut self) {
         let vx = &mut *self.vx;
         if let Some(ref mut debtris) = vx.debtris {
@@ -101,6 +142,9 @@ impl<'a> Debtri<'a> {
     }
 
     /// Remove the last N added debug triangle from rendering
+    ///
+    /// If the amount to pop is bigger than the amount of debug triangles, then all debug triangles
+    /// wil be removed.
     pub fn pop_many(&mut self, n: usize) {
         if let Some(ref mut debtris) = self.vx.debtris {
             unsafe {
@@ -119,6 +163,7 @@ impl<'a> Debtri<'a> {
 
     // ---
 
+    /// Set the position of a debug triangle
     pub fn set_position(&mut self, inst: &Handle, pos: (f32, f32)) {
         let vx = &mut *self.vx;
         let inst = inst.0;
@@ -151,6 +196,7 @@ impl<'a> Debtri<'a> {
         }
     }
 
+    /// Set the scale of a debug triangle
     pub fn set_scale(&mut self, inst: &Handle, scale: f32) {
         let vx = &mut *self.vx;
         let inst = inst.0;
@@ -183,6 +229,7 @@ impl<'a> Debtri<'a> {
         }
     }
 
+    /// Set the rotation of a debug triangle
     pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &Handle, deg: T) {
         let vx = &mut *self.vx;
         let inst = inst.0;
@@ -216,6 +263,7 @@ impl<'a> Debtri<'a> {
         }
     }
 
+    /// Set a solid color of a debug triangle
     pub fn set_color(&mut self, inst: &Handle, rgba: [u8; 4]) {
         let vx = &mut *self.vx;
         let inst = inst.0;
@@ -297,8 +345,12 @@ impl<'a> Debtri<'a> {
     }
 }
 
+/// Handle to a debug triangle
+///
+/// Used to update/remove a debug triangle.
 pub struct Handle(usize);
 
+/// Information used when creating/updating a debug triangle
 #[derive(Clone, Copy)]
 pub struct DebugTriangle {
     pub origin: [(f32, f32); 3],

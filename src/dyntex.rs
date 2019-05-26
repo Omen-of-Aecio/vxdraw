@@ -1,4 +1,4 @@
-//! This module contains methods to control dynamic textures
+//! Methods and types to control dynamic textures
 //!
 //! A dynamic texture is a texture from which you can spawn sprites. The `dynamic` part of the name
 //! refers to the sprites. A sprite is a rectangular view into the texture. The sprites can be

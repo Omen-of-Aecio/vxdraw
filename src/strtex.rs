@@ -1,3 +1,10 @@
+//! Methods and types to control streaming textures
+//!
+//! A streaming texture is a texture from which you can spawn sprites. The `streaming` part of
+//! the name refers to the texture. The individual pixels of the texture can be read and written
+//! during runtime.
+//!
+//! To display this texture we create sprites, which are rectangular views of the texture.
 use super::utils::*;
 use crate::data::{DrawType, StreamingTexture, VxDraw};
 use arrayvec::ArrayVec;

@@ -1,3 +1,8 @@
+//! Methods and types to control quads
+//!
+//! A quad is a renderable consisting of 4 points. Each point has a color and position associated
+//! with it. By using different colors in the different points, the colors will "blend" into each
+//! other. Opacity is also supported on quads.
 use super::utils::*;
 use crate::data::{ColoredQuadList, DrawType, VxDraw};
 use cgmath::Rad;

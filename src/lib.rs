@@ -6,7 +6,8 @@
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(), ShowWindow::Enable);
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!     vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
 //!
@@ -44,7 +45,7 @@ use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowBuilder};
 
-pub mod data;
+mod data;
 pub mod debtri;
 pub mod dyntex;
 pub mod quads;
@@ -549,25 +550,25 @@ impl VxDraw {
     }
 
     /// Get a handle to all debug triangles, allows editing, removal, or creation of debtris
-    /// See [Debtri] for more details.
+    /// See [debtri::Debtri] for more details.
     pub fn debtri(&mut self) -> debtri::Debtri {
         debtri::Debtri::new(self)
     }
 
     /// Get a handle to all quads, allows editing, removal, or creation of new quads and
-    /// layers. See [Quads] for more details.
+    /// layers. See [quads::Quads] for more details.
     pub fn quads(&mut self) -> quads::Quads {
         quads::Quads::new(self)
     }
 
     /// Get a handle to all dynamic textures, allows editing, removal, or creation of new dynamic
-    /// textures. See [Dyntex] for more details.
+    /// textures. See [dyntex::Dyntex] for more details.
     pub fn dyntex(&mut self) -> dyntex::Dyntex {
         dyntex::Dyntex::new(self)
     }
 
     /// Get a handle to all streaming textures, allows editing, removal, or creation of new
-    /// streaming textures. See [Strtex] for more details.
+    /// streaming textures. See [strtex::Strtex] for more details.
     pub fn strtex(&mut self) -> strtex::Strtex {
         strtex::Strtex::new(self)
     }
