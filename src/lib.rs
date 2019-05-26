@@ -7,7 +7,7 @@
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(), ShowWindow::Enable);
-//!     vxdraw::debtri::push(&mut vx, vxdraw::debtri::DebugTriangle::default());
+//!     vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
 //!
 //!     // So the window does not instantly disappear
@@ -549,6 +549,10 @@ impl VxDraw {
         });
     }
 
+    pub fn debtri(&mut self) -> debtri::Debtri {
+        debtri::Debtri::new(self)
+    }
+
     /// Get a handle to all dynamic textures, allows editing, removal, or creation of new dynamic
     /// textures. See [Dyntex] for more details.
     pub fn dyntex(&mut self) -> dyntex::Dyntex {
@@ -1067,7 +1071,7 @@ mod tests {
             tri.scale = 3.7;
             tri
         };
-        debtri::push(&mut windowing, large_triangle);
+        windowing.debtri().push(large_triangle);
 
         windowing.draw_frame(&prspect);
 
@@ -1111,7 +1115,8 @@ mod tests {
         let prspect = gen_perspective(&windowing);
 
         let _tri = make_centered_equilateral_triangle();
-        debtri::push(&mut windowing, debtri::DebugTriangle::default());
+        let mut debtri = windowing.debtri();
+        debtri.push(debtri::DebugTriangle::default());
         for i in 0..=360 {
             if i % 2 == 0 {
                 add_4_screencorners(&mut windowing);

@@ -14,6 +14,65 @@ use std::mem::{size_of, transmute, ManuallyDrop};
 
 // ---
 
+pub struct Debtri<'a> {
+    vx: &'a mut VxDraw,
+}
+
+impl<'a> Debtri<'a> {
+    pub fn new(vx: &'a mut VxDraw) -> Self {
+        Self { vx }
+    }
+
+    /// Add a new debug triangle to the renderer
+    ///
+    /// The new triangle will be drawn upon the next invocation of `draw_frame`
+    pub fn push(&mut self, triangle: DebugTriangle) -> DebugTriangleHandle {
+        let s = &mut *self.vx;
+        let overrun = if let Some(ref mut debtris) = s.debtris {
+            Some((debtris.triangles_count + 1) * TRI_BYTE_SIZE > debtris.capacity as usize)
+        } else {
+            None
+        };
+        if let Some(overrun) = overrun {
+            // TODO Do reallocation here
+            assert_eq![false, overrun];
+        }
+        if let Some(ref mut debtris) = s.debtris {
+            let device = &s.device;
+            unsafe {
+                let mut data_target = device
+                    .acquire_mapping_writer(&debtris.triangles_memory, 0..debtris.capacity)
+                    .expect("Failed to acquire a memory writer!");
+                let idx = debtris.triangles_count * TRI_BYTE_SIZE / size_of::<f32>();
+
+                for (i, idx) in [idx, idx + 7, idx + 14].iter().enumerate() {
+                    data_target[*idx..*idx + 2]
+                        .copy_from_slice(&[triangle.origin[i].0, triangle.origin[i].1]);
+                    data_target[*idx + 2..*idx + 3].copy_from_slice(
+                        &transmute::<[u8; 4], [f32; 1]>([
+                            triangle.colors_rgba[i].0,
+                            triangle.colors_rgba[i].1,
+                            triangle.colors_rgba[i].2,
+                            triangle.colors_rgba[i].3,
+                        ]),
+                    );
+                    data_target[*idx + 3..*idx + 5]
+                        .copy_from_slice(&[triangle.translation.0, triangle.translation.1]);
+                    data_target[*idx + 5..*idx + 6].copy_from_slice(&[triangle.rotation]);
+                    data_target[*idx + 6..*idx + 7].copy_from_slice(&[triangle.scale]);
+                }
+                debtris.triangles_count += 1;
+                device
+                    .release_mapping_writer(data_target)
+                    .expect("Couldn't release the mapping writer!");
+            }
+            DebugTriangleHandle(debtris.triangles_count - 1)
+        } else {
+            unreachable![]
+        }
+    }
+}
+
 pub struct DebugTriangleHandle(usize);
 
 #[derive(Clone, Copy)]
@@ -318,52 +377,6 @@ pub fn create_debug_triangle(s: &mut VxDraw) {
     s.debtris = Some(debtris);
 }
 
-/// Add a new debug triangle to the renderer
-///
-/// The new triangle will be drawn upon the next invocation of `draw_frame`
-pub fn push(s: &mut VxDraw, triangle: DebugTriangle) -> DebugTriangleHandle {
-    let overrun = if let Some(ref mut debtris) = s.debtris {
-        Some((debtris.triangles_count + 1) * TRI_BYTE_SIZE > debtris.capacity as usize)
-    } else {
-        None
-    };
-    if let Some(overrun) = overrun {
-        // TODO Do reallocation here
-        assert_eq![false, overrun];
-    }
-    if let Some(ref mut debtris) = s.debtris {
-        let device = &s.device;
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer(&debtris.triangles_memory, 0..debtris.capacity)
-                .expect("Failed to acquire a memory writer!");
-            let idx = debtris.triangles_count * TRI_BYTE_SIZE / size_of::<f32>();
-
-            for (i, idx) in [idx, idx + 7, idx + 14].iter().enumerate() {
-                data_target[*idx..*idx + 2]
-                    .copy_from_slice(&[triangle.origin[i].0, triangle.origin[i].1]);
-                data_target[*idx + 2..*idx + 3].copy_from_slice(&transmute::<[u8; 4], [f32; 1]>([
-                    triangle.colors_rgba[i].0,
-                    triangle.colors_rgba[i].1,
-                    triangle.colors_rgba[i].2,
-                    triangle.colors_rgba[i].3,
-                ]));
-                data_target[*idx + 3..*idx + 5]
-                    .copy_from_slice(&[triangle.translation.0, triangle.translation.1]);
-                data_target[*idx + 5..*idx + 6].copy_from_slice(&[triangle.rotation]);
-                data_target[*idx + 6..*idx + 7].copy_from_slice(&[triangle.scale]);
-            }
-            debtris.triangles_count += 1;
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-        DebugTriangleHandle(debtris.triangles_count - 1)
-    } else {
-        unreachable![]
-    }
-}
-
 /// Remove the last added debug triangle from rendering
 pub fn pop(s: &mut VxDraw) {
     if let Some(ref mut debtris) = s.debtris {
@@ -588,7 +601,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
-        push(&mut windowing, tri);
+        windowing.debtri().push(tri);
         utils::add_4_screencorners(&mut windowing);
 
         let img = windowing.draw_frame_copy_framebuffer(&prspect);
@@ -603,7 +616,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
-        let handle = push(&mut windowing, tri);
+        let handle = windowing.debtri().push(tri);
         set_scale(&mut windowing, &handle, 0.1);
         set_rotation(&mut windowing, &handle, Deg(30.0));
         set_position(&mut windowing, &handle, (0.25, 0.5));
@@ -621,7 +634,7 @@ mod tests {
         let prspect = gen_perspective(&windowing);
         let tri = DebugTriangle::default();
 
-        let idx = push(&mut windowing, tri);
+        let idx = windowing.debtri().push(tri);
         set_color(&mut windowing, &idx, [255, 0, 255, 255]);
 
         let img = windowing.draw_frame_copy_framebuffer(&prspect);
@@ -639,7 +652,7 @@ mod tests {
             for j in [-1f32, 1f32].iter() {
                 let mut tri = DebugTriangle::default();
                 tri.translation = (*i, *j);
-                let _idx = push(&mut windowing, tri);
+                let _idx = windowing.debtri().push(tri);
             }
         }
 
@@ -658,7 +671,7 @@ mod tests {
             for j in [-1f32, 1f32].iter() {
                 let mut tri = DebugTriangle::default();
                 tri.translation = (*i, *j);
-                let _idx = push(&mut windowing, tri);
+                let _idx = windowing.debtri().push(tri);
             }
         }
 
@@ -677,7 +690,7 @@ mod tests {
             let mut tri = DebugTriangle::default();
             tri.translation = ((i as f32).cos(), (i as f32).sin());
             tri.scale = 0.1f32;
-            let _idx = push(&mut windowing, tri);
+            let _idx = windowing.debtri().push(tri);
         }
 
         let img = windowing.draw_frame_copy_framebuffer(&prspect);
@@ -699,7 +712,7 @@ mod tests {
         for j in 0..31 {
             for i in 0..31 {
                 tri.translation = (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                push(&mut windowing, tri);
+                windowing.debtri().push(tri);
             }
         }
 
@@ -791,7 +804,7 @@ mod tests {
         let mut windowing = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&windowing);
 
-        push(&mut windowing, DebugTriangle::default());
+        windowing.debtri().push(DebugTriangle::default());
         utils::add_4_screencorners(&mut windowing);
 
         b.iter(|| {

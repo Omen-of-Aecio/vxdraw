@@ -656,7 +656,7 @@ pub fn add_windmills(
         }
         tri.scale = scale;
         tri.translation = (dx, dy);
-        debtris.push(super::debtri::push(windowing, tri));
+        debtris.push(windowing.debtri().push(tri));
     }
     debtris
 }
@@ -666,20 +666,16 @@ pub fn remove_windmills(windowing: &mut VxDraw) {
 }
 
 pub fn add_4_screencorners(windowing: &mut VxDraw) {
-    super::debtri::push(
-        windowing,
-        super::debtri::DebugTriangle::from([-1.0f32, -1.0, 0.0, -1.0, -1.0, 0.0]),
-    );
-    super::debtri::push(
-        windowing,
-        super::debtri::DebugTriangle::from([-1.0f32, 1.0, 0.0, 1.0, -1.0, 0.0]),
-    );
-    super::debtri::push(
-        windowing,
-        super::debtri::DebugTriangle::from([1.0f32, -1.0, 0.0, -1.0, 1.0, 0.0]),
-    );
-    super::debtri::push(
-        windowing,
-        super::debtri::DebugTriangle::from([1.0f32, 1.0, 0.0, 1.0, 1.0, 0.0]),
-    );
+    windowing.debtri().push(super::debtri::DebugTriangle::from([
+        -1.0f32, -1.0, 0.0, -1.0, -1.0, 0.0,
+    ]));
+    windowing.debtri().push(super::debtri::DebugTriangle::from([
+        -1.0f32, 1.0, 0.0, 1.0, -1.0, 0.0,
+    ]));
+    windowing.debtri().push(super::debtri::DebugTriangle::from([
+        1.0f32, -1.0, 0.0, -1.0, 1.0, 0.0,
+    ]));
+    windowing.debtri().push(super::debtri::DebugTriangle::from([
+        1.0f32, 1.0, 0.0, 1.0, 1.0, 0.0,
+    ]));
 }
