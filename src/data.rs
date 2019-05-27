@@ -69,11 +69,25 @@ pub struct SingleTexture {
 
 pub struct DebugTriangleData {
     pub hidden: bool,
-    pub capacity: u64,
     pub triangles_count: usize,
-    pub triangles_buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    pub triangles_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub memory_requirements: gfx_hal::memory::Requirements,
+
+    pub posbuf_touch: u32,
+    pub colbuf_touch: u32,
+    pub tranbuf_touch: u32,
+    pub rotbuf_touch: u32,
+    pub scalebuf_touch: u32,
+
+    pub posbuffer: Vec<f32>,   // 6 per triangle
+    pub colbuffer: Vec<u8>,    // 12 per triangle
+    pub tranbuffer: Vec<f32>,  // 6 per triangle
+    pub rotbuffer: Vec<f32>,   // 3 per triangle
+    pub scalebuffer: Vec<f32>, // 3 per triangle
+
+    pub posbuf: Vec<super::utils::ResizBuf>,
+    pub colbuf: Vec<super::utils::ResizBuf>,
+    pub tranbuf: Vec<super::utils::ResizBuf>,
+    pub rotbuf: Vec<super::utils::ResizBuf>,
+    pub scalebuf: Vec<super::utils::ResizBuf>,
 
     pub descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
     pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
@@ -199,10 +213,21 @@ impl Drop for VxDraw {
         unsafe {
             {
                 let debtris = &mut self.debtris;
-                self.device
-                    .destroy_buffer(ManuallyDrop::into_inner(read(&debtris.triangles_buffer)));
-                self.device
-                    .free_memory(ManuallyDrop::into_inner(read(&debtris.triangles_memory)));
+                for mut posbuf in debtris.posbuf.drain(..) {
+                    posbuf.destroy(&self.device);
+                }
+                for mut colbuf in debtris.colbuf.drain(..) {
+                    colbuf.destroy(&self.device);
+                }
+                for mut tranbuf in debtris.tranbuf.drain(..) {
+                    tranbuf.destroy(&self.device);
+                }
+                for mut rotbuf in debtris.rotbuf.drain(..) {
+                    rotbuf.destroy(&self.device);
+                }
+                for mut scalebuf in debtris.scalebuf.drain(..) {
+                    scalebuf.destroy(&self.device);
+                }
                 for dsl in debtris.descriptor_set.drain(..) {
                     self.device.destroy_descriptor_set_layout(dsl);
                 }

@@ -23,7 +23,7 @@
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
 //!     let handle = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
@@ -495,7 +495,7 @@ impl VxDraw {
             .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
             .collect();
 
-        let debtris = debtri::create_debug_triangle(&device, &adapter, &format);
+        let debtris = debtri::create_debug_triangle(&device, &adapter, &format, images.len());
 
         VxDraw {
             acquire_image_semaphores,
@@ -1023,10 +1023,62 @@ impl VxDraw {
                             0,
                             &(std::mem::transmute::<f32, [u32; 1]>(ratio)),
                         );
+                        if self.debtris.posbuf_touch != 0 {
+                            self.debtris.posbuf[self.current_frame]
+                                .copy_from_slice_and_maybe_resize(
+                                    &self.device,
+                                    &self.adapter,
+                                    &self.debtris.posbuffer[..],
+                                );
+                            self.debtris.posbuf_touch -= 1;
+                        }
+                        if self.debtris.colbuf_touch != 0 {
+                            self.debtris.colbuf[self.current_frame]
+                                .copy_from_slice_and_maybe_resize(
+                                    &self.device,
+                                    &self.adapter,
+                                    &self.debtris.colbuffer[..],
+                                );
+                            self.debtris.colbuf_touch -= 1;
+                        }
+                        if self.debtris.tranbuf_touch != 0 {
+                            self.debtris.tranbuf[self.current_frame]
+                                .copy_from_slice_and_maybe_resize(
+                                    &self.device,
+                                    &self.adapter,
+                                    &self.debtris.tranbuffer[..],
+                                );
+                            self.debtris.tranbuf_touch -= 1;
+                        }
+                        if self.debtris.rotbuf_touch != 0 {
+                            self.debtris.rotbuf[self.current_frame]
+                                .copy_from_slice_and_maybe_resize(
+                                    &self.device,
+                                    &self.adapter,
+                                    &self.debtris.rotbuffer[..],
+                                );
+                            self.debtris.rotbuf_touch -= 1;
+                        }
+                        if self.debtris.scalebuf_touch != 0 {
+                            self.debtris.scalebuf[self.current_frame]
+                                .copy_from_slice_and_maybe_resize(
+                                    &self.device,
+                                    &self.adapter,
+                                    &self.debtris.scalebuffer[..],
+                                );
+                            self.debtris.scalebuf_touch -= 1;
+                        }
                         let count = self.debtris.triangles_count;
-                        let buffers: ArrayVec<[_; 1]> =
-                            [(&*self.debtris.triangles_buffer, 0)].into();
+                        let buffers: ArrayVec<[_; 5]> = [
+                            (self.debtris.posbuf[self.current_frame].buffer(), 0),
+                            (self.debtris.colbuf[self.current_frame].buffer(), 0),
+                            (self.debtris.tranbuf[self.current_frame].buffer(), 0),
+                            (self.debtris.rotbuf[self.current_frame].buffer(), 0),
+                            (self.debtris.scalebuf[self.current_frame].buffer(), 0),
+                        ]
+                        .into();
                         enc.bind_vertex_buffers(0, buffers);
+
                         enc.draw(0..(count * 3) as u32, 0..1);
                     }
                 }
