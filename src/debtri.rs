@@ -176,65 +176,73 @@ impl<'a> Debtri<'a> {
     // ---
 
     /// Change the vertices of the model-space
-    pub fn set_vertices(&mut self, handle: &Handle, points: [(f32, f32); 3]) {
+    ///
+    /// The name `set_deform` is used to keep consistent with the verb `deform` and `deform_all`.
+    /// What this function does is just setting absolute vertex positions for each vertex in the
+    /// triangle.
+    pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
         for (idx, vertex) in self.vx.debtris.posbuffer[handle.0 * 6..(handle.0 + 1) * 6]
             .chunks_exact_mut(2)
             .enumerate()
         {
-            vertex[idx] = points[idx].0;
-            vertex[idx + 1] = points[idx].1;
+            vertex[0] = points[idx].0;
+            vertex[1] = points[idx].1;
         }
     }
 
     /// Set a solid color of a debug triangle
-    pub fn set_color(&mut self, inst: &Handle, rgba: [u8; 4]) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.colbuf_touch = vx.swapconfig.image_count;
-
-        let idx = inst.0 * 12;
+    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 4]) {
+        self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for vtx in 0..3 {
             for (coli, cmpnt) in rgba.iter().enumerate() {
-                debtris.colbuffer[idx + vtx * 4 + coli] = *cmpnt;
+                self.vx.debtris.colbuffer[handle.0 * 12 + vtx * 4 + coli] = *cmpnt;
             }
         }
     }
 
     /// Set the position of a debug triangle
-    pub fn set_position(&mut self, inst: &Handle, pos: (f32, f32)) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.tranbuf_touch = vx.swapconfig.image_count;
-
-        let idx = inst.0 * 3 * 2;
+    pub fn set_position(&mut self, handle: &Handle, pos: (f32, f32)) {
+        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        let idx = handle.0 * 3 * 2;
         for vtx in 0..3 {
-            debtris.tranbuffer[idx + vtx * 2] = pos.0;
-            debtris.tranbuffer[idx + vtx * 2 + 1] = pos.1;
+            self.vx.debtris.tranbuffer[idx + vtx * 2] = pos.0;
+            self.vx.debtris.tranbuffer[idx + vtx * 2 + 1] = pos.1;
         }
     }
 
     /// Set the rotation of a debug triangle
-    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &Handle, deg: T) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         let angle = deg.into().0;
-        debtris.rotbuf_touch = vx.swapconfig.image_count;
-        debtris.rotbuffer[inst.0 * 3..(inst.0 + 1) * 3].copy_from_slice(&[angle, angle, angle]);
+        self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.debtris.rotbuffer[handle.0 * 3..(handle.0 + 1) * 3]
+            .copy_from_slice(&[angle, angle, angle]);
     }
 
     /// Set the scale of a debug triangle
-    pub fn set_scale(&mut self, inst: &Handle, scale: f32) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.scalebuf_touch = vx.swapconfig.image_count;
-
-        for sc in &mut debtris.scalebuffer[inst.0 * 3..(inst.0 + 1) * 3] {
+    pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.debtris.scalebuffer[handle.0 * 3..(handle.0 + 1) * 3] {
             *sc = scale;
         }
     }
 
     // ---
+
+    /// Deform all triangles by adding delta vertices
+    ///
+    /// Adds the delta vertices to each debug triangle.
+    /// See [deform] for more information.
+    pub fn deform(&mut self, handle: &Handle, delta: [(f32, f32); 3]) {
+        self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, trn) in self.vx.debtris.posbuffer[handle.0 * 6..(handle.0 + 1) * 6]
+            .chunks_exact_mut(2)
+            .enumerate()
+        {
+            trn[0] += delta[idx].0;
+            trn[1] += delta[idx].1;
+        }
+    }
 
     /// Translate a debug triangle by a vector
     ///
@@ -282,6 +290,18 @@ impl<'a> Debtri<'a> {
     }
 
     // ---
+
+    /// Deform all triangles by adding delta vertices
+    ///
+    /// Adds the delta vertices to each debug triangle.
+    /// See [deform] for more information.
+    pub fn deform_all(&mut self, delta: [(f32, f32); 3]) {
+        self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, trn) in self.vx.debtris.posbuffer.chunks_exact_mut(2).enumerate() {
+            trn[0] += delta[idx % 3].0;
+            trn[1] += delta[idx % 3].1;
+        }
+    }
 
     /// Color all debug triangles by adding a color
     ///
@@ -735,6 +755,31 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "swap_triangles", img);
+    }
+
+    #[test]
+    fn deform_triangles() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        let mut debtri = vx.debtri();
+
+        let left = debtri.push(tri);
+        debtri.set_position(&left, (-0.25, 0.0));
+        debtri.set_color(&left, [255, 0, 0, 255]);
+
+        let right = debtri.push(tri);
+        debtri.set_position(&right, (0.25, 0.0));
+        debtri.set_color(&right, [0, 0, 255, 255]);
+
+        debtri.set_deform(&right, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]);
+        debtri.deform(&left, [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]);
+        debtri.deform_all([(-1.0, 0.0), (0.0, 0.0), (0.0, 0.0)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "deform_triangles", img);
     }
 
     // ---
