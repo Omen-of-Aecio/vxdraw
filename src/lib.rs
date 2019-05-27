@@ -1,4 +1,4 @@
-//! Main VxDraw module
+//! VxDraw: Simple vulkan renderer
 //!
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
@@ -13,6 +13,31 @@
 //!
 //!     // Sleep here so the window does not instantly disappear
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
+//! ```
+//! ## Animation: Rotating triangle ##
+//! Here's a more interesting example:
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use logger::{Generic, GenericLogger, Logger};
+//! use vxdraw::{ShowWindow, VxDraw};
+//! fn main() {
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!
+//!     // Spawn a debug triangle, the handle is used to refer to it later
+//!     let handle = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
+//!
+//!     for _ in 0..360 {
+//!         // Rotate the triangle by 1 degree
+//!         vx.debtri().rotate(&handle, Deg(1.0));
+//!
+//!         // Draw the scene
+//!         vx.draw_frame(&Matrix4::identity());
+//!
+//!         // Wait 10 milliseconds
+//!         std::thread::sleep(std::time::Duration::new(0, 10_000_000));
+//!     }
 //! }
 //! ```
 #![feature(test)]

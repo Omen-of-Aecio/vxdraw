@@ -285,6 +285,48 @@ impl<'a> Debtri<'a> {
     // ---
 
     /// Rotate all debug triangles
+    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
+        let vx = &mut *self.vx;
+        let device = &vx.device;
+        let debtris = &mut vx.debtris;
+        unsafe {
+            device
+                .wait_for_fences(
+                    &vx.frames_in_flight_fences,
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for fences");
+        }
+        unsafe {
+            let data_reader = device
+                .acquire_mapping_reader::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
+
+            let idx = handle.0 * TRI_BYTE_SIZE / size_of::<f32>();
+            let rotation = &data_reader[idx + 5..idx + 6];
+            let rotation = rotation[0];
+
+            device.release_mapping_reader(data_reader);
+
+            let mut data_target = device
+                .acquire_mapping_writer::<f32>(&debtris.triangles_memory, 0..debtris.capacity)
+                .expect("Failed to acquire a memory writer!");
+
+            let mut idx = handle.0 * TRI_BYTE_SIZE / size_of::<f32>();
+            data_target[idx + 5..idx + 6].copy_from_slice(&[rotation + deg.into().0]);
+            idx += 7;
+            data_target[idx + 5..idx + 6].copy_from_slice(&[rotation + deg.into().0]);
+            idx += 7;
+            data_target[idx + 5..idx + 6].copy_from_slice(&[rotation + deg.into().0]);
+
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
+        }
+    }
+
+    /// Rotate all debug triangles
     pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, deg: T) {
         let vx = &mut *self.vx;
         let device = &vx.device;
@@ -674,8 +716,9 @@ mod tests {
         let mut debtri = vx.debtri();
         let handle = debtri.push(tri);
         debtri.set_scale(&handle, 0.1);
-        debtri.set_rotation(&handle, Deg(30.0));
+        debtri.set_rotation(&handle, Deg(25.0));
         debtri.set_position(&handle, (0.25, 0.5));
+        debtri.rotate(&handle, Deg(5.0));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "test_single_triangle_api", img);
