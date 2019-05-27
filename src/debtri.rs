@@ -72,12 +72,40 @@ impl<'a> Debtri<'a> {
         self.vx.debtris.hidden = true;
     }
 
+    /// Swap two triangles with each other
+    pub fn swap(&mut self, left: &Handle, right: &Handle) {
+        let debtris = &mut self.vx.debtris;
+
+        for i in 0..6 {
+            debtris.posbuffer.swap(left.0 * 6 + i, right.0 * 6 + i);
+        }
+        for i in 0..12 {
+            debtris.colbuffer.swap(left.0 * 12 + i, right.0 * 12 + i);
+        }
+        for i in 0..6 {
+            debtris.tranbuffer.swap(left.0 * 6 + i, right.0 * 6 + i);
+        }
+        for i in 0..3 {
+            debtris.rotbuffer.swap(left.0 * 3 + i, right.0 * 3 + i);
+        }
+        for i in 0..3 {
+            debtris.scalebuffer.swap(left.0 * 3 + i, right.0 * 3 + i);
+        }
+
+        debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        debtris.colbuf_touch = self.vx.swapconfig.image_count;
+        debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+    }
+
+    // ---
+
     /// Add a new debug triangle to the renderer
     ///
-    /// The new triangle will be drawn upon the next draw.
+    /// The new triangle will be drawn upon the next draw invocation.
     pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
-        let s = &mut *self.vx;
-        let debtris = &mut s.debtris;
+        let debtris = &mut self.vx.debtris;
 
         debtris.posbuffer.push(triangle.origin[0].0);
         debtris.posbuffer.push(triangle.origin[0].1);
@@ -108,11 +136,11 @@ impl<'a> Debtri<'a> {
             debtris.scalebuffer.push(triangle.scale);
         }
 
-        debtris.posbuf_touch = s.swapconfig.image_count;
-        debtris.colbuf_touch = s.swapconfig.image_count;
-        debtris.tranbuf_touch = s.swapconfig.image_count;
-        debtris.rotbuf_touch = s.swapconfig.image_count;
-        debtris.scalebuf_touch = s.swapconfig.image_count;
+        debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        debtris.colbuf_touch = self.vx.swapconfig.image_count;
+        debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        debtris.scalebuf_touch = self.vx.swapconfig.image_count;
 
         debtris.triangles_count += 1;
         Handle(debtris.triangles_count - 1)
@@ -148,9 +176,15 @@ impl<'a> Debtri<'a> {
     // ---
 
     /// Change the vertices of the model-space
-    pub fn set_vertices(&mut self, inst: &Handle, points: [(f32, f32); 3]) {
+    pub fn set_vertices(&mut self, handle: &Handle, points: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        unimplemented![]
+        for (idx, vertex) in self.vx.debtris.posbuffer[handle.0 * 6..(handle.0 + 1) * 6]
+            .chunks_exact_mut(2)
+            .enumerate()
+        {
+            vertex[idx] = points[idx].0;
+            vertex[idx + 1] = points[idx].1;
+        }
     }
 
     /// Set a solid color of a debug triangle
@@ -205,29 +239,62 @@ impl<'a> Debtri<'a> {
     /// Translate a debug triangle by a vector
     ///
     /// Translation does not mutate the model-space of a triangle.
+    pub fn color(&mut self, handle: &Handle, color: [u8; 4]) {
+        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        for cols in
+            self.vx.debtris.colbuffer[handle.0 * 12..(handle.0 + 1) * 12].chunks_exact_mut(4)
+        {
+            for (idx, color) in color.iter().enumerate() {
+                cols[idx] = *color;
+            }
+        }
+    }
+
+    /// Translate a debug triangle by a vector
+    ///
+    /// Translation does not mutate the model-space of a triangle.
     pub fn translate(&mut self, handle: &Handle, delta: (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-
         for stride in 0..3 {
             self.vx.debtris.tranbuffer[handle.0 * 6 + stride * 2] += delta.0;
             self.vx.debtris.tranbuffer[handle.0 * 6 + stride * 2 + 1] += delta.1;
         }
     }
 
-    /// Rotate all debug triangles
+    /// Rotate a debug triangle
     ///
     /// Rotation does not mutate the model-space of a triangle.
     pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.rotbuf_touch = vx.swapconfig.image_count;
-
-        for rot in &mut debtris.rotbuffer[handle.0 * 3..(handle.0 + 1) * 3] {
+        self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        for rot in &mut self.vx.debtris.rotbuffer[handle.0 * 3..(handle.0 + 1) * 3] {
             *rot += deg.into().0;
         }
     }
 
+    /// Scale a debug triangle
+    ///
+    /// Scale does not mutate the model-space of a triangle.
+    pub fn scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.debtris.scalebuffer[handle.0 * 3..(handle.0 + 1) * 3] {
+            *sc *= scale;
+        }
+    }
+
     // ---
+
+    /// Color all debug triangles by adding a color
+    ///
+    /// Adds the color in the argument to the existing color of each triangle.
+    /// See [color] for more information.
+    pub fn color_all(&mut self, color: [u8; 4]) {
+        self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
+        for cols in self.vx.debtris.colbuffer.chunks_exact_mut(4) {
+            for (idx, color) in color.iter().enumerate() {
+                cols[idx] = *color;
+            }
+        }
+    }
 
     /// Translate all debug triangles by a vector
     ///
@@ -241,17 +308,6 @@ impl<'a> Debtri<'a> {
         }
     }
 
-    /// Scale all debug triangles (multiplicative)
-    ///
-    /// Multiplies the scale in the argument with the existing scale of each triangle.
-    /// See [rotate] for more information.
-    pub fn scale_all(&mut self, scale: f32) {
-        self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for sc in &mut self.vx.debtris.scalebuffer {
-            *sc *= scale;
-        }
-    }
-
     /// Rotate all debug triangles
     ///
     /// Adds the rotation in the argument to the existing rotation of each triangle.
@@ -260,6 +316,17 @@ impl<'a> Debtri<'a> {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         for rot in &mut self.vx.debtris.rotbuffer {
             *rot += rotation.into().0;
+        }
+    }
+
+    /// Scale all debug triangles (multiplicative)
+    ///
+    /// Multiplies the scale in the argument with the existing scale of each triangle.
+    /// See [scale] for more information.
+    pub fn scale_all(&mut self, scale: f32) {
+        self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.debtris.scalebuffer {
+            *sc *= scale;
         }
     }
 }
@@ -645,6 +712,29 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "test_single_triangle_api", img);
+    }
+
+    #[test]
+    fn swap_triangles() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        let mut debtri = vx.debtri();
+
+        let left = debtri.push(tri);
+        debtri.set_position(&left, (-0.25, 0.0));
+        debtri.set_color(&left, [255, 0, 0, 255]);
+
+        let right = debtri.push(tri);
+        debtri.set_position(&right, (0.25, 0.0));
+        debtri.set_color(&right, [0, 0, 255, 255]);
+
+        debtri.swap(&left, &right);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "swap_triangles", img);
     }
 
     // ---
