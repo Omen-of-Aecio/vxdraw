@@ -147,37 +147,10 @@ impl<'a> Debtri<'a> {
 
     // ---
 
-    /// Set the position of a debug triangle
-    pub fn set_position(&mut self, inst: &Handle, pos: (f32, f32)) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.tranbuf_touch = vx.swapconfig.image_count;
-
-        let idx = inst.0 * 3 * 2;
-        for vtx in 0..3 {
-            debtris.tranbuffer[idx + vtx * 2] = pos.0;
-            debtris.tranbuffer[idx + vtx * 2 + 1] = pos.1;
-        }
-    }
-
-    /// Set the scale of a debug triangle
-    pub fn set_scale(&mut self, inst: &Handle, scale: f32) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.scalebuf_touch = vx.swapconfig.image_count;
-
-        for sc in &mut debtris.scalebuffer[inst.0 * 3..(inst.0 + 1) * 3] {
-            *sc = scale;
-        }
-    }
-
-    /// Set the rotation of a debug triangle
-    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &Handle, deg: T) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        let angle = deg.into().0;
-        debtris.rotbuf_touch = vx.swapconfig.image_count;
-        debtris.rotbuffer[inst.0 * 3..(inst.0 + 1) * 3].copy_from_slice(&[angle, angle, angle]);
+    /// Change the vertices of the model-space
+    pub fn set_vertices(&mut self, inst: &Handle, points: [(f32, f32); 3]) {
+        self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        unimplemented![]
     }
 
     /// Set a solid color of a debug triangle
@@ -194,9 +167,56 @@ impl<'a> Debtri<'a> {
         }
     }
 
+    /// Set the position of a debug triangle
+    pub fn set_position(&mut self, inst: &Handle, pos: (f32, f32)) {
+        let vx = &mut *self.vx;
+        let debtris = &mut vx.debtris;
+        debtris.tranbuf_touch = vx.swapconfig.image_count;
+
+        let idx = inst.0 * 3 * 2;
+        for vtx in 0..3 {
+            debtris.tranbuffer[idx + vtx * 2] = pos.0;
+            debtris.tranbuffer[idx + vtx * 2 + 1] = pos.1;
+        }
+    }
+
+    /// Set the rotation of a debug triangle
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, inst: &Handle, deg: T) {
+        let vx = &mut *self.vx;
+        let debtris = &mut vx.debtris;
+        let angle = deg.into().0;
+        debtris.rotbuf_touch = vx.swapconfig.image_count;
+        debtris.rotbuffer[inst.0 * 3..(inst.0 + 1) * 3].copy_from_slice(&[angle, angle, angle]);
+    }
+
+    /// Set the scale of a debug triangle
+    pub fn set_scale(&mut self, inst: &Handle, scale: f32) {
+        let vx = &mut *self.vx;
+        let debtris = &mut vx.debtris;
+        debtris.scalebuf_touch = vx.swapconfig.image_count;
+
+        for sc in &mut debtris.scalebuffer[inst.0 * 3..(inst.0 + 1) * 3] {
+            *sc = scale;
+        }
+    }
+
     // ---
 
+    /// Translate a debug triangle by a vector
+    ///
+    /// Translation does not mutate the model-space of a triangle.
+    pub fn translate(&mut self, handle: &Handle, delta: (f32, f32)) {
+        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+
+        for stride in 0..3 {
+            self.vx.debtris.tranbuffer[handle.0 * 6 + stride * 2] += delta.0;
+            self.vx.debtris.tranbuffer[handle.0 * 6 + stride * 2 + 1] += delta.1;
+        }
+    }
+
     /// Rotate all debug triangles
+    ///
+    /// Rotation does not mutate the model-space of a triangle.
     pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         let vx = &mut *self.vx;
         let debtris = &mut vx.debtris;
@@ -207,13 +227,39 @@ impl<'a> Debtri<'a> {
         }
     }
 
+    // ---
+
+    /// Translate all debug triangles by a vector
+    ///
+    /// Adds the translation in the argument to the existing translation of each triangle.
+    /// See [translate] for more information.
+    pub fn translate_all(&mut self, delta: (f32, f32)) {
+        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        for trn in self.vx.debtris.tranbuffer.chunks_exact_mut(2) {
+            trn[0] += delta.0;
+            trn[1] += delta.1;
+        }
+    }
+
+    /// Scale all debug triangles (multiplicative)
+    ///
+    /// Multiplies the scale in the argument with the existing scale of each triangle.
+    /// See [rotate] for more information.
+    pub fn scale_all(&mut self, scale: f32) {
+        self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.debtris.scalebuffer {
+            *sc *= scale;
+        }
+    }
+
     /// Rotate all debug triangles
-    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, deg: T) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.rotbuf_touch = vx.swapconfig.image_count;
-        for rot in &mut debtris.rotbuffer {
-            *rot += deg.into().0;
+    ///
+    /// Adds the rotation in the argument to the existing rotation of each triangle.
+    /// See [rotate] for more information.
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, rotation: T) {
+        self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        for rot in &mut self.vx.debtris.rotbuffer {
+            *rot += rotation.into().0;
         }
     }
 }
@@ -593,7 +639,8 @@ mod tests {
         let handle = debtri.push(tri);
         debtri.set_scale(&handle, 0.1);
         debtri.set_rotation(&handle, Deg(25.0));
-        debtri.set_position(&handle, (0.25, 0.5));
+        debtri.set_position(&handle, (0.05, 0.4));
+        debtri.translate(&handle, (0.2, 0.1));
         debtri.rotate(&handle, Deg(5.0));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -706,6 +753,24 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
         utils::assert_swapchain_eq(&mut vx, "windmills", img);
+    }
+
+    #[test]
+    fn windmills_mass_edits() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        utils::add_windmills(&mut vx, false);
+        let mut debtri = vx.debtri();
+
+        debtri.translate_all((1.0, 0.5));
+        debtri.rotate_all(Deg(90.0));
+        debtri.scale_all(2.0);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+
+        utils::assert_swapchain_eq(&mut vx, "windmills_mass_edits", img);
     }
 
     #[test]
