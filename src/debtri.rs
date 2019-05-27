@@ -42,16 +42,8 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Adapter, Backend, Primitive};
-use std::mem::{size_of, transmute, ManuallyDrop};
+use std::mem::ManuallyDrop;
 
-fn bytes_to_f32(x: &[u8]) -> f32 {
-    let mut data: [u8; 4] = [0; 4];
-    data[0] = x[0];
-    data[1] = x[1];
-    data[2] = x[2];
-    data[3] = x[3];
-    unsafe { std::mem::transmute::<[u8; 4], f32>(data) }
-}
 // ---
 
 /// Debug triangles accessor object returned by [VxDraw::debtri]
@@ -158,7 +150,6 @@ impl<'a> Debtri<'a> {
     /// Set the position of a debug triangle
     pub fn set_position(&mut self, inst: &Handle, pos: (f32, f32)) {
         let vx = &mut *self.vx;
-        let device = &vx.device;
         let debtris = &mut vx.debtris;
         debtris.tranbuf_touch = vx.swapconfig.image_count;
 
@@ -172,7 +163,6 @@ impl<'a> Debtri<'a> {
     /// Set the scale of a debug triangle
     pub fn set_scale(&mut self, inst: &Handle, scale: f32) {
         let vx = &mut *self.vx;
-        let device = &vx.device;
         let debtris = &mut vx.debtris;
         debtris.scalebuf_touch = vx.swapconfig.image_count;
 
@@ -193,14 +183,13 @@ impl<'a> Debtri<'a> {
     /// Set a solid color of a debug triangle
     pub fn set_color(&mut self, inst: &Handle, rgba: [u8; 4]) {
         let vx = &mut *self.vx;
-        let device = &vx.device;
         let debtris = &mut vx.debtris;
         debtris.colbuf_touch = vx.swapconfig.image_count;
 
         let idx = inst.0 * 12;
         for vtx in 0..3 {
-            for coli in 0..4 {
-                debtris.colbuffer[idx + vtx * 4 + coli] = rgba[coli];
+            for (coli, cmpnt) in rgba.iter().enumerate() {
+                debtris.colbuffer[idx + vtx * 4 + coli] = *cmpnt;
             }
         }
     }
@@ -210,7 +199,6 @@ impl<'a> Debtri<'a> {
     /// Rotate all debug triangles
     pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         let vx = &mut *self.vx;
-        let device = &vx.device;
         let debtris = &mut vx.debtris;
         debtris.rotbuf_touch = vx.swapconfig.image_count;
 
@@ -222,7 +210,6 @@ impl<'a> Debtri<'a> {
     /// Rotate all debug triangles
     pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, deg: T) {
         let vx = &mut *self.vx;
-        let device = &vx.device;
         let debtris = &mut vx.debtris;
         debtris.rotbuf_touch = vx.swapconfig.image_count;
         for rot in &mut debtris.rotbuffer {
@@ -296,25 +283,10 @@ impl DebugTriangle {
 
 // ---
 
-const PTS_PER_TRI: usize = 3;
-const CART_CMPNTS: usize = 2;
-const COLOR_CMPNTS: usize = 4;
-const DELTA_CMPNTS: usize = 2;
-const ROT_CMPNTS: usize = 1;
-const SCALE_CMPNTS: usize = 1;
-const BYTES_PER_VTX: usize = size_of::<f32>() * CART_CMPNTS
-    + size_of::<u8>() * COLOR_CMPNTS
-    + size_of::<f32>() * DELTA_CMPNTS
-    + size_of::<f32>() * ROT_CMPNTS
-    + size_of::<f32>() * SCALE_CMPNTS;
-const TRI_BYTE_SIZE: usize = PTS_PER_TRI * BYTES_PER_VTX;
-
-// ---
-
 pub fn create_debug_triangle(
     device: &back::Device,
     adapter: &Adapter<back::Backend>,
-    format: &format::Format,
+    format: format::Format,
     image_count: usize,
 ) -> DebugTriangleData {
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
@@ -351,27 +323,27 @@ pub fn create_debug_triangle(
     let vertex_buffers = vec![
         pso::VertexBufferDesc {
             binding: 0,
-            stride: 8, // BYTES_PER_VTX as u32,
+            stride: 8,
             rate: pso::VertexInputRate::Vertex,
         },
         pso::VertexBufferDesc {
             binding: 1,
-            stride: 4, // BYTES_PER_VTX as u32,
+            stride: 4,
             rate: pso::VertexInputRate::Vertex,
         },
         pso::VertexBufferDesc {
             binding: 2,
-            stride: 8, // BYTES_PER_VTX as u32,
+            stride: 8,
             rate: pso::VertexInputRate::Vertex,
         },
         pso::VertexBufferDesc {
             binding: 3,
-            stride: 4, // BYTES_PER_VTX as u32,
+            stride: 4,
             rate: pso::VertexInputRate::Vertex,
         },
         pso::VertexBufferDesc {
             binding: 4,
-            stride: 4, // BYTES_PER_VTX as u32,
+            stride: 4,
             rate: pso::VertexInputRate::Vertex,
         },
     ];
@@ -453,7 +425,7 @@ pub fn create_debug_triangle(
 
     let triangle_render_pass = {
         let attachment = pass::Attachment {
-            format: Some(*format),
+            format: Some(format),
             samples: 1,
             ops: pass::AttachmentOps::new(
                 pass::AttachmentLoadOp::Clear,
@@ -872,6 +844,21 @@ mod tests {
 
         b.iter(|| {
             vx.debtri().rotate_all(Deg(1.0f32));
+            vx.draw_frame(&prspect);
+        });
+    }
+
+    #[bench]
+    fn bench_rotating_windmills_set_color(b: &mut Bencher) {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let last = utils::add_windmills(&mut vx, false).pop().unwrap();
+
+        b.iter(|| {
+            vx.debtri().rotate_all(Deg(1.0f32));
+            vx.debtri().set_color(&last, [255, 0, 255, 255]);
             vx.draw_frame(&prspect);
         });
     }

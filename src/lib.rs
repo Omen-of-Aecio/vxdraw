@@ -23,7 +23,7 @@
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
-//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
 //!     let handle = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
@@ -495,7 +495,7 @@ impl VxDraw {
             .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
             .collect();
 
-        let debtris = debtri::create_debug_triangle(&device, &adapter, &format, images.len());
+        let debtris = debtri::create_debug_triangle(&device, &adapter, format, images.len());
 
         VxDraw {
             acquire_image_semaphores,
