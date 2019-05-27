@@ -113,6 +113,106 @@ pub fn make_vertex_buffer_with_data2(
     (buffer, memory, requirements)
 }
 
+/// A more opinionated resizable buffer
+pub struct ResizBufIdx4 {
+    buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
+    memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
+    capacity: usize,
+}
+
+impl ResizBufIdx4 {
+    pub fn new(device: &back::Device, adapter: &Adapter<back::Backend>) -> Self {
+        Self::with_capacity(device, adapter, 1)
+    }
+
+    pub fn with_capacity(
+        device: &back::Device,
+        adapter: &Adapter<back::Backend>,
+        capacity: usize,
+    ) -> Self {
+        let (buffer, memory, requirements) = unsafe {
+            let buffer_size: u64 = (capacity * 6 * std::mem::size_of::<u16>()) as u64;
+            let mut buffer = device
+                .create_buffer(buffer_size, gfx_hal::buffer::Usage::INDEX)
+                .expect("cant make bf");
+            let requirements = device.get_buffer_requirements(&buffer);
+            let memory_type_id =
+                find_memory_type_id(adapter, requirements, Properties::CPU_VISIBLE);
+            let memory = device
+                .allocate_memory(memory_type_id, requirements.size)
+                .expect("Couldn't allocate vertex buffer memory");
+            device
+                .bind_buffer_memory(&memory, 0, &mut buffer)
+                .expect("Couldn't bind the buffer memory!");
+            (buffer, memory, requirements)
+        };
+        unsafe {
+            let mut data_target = device
+                .acquire_mapping_writer(&memory, 0..requirements.size)
+                .expect("Failed to acquire a memory writer!");
+            for index in 0..capacity {
+                let ver = (index * 6) as u16;
+                let ind = (index * 4) as u16;
+                data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
+                    ind,
+                    ind + 1,
+                    ind + 2,
+                    ind + 2,
+                    ind + 3,
+                    ind,
+                ]);
+            }
+            device
+                .release_mapping_writer(data_target)
+                .expect("Couldn't release the mapping writer!");
+        }
+        Self {
+            buffer: ManuallyDrop::new(buffer),
+            memory: ManuallyDrop::new(memory),
+            capacity,
+        }
+    }
+
+    pub fn buffer(&self) -> &<back::Backend as Backend>::Buffer {
+        &self.buffer
+    }
+
+    fn resize(&mut self, device: &back::Device, adapter: &Adapter<back::Backend>, capacity: usize) {
+        let mut new_resizbuf = Self::with_capacity(device, adapter, capacity);
+        std::mem::swap(&mut self.buffer, &mut new_resizbuf.buffer);
+        std::mem::swap(&mut self.memory, &mut new_resizbuf.memory);
+        std::mem::swap(&mut self.capacity, &mut new_resizbuf.capacity);
+        new_resizbuf.destroy(device);
+    }
+
+    pub fn ensure_capacity(
+        &mut self,
+        device: &back::Device,
+        adapter: &Adapter<back::Backend>,
+        capacity: usize,
+    ) {
+        static SHRINK_TRESHOLD: usize = 2;
+
+        let capacity = capacity.max(1);
+
+        if self.capacity >= capacity * SHRINK_TRESHOLD {
+            self.resize(device, adapter, (self.capacity / 2).max(capacity));
+        } else if self.capacity >= capacity {
+        } else {
+            dbg![capacity];
+            self.resize(device, adapter, (self.capacity * 2).max(capacity));
+        }
+    }
+
+    pub fn destroy(&mut self, device: &back::Device) {
+        use core::ptr::read;
+        unsafe {
+            device.destroy_buffer(ManuallyDrop::into_inner(read(&self.buffer)));
+            device.free_memory(ManuallyDrop::into_inner(read(&self.memory)));
+        }
+    }
+}
+
 pub struct ResizBuf {
     buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     memory: ManuallyDrop<<back::Backend as Backend>::Memory>,

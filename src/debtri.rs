@@ -660,7 +660,7 @@ pub fn create_debug_triangle(
     let (dtbuffer, dtmemory, dtreqs) =
         make_vertex_buffer_with_data2(device, adapter, &[0.0f32; TRI_BYTE_SIZE / 4 * 1000]);
 
-    let debtris = DebugTriangleData {
+    DebugTriangleData {
         hidden: false,
         capacity: dtreqs.size,
         triangles_count: 0,
@@ -672,8 +672,7 @@ pub fn create_debug_triangle(
         pipeline: ManuallyDrop::new(triangle_pipeline),
         pipeline_layout: ManuallyDrop::new(triangle_pipeline_layout),
         render_pass: ManuallyDrop::new(triangle_render_pass),
-    };
-    debtris
+    }
 }
 
 #[cfg(test)]

@@ -497,7 +497,7 @@ impl VxDraw {
 
         let debtris = debtri::create_debug_triangle(&device, &adapter, &format);
 
-        let vx = VxDraw {
+        VxDraw {
             acquire_image_semaphores,
             acquire_image_semaphore_free: ManuallyDrop::new(
                 device
@@ -544,8 +544,7 @@ impl VxDraw {
             window,
             log,
             debtris,
-        };
-        vx
+        }
     }
 
     /// Get the size of the display window in floats
@@ -980,8 +979,13 @@ impl VxDraw {
                                 let buffers: ArrayVec<[_; 1]> =
                                     [(dyntex.texture_vertex_sprites.buffer(), 0)].into();
                                 enc.bind_vertex_buffers(0, buffers);
+                                dyntex.indices.ensure_capacity(
+                                    &self.device,
+                                    &self.adapter,
+                                    dyntex.count as usize,
+                                );
                                 enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                    buffer: &dyntex.texture_vertex_buffer_indices,
+                                    buffer: dyntex.indices.buffer(),
                                     offset: 0,
                                     index_type: gfx_hal::IndexType::U16,
                                 });

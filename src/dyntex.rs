@@ -508,39 +508,8 @@ impl<'a> Dyntex<'a> {
             s.device.destroy_shader_module(fs_module);
         }
 
-        const INDEX_COUNT: usize = 1000;
-        let (
-            texture_vertex_buffer_indices,
-            texture_vertex_memory_indices,
-            texture_vertex_requirements_indices,
-        ) = make_index_buffer_with_data(s, &[0f32; 3 * INDEX_COUNT]);
-
-        unsafe {
-            let mut data_target = s
-                .device
-                .acquire_mapping_writer(
-                    &texture_vertex_memory_indices,
-                    0..texture_vertex_requirements_indices.size,
-                )
-                .expect("Failed to acquire a memory writer!");
-            for index in 0..INDEX_COUNT {
-                let ver = (index * 6) as u16;
-                let ind = (index * 4) as u16;
-                data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
-                    ind,
-                    ind + 1,
-                    ind + 2,
-                    ind + 2,
-                    ind + 3,
-                    ind,
-                ]);
-            }
-            s.device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-
         let texture_vertex_sprites = super::utils::ResizBuf::new(&s.device, &s.adapter);
+        let indices = super::utils::ResizBufIdx4::new(&s.device, &s.adapter);
 
         s.dyntexs.push(SingleTexture {
             count: 0,
@@ -550,10 +519,7 @@ impl<'a> Dyntex<'a> {
             removed: vec![],
 
             texture_vertex_sprites,
-
-            texture_vertex_buffer_indices: ManuallyDrop::new(texture_vertex_buffer_indices),
-            texture_vertex_memory_indices: ManuallyDrop::new(texture_vertex_memory_indices),
-            texture_vertex_requirements_indices,
+            indices,
 
             texture_image_buffer: ManuallyDrop::new(the_image),
             texture_image_memory: ManuallyDrop::new(image_memory),
@@ -955,12 +921,7 @@ impl Default for TextureOptions {
 
 fn destroy_texture(s: &mut VxDraw, mut dyntex: SingleTexture) {
     unsafe {
-        s.device.destroy_buffer(ManuallyDrop::into_inner(read(
-            &dyntex.texture_vertex_buffer_indices,
-        )));
-        s.device.free_memory(ManuallyDrop::into_inner(read(
-            &dyntex.texture_vertex_memory_indices,
-        )));
+        dyntex.indices.destroy(&s.device);
         dyntex.texture_vertex_sprites.destroy(&s.device);
         s.device
             .destroy_image(ManuallyDrop::into_inner(read(&dyntex.texture_image_buffer)));
