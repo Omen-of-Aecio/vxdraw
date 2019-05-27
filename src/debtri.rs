@@ -201,8 +201,12 @@ impl<'a> Debtri<'a> {
         }
     }
 
-    /// Set the position of a debug triangle
-    pub fn set_position(&mut self, handle: &Handle, pos: (f32, f32)) {
+    /// Set the position (translation) of a debug triangle
+    ///
+    /// The name `set_translation` is chosen to keep the counterparts `translate` and
+    /// `translate_all` consistent. This function can purely be thought of as setting the position
+    /// of the triangle with respect to the model-space's origin.
+    pub fn set_translation(&mut self, handle: &Handle, pos: (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
         let idx = handle.0 * 3 * 2;
         for vtx in 0..3 {
@@ -212,6 +216,8 @@ impl<'a> Debtri<'a> {
     }
 
     /// Set the rotation of a debug triangle
+    ///
+    /// The rotation is about the model space origin.
     pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         let angle = deg.into().0;
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
@@ -229,10 +235,9 @@ impl<'a> Debtri<'a> {
 
     // ---
 
-    /// Deform all triangles by adding delta vertices
+    /// Deform a triangle by adding delta vertices
     ///
-    /// Adds the delta vertices to each debug triangle.
-    /// See [deform] for more information.
+    /// Adds the delta vertices to the debug triangle. Beware: This changes model space form.
     pub fn deform(&mut self, handle: &Handle, delta: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
         for (idx, trn) in self.vx.debtris.posbuffer[handle.0 * 6..(handle.0 + 1) * 6]
