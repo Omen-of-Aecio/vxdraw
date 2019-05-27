@@ -451,18 +451,15 @@ const TRI_BYTE_SIZE: usize = PTS_PER_TRI * BYTES_PER_VTX;
 
 // ---
 
-// TODO Remove the dependency on VxDraw, just use Device
 pub fn create_debug_triangle(
     device: &back::Device,
     adapter: &Adapter<back::Backend>,
     format: &format::Format,
 ) -> DebugTriangleData {
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
-
     pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.frag.spirv"];
 
     let vs_module = { unsafe { device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
-
     let fs_module = { unsafe { device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
 
     const ENTRY_NAME: &str = "main";
@@ -605,8 +602,6 @@ pub fn create_debug_triangle(
             .expect("Can't create render pass")
     };
 
-    // TODO Remove explicit extent setting here, do that while rendering instead (avoids the need
-    // to recompile pipelines if the swapchain changes)
     let baked_states = pso::BakedStates {
         viewport: None,
         scissor: None,

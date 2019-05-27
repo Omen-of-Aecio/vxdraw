@@ -23,7 +23,7 @@
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
-//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
 //!     let handle = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
@@ -947,7 +947,7 @@ impl VxDraw {
                                 enc.draw_indexed(0..strtex.count * 6, 0, 0..1);
                             }
                             DrawType::DynamicTexture { id } => {
-                                let dyntex = &self.dyntexs[*id];
+                                let dyntex = &mut self.dyntexs[*id];
                                 enc.bind_graphics_pipeline(&dyntex.pipeline);
                                 if let Some(persp) = dyntex.fixed_perspective {
                                     enc.push_graphics_constants(
@@ -970,20 +970,15 @@ impl VxDraw {
                                     Some(&*dyntex.descriptor_set),
                                     &[],
                                 );
-                                let mut data_target = self
-                                    .device
-                                    .acquire_mapping_writer::<u8>(
-                                        &dyntex.texture_vertex_memory,
-                                        0..dyntex.texture_vertex_requirements.size,
-                                    )
-                                    .expect("Unable to get mapping writer");
-                                data_target[..dyntex.mockbuffer.len()]
-                                    .copy_from_slice(&dyntex.mockbuffer);
-                                self.device
-                                    .release_mapping_writer(data_target)
-                                    .expect("Unable to release mapping writer");
+                                dyntex
+                                    .texture_vertex_sprites
+                                    .copy_from_slice_and_maybe_resize(
+                                        &self.device,
+                                        &self.adapter,
+                                        &dyntex.mockbuffer[..],
+                                    );
                                 let buffers: ArrayVec<[_; 1]> =
-                                    [(&*dyntex.texture_vertex_buffer, 0)].into();
+                                    [(dyntex.texture_vertex_sprites.buffer(), 0)].into();
                                 enc.bind_vertex_buffers(0, buffers);
                                 enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                     buffer: &dyntex.texture_vertex_buffer_indices,

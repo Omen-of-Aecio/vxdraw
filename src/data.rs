@@ -50,9 +50,7 @@ pub struct SingleTexture {
     pub mockbuffer: Vec<u8>,
     pub removed: Vec<usize>,
 
-    pub texture_vertex_buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    pub texture_vertex_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub texture_vertex_requirements: gfx_hal::memory::Requirements,
+    pub texture_vertex_sprites: super::utils::ResizBuf,
 
     pub texture_vertex_buffer_indices: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     pub texture_vertex_memory_indices: ManuallyDrop<<back::Backend as Backend>::Memory>,
@@ -252,12 +250,7 @@ impl Drop for VxDraw {
                 self.device.free_memory(ManuallyDrop::into_inner(read(
                     &simple_tex.texture_vertex_memory_indices,
                 )));
-                self.device.destroy_buffer(ManuallyDrop::into_inner(read(
-                    &simple_tex.texture_vertex_buffer,
-                )));
-                self.device.free_memory(ManuallyDrop::into_inner(read(
-                    &simple_tex.texture_vertex_memory,
-                )));
+                simple_tex.texture_vertex_sprites.destroy(&self.device);
                 self.device.destroy_image(ManuallyDrop::into_inner(read(
                     &simple_tex.texture_image_buffer,
                 )));

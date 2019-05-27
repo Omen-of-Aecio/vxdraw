@@ -508,9 +508,6 @@ impl<'a> Dyntex<'a> {
             s.device.destroy_shader_module(fs_module);
         }
 
-        let (texture_vertex_buffer, texture_vertex_memory, texture_vertex_requirements) =
-            make_vertex_buffer_with_data(s, &[0f32; 10 * 4 * 1000]);
-
         const INDEX_COUNT: usize = 1000;
         let (
             texture_vertex_buffer_indices,
@@ -543,6 +540,8 @@ impl<'a> Dyntex<'a> {
                 .expect("Couldn't release the mapping writer!");
         }
 
+        let texture_vertex_sprites = super::utils::ResizBuf::new(&s.device, &s.adapter);
+
         s.dyntexs.push(SingleTexture {
             count: 0,
 
@@ -550,9 +549,7 @@ impl<'a> Dyntex<'a> {
             mockbuffer: vec![],
             removed: vec![],
 
-            texture_vertex_buffer: ManuallyDrop::new(texture_vertex_buffer),
-            texture_vertex_memory: ManuallyDrop::new(texture_vertex_memory),
-            texture_vertex_requirements,
+            texture_vertex_sprites,
 
             texture_vertex_buffer_indices: ManuallyDrop::new(texture_vertex_buffer_indices),
             texture_vertex_memory_indices: ManuallyDrop::new(texture_vertex_memory_indices),
@@ -964,12 +961,7 @@ fn destroy_texture(s: &mut VxDraw, mut dyntex: SingleTexture) {
         s.device.free_memory(ManuallyDrop::into_inner(read(
             &dyntex.texture_vertex_memory_indices,
         )));
-        s.device.destroy_buffer(ManuallyDrop::into_inner(read(
-            &dyntex.texture_vertex_buffer,
-        )));
-        s.device.free_memory(ManuallyDrop::into_inner(read(
-            &dyntex.texture_vertex_memory,
-        )));
+        dyntex.texture_vertex_sprites.destroy(&s.device);
         s.device
             .destroy_image(ManuallyDrop::into_inner(read(&dyntex.texture_image_buffer)));
         s.device
