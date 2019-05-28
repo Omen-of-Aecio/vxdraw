@@ -55,11 +55,38 @@ pub struct Debtri<'a> {
 }
 
 impl<'a> Debtri<'a> {
+    /// Check if invariants are held for this object
+    fn check_health(&self) {
+        debug_assert![self.vx.debtris.holes.len() <= self.vx.debtris.triangles_count];
+
+        debug_assert![self.vx.debtris.posbuffer.len() == self.vx.debtris.triangles_count * 6];
+        debug_assert![self.vx.debtris.colbuffer.len() == self.vx.debtris.triangles_count * 12];
+        debug_assert![self.vx.debtris.tranbuffer.len() == self.vx.debtris.triangles_count * 6];
+        debug_assert![self.vx.debtris.rotbuffer.len() == self.vx.debtris.triangles_count * 3];
+        debug_assert![self.vx.debtris.scalebuffer.len() == self.vx.debtris.triangles_count * 3];
+
+        let imgcnt = self.vx.swapconfig.image_count as usize;
+        debug_assert![self.vx.debtris.posbuf.len() == imgcnt];
+        debug_assert![self.vx.debtris.colbuf.len() == imgcnt];
+        debug_assert![self.vx.debtris.tranbuf.len() == imgcnt];
+        debug_assert![self.vx.debtris.rotbuf.len() == imgcnt];
+        debug_assert![self.vx.debtris.scalebuf.len() == imgcnt];
+
+        let imgcnt = self.vx.swapconfig.image_count;
+        debug_assert![self.vx.debtris.posbuf_touch <= imgcnt];
+        debug_assert![self.vx.debtris.colbuf_touch <= imgcnt];
+        debug_assert![self.vx.debtris.tranbuf_touch <= imgcnt];
+        debug_assert![self.vx.debtris.rotbuf_touch <= imgcnt];
+        debug_assert![self.vx.debtris.scalebuf_touch <= imgcnt];
+    }
+
     /// Spawn the accessor object from [VxDraw].
     ///
     /// This is a very cheap operation.
     pub fn new(vx: &'a mut VxDraw) -> Self {
-        Self { vx }
+        let debtris = Self { vx };
+        debtris.check_health();
+        debtris
     }
 
     /// Enable drawing of the debug triangles
