@@ -324,11 +324,12 @@ impl<'a> Debtri<'a> {
     ///
     /// Adds the color in the argument to the existing color of each triangle.
     /// See [Debtri::color] for more information.
-    pub fn color_all(&mut self, color: [u8; 4]) {
+    pub fn color_all(&mut self, color: [i16; 4]) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for cols in self.vx.debtris.colbuffer.chunks_exact_mut(4) {
             for (idx, color) in color.iter().enumerate() {
-                cols[idx] = *color;
+                let excol = i16::from(cols[idx]);
+                cols[idx] = (excol + *color).min(255).max(0) as u8;
             }
         }
     }
@@ -744,6 +745,11 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_color", img);
+
+        vx.debtri().color_all([0, 0, -128, 0]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_triangle_color_opacity", img);
     }
 
     #[test]
