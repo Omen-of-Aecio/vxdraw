@@ -71,6 +71,8 @@ pub struct DebugTriangleData {
     pub hidden: bool,
     pub triangles_count: usize,
 
+    pub holes: Vec<usize>,
+
     pub posbuf_touch: u32,
     pub colbuf_touch: u32,
     pub tranbuf_touch: u32,

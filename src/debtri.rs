@@ -117,34 +117,67 @@ impl<'a> Debtri<'a> {
 
     /// Add a new debug triangle to the renderer
     ///
-    /// The new triangle will be drawn upon the next draw invocation.
+    /// The new triangle will be drawn upon the next draw invocation. The triangle generated is NOT
+    /// guaranteed to be the triangle to be rendered on top of all other triangles if
+    /// [Debtri::remove] has been called earlier. In general, use [Debtri::compare_triangle_order]
+    /// and [Debtri::swap] to enforce drawing order if that's needed.
     pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
         let debtris = &mut self.vx.debtris;
 
-        for origin in &triangle.origin {
-            debtris.posbuffer.push(origin.0);
-            debtris.posbuffer.push(origin.1);
-        }
+        let handle = if let Some(hole) = debtris.holes.pop() {
+            for (idx, origin) in triangle.origin.iter().enumerate() {
+                debtris.posbuffer[hole * 6 + idx * 2] = origin.0;
+                debtris.posbuffer[hole * 6 + idx * 2 + 1] = origin.1;
+            }
 
-        for col in &triangle.colors_rgba {
-            debtris.colbuffer.push(col.0);
-            debtris.colbuffer.push(col.1);
-            debtris.colbuffer.push(col.2);
-            debtris.colbuffer.push(col.3);
-        }
+            for (idx, col) in triangle.colors_rgba.iter().enumerate() {
+                debtris.colbuffer[hole * 12 + idx * 4] = col.0;
+                debtris.colbuffer[hole * 12 + idx * 4 + 1] = col.1;
+                debtris.colbuffer[hole * 12 + idx * 4 + 2] = col.2;
+                debtris.colbuffer[hole * 12 + idx * 4 + 3] = col.3;
+            }
 
-        for _ in 0..3 {
-            debtris.tranbuffer.push(triangle.translation.0);
-            debtris.tranbuffer.push(triangle.translation.1);
-        }
+            for idx in 0..3 {
+                debtris.tranbuffer[hole * 6 + idx * 2] = triangle.translation.0;
+                debtris.tranbuffer[hole * 6 + idx * 2 + 1] = triangle.translation.1;
+            }
 
-        for _ in 0..3 {
-            debtris.rotbuffer.push(triangle.rotation);
-        }
+            for idx in 0..3 {
+                debtris.rotbuffer[hole * 3 + idx] = triangle.rotation;
+            }
 
-        for _ in 0..3 {
-            debtris.scalebuffer.push(triangle.scale);
-        }
+            for idx in 0..3 {
+                debtris.scalebuffer[hole * 3 + idx] = triangle.scale;
+            }
+            Handle(hole)
+        } else {
+            for origin in &triangle.origin {
+                debtris.posbuffer.push(origin.0);
+                debtris.posbuffer.push(origin.1);
+            }
+
+            for col in &triangle.colors_rgba {
+                debtris.colbuffer.push(col.0);
+                debtris.colbuffer.push(col.1);
+                debtris.colbuffer.push(col.2);
+                debtris.colbuffer.push(col.3);
+            }
+
+            for _ in 0..3 {
+                debtris.tranbuffer.push(triangle.translation.0);
+                debtris.tranbuffer.push(triangle.translation.1);
+            }
+
+            for _ in 0..3 {
+                debtris.rotbuffer.push(triangle.rotation);
+            }
+
+            for _ in 0..3 {
+                debtris.scalebuffer.push(triangle.scale);
+            }
+            debtris.triangles_count += 1;
+            Handle(debtris.triangles_count - 1)
+        };
 
         debtris.posbuf_touch = self.vx.swapconfig.image_count;
         debtris.colbuf_touch = self.vx.swapconfig.image_count;
@@ -152,13 +185,16 @@ impl<'a> Debtri<'a> {
         debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         debtris.scalebuf_touch = self.vx.swapconfig.image_count;
 
-        debtris.triangles_count += 1;
-        Handle(debtris.triangles_count - 1)
+        handle
     }
 
-    /// Remove the last added debug triangle from rendering
+    /// Remove the topmost debug triangle from rendering
     ///
     /// Has no effect if there are no debug triangles.
+    /// Beware that this function is intended for simple use cases, when using [Debtri::remove],
+    /// holes may be created which cause [Debtri::pop] to not work as expected. Please use
+    /// [Debtri::remove] instead of [Debtri::pop] in complex applications.
+    /// See [Debtri::push] for more information.
     pub fn pop(&mut self) {
         self.vx.debtris.triangles_count =
             self.vx.debtris.triangles_count.checked_sub(1).unwrap_or(0);
@@ -180,6 +216,16 @@ impl<'a> Debtri<'a> {
         debtris.scalebuffer.drain(begin * 3..end * 3);
 
         debtris.triangles_count = begin;
+    }
+
+    /// Remove a debug triangle
+    ///
+    /// The triangle is set to a scale of 0 and its handle is stored internally in a list of
+    /// `holes`. Calling [Debtri::push] with available holes will fill the first available hole
+    /// with the new triangle.
+    pub fn remove(&mut self, handle: Handle) {
+        self.vx.debtris.holes.push(handle.0);
+        self.set_scale(&handle, 0.0);
     }
 
     // ---
@@ -683,6 +729,8 @@ pub fn create_debug_triangle(
         hidden: false,
         triangles_count: 0,
 
+        holes: vec![],
+
         posbuf_touch: 0,
         colbuf_touch: 0,
         tranbuf_touch: 0,
@@ -788,6 +836,60 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "test_single_triangle_api", img);
+    }
+
+    #[test]
+    fn remove_middle_triangle() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        let mut debtri = vx.debtri();
+
+        let left = debtri.push(tri);
+        debtri.set_translation(&left, (-0.25, 0.0));
+        debtri.set_color(&left, [255, 0, 0, 255]);
+
+        let middle = debtri.push(tri);
+        debtri.set_color(&middle, [0, 255, 0, 255]);
+
+        let right = debtri.push(tri);
+        debtri.set_translation(&right, (0.25, 0.0));
+        debtri.set_color(&right, [0, 0, 255, 255]);
+
+        debtri.remove(middle);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "remove_middle_triangle", img);
+    }
+
+    #[test]
+    fn fill_remove_hole() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        let mut debtri = vx.debtri();
+
+        let left = debtri.push(tri);
+        debtri.set_translation(&left, (-0.25, 0.0));
+        debtri.set_color(&left, [255, 0, 0, 255]);
+
+        let middle = debtri.push(tri);
+        debtri.set_color(&middle, [0, 255, 0, 255]);
+
+        let right = debtri.push(tri);
+        debtri.set_translation(&right, (0.25, 0.0));
+        debtri.set_color(&right, [0, 0, 255, 255]);
+
+        debtri.remove(middle);
+        let middle = debtri.push(tri);
+        debtri.set_rotation(&middle, Deg(60.0));
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "fill_remove_hole", img);
     }
 
     #[test]
