@@ -264,13 +264,7 @@ impl ResizBuf {
         capacity_in_bytes: usize,
     ) {
         let mut new_resizbuf = Self::with_capacity(device, adapter, capacity_in_bytes);
-        std::mem::swap(&mut self.buffer, &mut new_resizbuf.buffer);
-        std::mem::swap(&mut self.memory, &mut new_resizbuf.memory);
-        std::mem::swap(&mut self.requirements, &mut new_resizbuf.requirements);
-        std::mem::swap(
-            &mut self.capacity_in_bytes,
-            &mut new_resizbuf.capacity_in_bytes,
-        );
+        std::mem::swap(self, &mut new_resizbuf);
         new_resizbuf.destroy(device);
     }
 
