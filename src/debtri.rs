@@ -1,9 +1,9 @@
 //! Methods and types to control debug triangles
 //!
-//! A debug triangle is a triangle that ignores all transformations and is always shown on the
-//! screen (except when a triangle's coordinates are outisde the screen). Debug triangles are meant
+//! A debug triangle is a triangle that ignores all global transformations and is always shown on the
+//! screen (except when a triangle's coordinates are outside the screen). Debug triangles are meant
 //! to be used to quickly find out if a state has been reached (for instance, change the color of a
-//! debug triangle if collision is detected).
+//! debug triangle if collision is detected, or rotate a debug triangle while loading).
 //!
 //! Debug triangles always ignore all layers, and are always shown on top of the entire scene.
 //!
