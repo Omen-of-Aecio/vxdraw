@@ -734,6 +734,24 @@ mod tests {
     }
 
     #[test]
+    fn simple_triangle_pop() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        vx.debtri().push(tri);
+        utils::add_4_screencorners(&mut vx);
+        for _ in 0..4 {
+            vx.debtri().pop();
+        }
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+
+        utils::assert_swapchain_eq(&mut vx, "simple_triangle_middle", img);
+    }
+
+    #[test]
     fn simple_triangle_color() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
