@@ -542,8 +542,8 @@ impl<'a> Dyntex<'a> {
 
     /// Add a sprite (a rectangular view of a texture) to the system
     ///
-    /// The sprite is automatically drawn on each [draw] call, and must be removed by
-    /// [remove_sprite] to stop it from being drawn.
+    /// The sprite is automatically drawn on each [crate::VxDraw::draw_frame] call, and must be removed by
+    /// [crate::dyntex::Dyntex::remove_sprite] to stop it from being drawn.
     pub fn push_sprite(&mut self, texture: &TextureHandle, sprite: Sprite) -> SpriteHandle {
         let s = &mut *self.vx;
         let tex = &mut s.dyntexs[texture.0];

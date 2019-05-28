@@ -72,8 +72,20 @@ impl<'a> Debtri<'a> {
         self.vx.debtris.hidden = true;
     }
 
+    /// Compare triangle draw order
+    ///
+    /// All triangles are drawn in a specific order. This method figures out which order is used
+    /// between two triangles. The order can be manipulated by [Debtri::swap].
+    pub fn compare_triangle_order(&self, left: &Handle, right: &Handle) -> std::cmp::Ordering {
+        left.0.cmp(&right.0)
+    }
+
     /// Swap two triangles with each other
-    pub fn swap(&mut self, left: &Handle, right: &Handle) {
+    ///
+    /// Swaps the internal data of each triangle (all vertices and their data, translation,
+    /// and so on). The side-effect of this is that the draw order is swapped too, meaning that the
+    /// triangles may reverse order (one drawn on top of the other).
+    pub fn swap(&mut self, left: &mut Handle, right: &mut Handle) {
         let debtris = &mut self.vx.debtris;
 
         for i in 0..6 {
@@ -97,6 +109,8 @@ impl<'a> Debtri<'a> {
         debtris.tranbuf_touch = self.vx.swapconfig.image_count;
         debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+
+        std::mem::swap(&mut left.0, &mut right.0);
     }
 
     // ---
@@ -107,14 +121,10 @@ impl<'a> Debtri<'a> {
     pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
         let debtris = &mut self.vx.debtris;
 
-        debtris.posbuffer.push(triangle.origin[0].0);
-        debtris.posbuffer.push(triangle.origin[0].1);
-
-        debtris.posbuffer.push(triangle.origin[1].0);
-        debtris.posbuffer.push(triangle.origin[1].1);
-
-        debtris.posbuffer.push(triangle.origin[2].0);
-        debtris.posbuffer.push(triangle.origin[2].1);
+        for origin in &triangle.origin {
+            debtris.posbuffer.push(origin.0);
+            debtris.posbuffer.push(origin.1);
+        }
 
         for col in &triangle.colors_rgba {
             debtris.colbuffer.push(col.0);
@@ -150,9 +160,8 @@ impl<'a> Debtri<'a> {
     ///
     /// Has no effect if there are no debug triangles.
     pub fn pop(&mut self) {
-        let vx = &mut *self.vx;
-        let debtris = &mut vx.debtris;
-        debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
+        self.vx.debtris.triangles_count =
+            self.vx.debtris.triangles_count.checked_sub(1).unwrap_or(0);
     }
 
     /// Remove the last N added debug triangle from rendering
@@ -249,16 +258,19 @@ impl<'a> Debtri<'a> {
         }
     }
 
-    /// Translate a debug triangle by a vector
+    /// Color a debug triangle by adding a color
     ///
-    /// Translation does not mutate the model-space of a triangle.
-    pub fn color(&mut self, handle: &Handle, color: [u8; 4]) {
+    /// Color mutates the model-space of a triangle. The color value this takes is [i16] because it
+    /// needs to be able to add and subtract the color components. Internally the RGBA u8 color
+    /// values are converted to [i16] and then cast back to [u8] using clamping.
+    pub fn color(&mut self, handle: &Handle, color: [i16; 4]) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
         for cols in
             self.vx.debtris.colbuffer[handle.0 * 12..(handle.0 + 1) * 12].chunks_exact_mut(4)
         {
             for (idx, color) in color.iter().enumerate() {
-                cols[idx] = *color;
+                let excol = i16::from(cols[idx]);
+                cols[idx] = (excol + *color).min(255).max(0) as u8;
             }
         }
     }
@@ -299,7 +311,7 @@ impl<'a> Debtri<'a> {
     /// Deform all triangles by adding delta vertices
     ///
     /// Adds the delta vertices to each debug triangle.
-    /// See [deform] for more information.
+    /// See [Debtri::deform] for more information.
     pub fn deform_all(&mut self, delta: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
         for (idx, trn) in self.vx.debtris.posbuffer.chunks_exact_mut(2).enumerate() {
@@ -311,7 +323,7 @@ impl<'a> Debtri<'a> {
     /// Color all debug triangles by adding a color
     ///
     /// Adds the color in the argument to the existing color of each triangle.
-    /// See [color] for more information.
+    /// See [Debtri::color] for more information.
     pub fn color_all(&mut self, color: [u8; 4]) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for cols in self.vx.debtris.colbuffer.chunks_exact_mut(4) {
@@ -324,7 +336,7 @@ impl<'a> Debtri<'a> {
     /// Translate all debug triangles by a vector
     ///
     /// Adds the translation in the argument to the existing translation of each triangle.
-    /// See [translate] for more information.
+    /// See [Debtri::translate] for more information.
     pub fn translate_all(&mut self, delta: (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
         for trn in self.vx.debtris.tranbuffer.chunks_exact_mut(2) {
@@ -336,7 +348,7 @@ impl<'a> Debtri<'a> {
     /// Rotate all debug triangles
     ///
     /// Adds the rotation in the argument to the existing rotation of each triangle.
-    /// See [rotate] for more information.
+    /// See [Debtri::rotate] for more information.
     pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, rotation: T) {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         for rot in &mut self.vx.debtris.rotbuffer {
@@ -347,7 +359,7 @@ impl<'a> Debtri<'a> {
     /// Scale all debug triangles (multiplicative)
     ///
     /// Multiplies the scale in the argument with the existing scale of each triangle.
-    /// See [scale] for more information.
+    /// See [Debtri::scale] for more information.
     pub fn scale_all(&mut self, scale: f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
         for sc in &mut self.vx.debtris.scalebuffer {
@@ -721,6 +733,20 @@ mod tests {
     }
 
     #[test]
+    fn simple_triangle_color() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        let triangle = vx.debtri().push(tri);
+        vx.debtri().color(&triangle, [-255, 0, 0, 0]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_triangle_color", img);
+    }
+
+    #[test]
     fn test_single_triangle_api() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
@@ -731,7 +757,7 @@ mod tests {
         let handle = debtri.push(tri);
         debtri.set_scale(&handle, 0.1);
         debtri.set_rotation(&handle, Deg(25.0));
-        debtri.set_position(&handle, (0.05, 0.4));
+        debtri.set_translation(&handle, (0.05, 0.4));
         debtri.translate(&handle, (0.2, 0.1));
         debtri.rotate(&handle, Deg(5.0));
 
@@ -748,15 +774,23 @@ mod tests {
 
         let mut debtri = vx.debtri();
 
-        let left = debtri.push(tri);
-        debtri.set_position(&left, (-0.25, 0.0));
+        let mut left = debtri.push(tri);
+        debtri.set_translation(&left, (-0.25, 0.0));
         debtri.set_color(&left, [255, 0, 0, 255]);
 
-        let right = debtri.push(tri);
-        debtri.set_position(&right, (0.25, 0.0));
+        let mut right = debtri.push(tri);
+        debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, [0, 0, 255, 255]);
 
-        debtri.swap(&left, &right);
+        assert_eq![
+            std::cmp::Ordering::Less,
+            debtri.compare_triangle_order(&left, &right)
+        ];
+        debtri.swap(&mut left, &mut right);
+        assert_eq![
+            std::cmp::Ordering::Greater,
+            debtri.compare_triangle_order(&left, &right)
+        ];
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "swap_triangles", img);
@@ -772,11 +806,11 @@ mod tests {
         let mut debtri = vx.debtri();
 
         let left = debtri.push(tri);
-        debtri.set_position(&left, (-0.25, 0.0));
+        debtri.set_translation(&left, (-0.25, 0.0));
         debtri.set_color(&left, [255, 0, 0, 255]);
 
         let right = debtri.push(tri);
-        debtri.set_position(&right, (0.25, 0.0));
+        debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, [0, 0, 255, 255]);
 
         debtri.set_deform(&right, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]);
