@@ -216,6 +216,7 @@ pub struct ResizBuf {
     buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
     requirements: memory::Requirements,
+    capacity_in_bytes: usize,
 }
 
 impl ResizBuf {
@@ -226,10 +227,10 @@ impl ResizBuf {
     pub fn with_capacity(
         device: &back::Device,
         adapter: &Adapter<back::Backend>,
-        capacity: usize,
+        capacity_in_bytes: usize,
     ) -> Self {
         let (buffer, memory, requirements) = unsafe {
-            let buffer_size: u64 = capacity as u64;
+            let buffer_size: u64 = capacity_in_bytes as u64;
             let mut buffer = device
                 .create_buffer(buffer_size, gfx_hal::buffer::Usage::VERTEX)
                 .expect("cant make bf");
@@ -248,6 +249,7 @@ impl ResizBuf {
             buffer: ManuallyDrop::new(buffer),
             memory: ManuallyDrop::new(memory),
             requirements,
+            capacity_in_bytes,
         }
     }
 
@@ -255,11 +257,20 @@ impl ResizBuf {
         &self.buffer
     }
 
-    fn resize(&mut self, device: &back::Device, adapter: &Adapter<back::Backend>, capacity: usize) {
-        let mut new_resizbuf = Self::with_capacity(device, adapter, capacity);
+    fn resize(
+        &mut self,
+        device: &back::Device,
+        adapter: &Adapter<back::Backend>,
+        capacity_in_bytes: usize,
+    ) {
+        let mut new_resizbuf = Self::with_capacity(device, adapter, capacity_in_bytes);
         std::mem::swap(&mut self.buffer, &mut new_resizbuf.buffer);
         std::mem::swap(&mut self.memory, &mut new_resizbuf.memory);
         std::mem::swap(&mut self.requirements, &mut new_resizbuf.requirements);
+        std::mem::swap(
+            &mut self.capacity_in_bytes,
+            &mut new_resizbuf.capacity_in_bytes,
+        );
         new_resizbuf.destroy(device);
     }
 
@@ -273,14 +284,14 @@ impl ResizBuf {
 
         let bytes_in_slice = (slice.len() * std::mem::size_of::<T>()).max(1) as u64;
 
-        if self.requirements.size >= bytes_in_slice * SHRINK_TRESHOLD {
+        if self.capacity_in_bytes as u64 >= bytes_in_slice * SHRINK_TRESHOLD {
             self.resize(
                 device,
                 adapter,
-                (self.requirements.size as usize / 2).max(bytes_in_slice as usize),
+                (self.capacity_in_bytes as usize / 2).max(bytes_in_slice as usize),
             );
             self.copy_from_slice_and_maybe_resize(device, adapter, slice);
-        } else if self.requirements.size >= bytes_in_slice {
+        } else if self.capacity_in_bytes as u64 >= bytes_in_slice {
             unsafe {
                 let mut data_target = device
                     .acquire_mapping_writer(&self.memory, 0..self.requirements.size)
@@ -294,7 +305,7 @@ impl ResizBuf {
             self.resize(
                 device,
                 adapter,
-                (self.requirements.size as usize * 2).max(bytes_in_slice as usize),
+                (self.capacity_in_bytes as usize * 2).max(bytes_in_slice as usize),
             );
             self.copy_from_slice_and_maybe_resize(device, adapter, slice);
         }
