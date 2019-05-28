@@ -762,6 +762,7 @@ mod tests {
         let mut debtri = vx.debtri();
         let handle = debtri.push(tri);
         debtri.set_scale(&handle, 0.1);
+        debtri.scale(&handle, 1.0);
         debtri.set_rotation(&handle, Deg(25.0));
         debtri.set_translation(&handle, (0.05, 0.4));
         debtri.translate(&handle, (0.2, 0.1));
