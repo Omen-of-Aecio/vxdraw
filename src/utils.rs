@@ -199,7 +199,6 @@ impl ResizBufIdx4 {
             self.resize(device, adapter, (self.capacity / 2).max(capacity));
         } else if self.capacity >= capacity {
         } else {
-            dbg![capacity];
             self.resize(device, adapter, (self.capacity * 2).max(capacity));
         }
     }
