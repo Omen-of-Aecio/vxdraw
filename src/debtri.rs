@@ -196,8 +196,29 @@ impl<'a> Debtri<'a> {
     /// [Debtri::remove] instead of [Debtri::pop] in complex applications.
     /// See [Debtri::push] for more information.
     pub fn pop(&mut self) {
-        self.vx.debtris.triangles_count =
-            self.vx.debtris.triangles_count.checked_sub(1).unwrap_or(0);
+        let debtris = &mut self.vx.debtris;
+
+        debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
+
+        for _ in 0..6 {
+            debtris.posbuffer.pop();
+        }
+
+        for _ in 0..12 {
+            debtris.colbuffer.pop();
+        }
+
+        for _ in 0..6 {
+            debtris.tranbuffer.pop();
+        }
+
+        for _ in 0..3 {
+            debtris.rotbuffer.pop();
+        }
+
+        for _ in 0..3 {
+            debtris.scalebuffer.pop();
+        }
     }
 
     /// Remove the last N added debug triangle from rendering
