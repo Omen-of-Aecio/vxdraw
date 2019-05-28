@@ -520,7 +520,7 @@ impl VxDraw {
             image_count: image_count as usize,
             image_views,
             present_wait_semaphores,
-            queue_group: ManuallyDrop::new(queue_group),
+            queue_group,
             render_area: pso::Rect {
                 x: 0,
                 y: 0,
@@ -539,7 +539,7 @@ impl VxDraw {
             depth_image_requirements,
             depth_image_memories,
             #[cfg(not(feature = "gl"))]
-            vk_inst: ManuallyDrop::new(vk_inst),
+            vk_inst,
             #[cfg(not(feature = "gl"))]
             window,
             log,

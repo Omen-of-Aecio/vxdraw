@@ -122,11 +122,6 @@ pub enum DrawType {
 }
 
 pub struct VxDraw {
-    #[cfg(not(feature = "gl"))]
-    pub window: winit::Window,
-
-    pub events_loop: winit::EventsLoop,
-
     pub draw_order: Vec<DrawType>,
     pub strtexs: Vec<StreamingTexture>,
     pub dyntexs: Vec<SingleTexture>,
@@ -161,18 +156,31 @@ pub struct VxDraw {
     pub images: Vec<<back::Backend as Backend>::Image>,
     pub image_views: Vec<<back::Backend as Backend>::ImageView>,
     pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
-    pub queue_group: ManuallyDrop<gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>>,
     pub swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
     pub swapconfig: gfx_hal::window::SwapchainConfig,
-    pub device_limits: gfx_hal::Limits,
-    pub device: ManuallyDrop<back::Device>,
-    pub adapter: Adapter<back::Backend>,
-    pub surf: <back::Backend as Backend>::Surface,
     pub format: gfx_hal::format::Format,
 
-    #[cfg(not(feature = "gl"))]
-    pub vk_inst: ManuallyDrop<back::Instance>,
     pub log: Logpass,
+
+    pub queue_group: gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>,
+
+    ////////////////////////////////////////////////////////////
+    // WARNING: ORDER SENSITIVE CODE
+    //
+    // Re-ordering may break dependencies and cause _rare_ segmentation faults, aborts, or illegal
+    // instructions.
+    ////////////////////////////////////////////////////////////
+    pub adapter: Adapter<back::Backend>,
+    pub device_limits: gfx_hal::Limits,
+    pub device: ManuallyDrop<back::Device>,
+
+    pub surf: <back::Backend as Backend>::Surface,
+    #[cfg(not(feature = "gl"))]
+    pub vk_inst: back::Instance,
+    #[cfg(not(feature = "gl"))]
+    pub window: winit::Window,
+
+    pub events_loop: winit::EventsLoop,
 }
 
 // ---
@@ -334,11 +342,6 @@ impl Drop for VxDraw {
                 self.device
                     .destroy_image_view(ManuallyDrop::into_inner(read(&strtex.image_view)));
             }
-
-            ManuallyDrop::drop(&mut self.queue_group);
-            ManuallyDrop::drop(&mut self.device);
-            #[cfg(not(feature = "gl"))]
-            ManuallyDrop::drop(&mut self.vk_inst);
         }
     }
 }
