@@ -511,7 +511,7 @@ impl VxDraw {
             current_frame: 0,
             draw_order: vec![],
             max_frames_in_flight,
-            device: ManuallyDrop::new(device),
+            device,
             device_limits: phys_dev_limits,
             events_loop,
             frames_in_flight_fences,

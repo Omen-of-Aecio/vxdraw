@@ -58,7 +58,7 @@ impl<'a> Dyntex<'a> {
     /// objects and ensure that the foreground texture is allocated last.
     pub fn push_texture(&mut self, img_data: &[u8], options: TextureOptions) -> TextureHandle {
         let s = &mut *self.vx;
-        let device = &*s.device;
+        let device = &s.device;
 
         let img = load_image::load_from_memory_with_format(&img_data[..], load_image::PNG)
             .unwrap()

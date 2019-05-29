@@ -170,9 +170,9 @@ pub struct VxDraw {
     // Re-ordering may break dependencies and cause _rare_ segmentation faults, aborts, or illegal
     // instructions.
     ////////////////////////////////////////////////////////////
-    pub adapter: Adapter<back::Backend>,
     pub device_limits: gfx_hal::Limits,
-    pub device: ManuallyDrop<back::Device>,
+    pub device: back::Device,
+    pub adapter: Adapter<back::Backend>,
 
     pub surf: <back::Backend as Backend>::Surface,
     #[cfg(not(feature = "gl"))]
