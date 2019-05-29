@@ -22,6 +22,10 @@ use std::mem::ManuallyDrop;
 
 // ---
 
+pub trait Layerable {
+    fn get_layer(&self, vx: &VxDraw) -> usize;
+}
+
 /// Find the memory type id that satisfies the requirements and the memory properties for the given
 /// adapter
 pub fn find_memory_type_id<B: gfx_hal::Backend>(

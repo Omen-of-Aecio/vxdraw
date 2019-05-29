@@ -547,6 +547,13 @@ impl VxDraw {
         }
     }
 
+    /// Swap two layer orders
+    pub fn swap_layers(&mut self, layer1: &impl Layerable, layer2: &impl Layerable) {
+        let idx1 = layer1.get_layer(self);
+        let idx2 = layer2.get_layer(self);
+        self.draw_order.swap(idx1, idx2);
+    }
+
     /// Get the size of the display window in floats
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
         let dpi_factor = self.window.get_hidpi_factor();
@@ -1310,6 +1317,48 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "strtex_and_dyntex_respect_draw_order", img);
+    }
+
+    #[test]
+    fn swap_layers() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let options = dyntex::TextureOptions {
+            depth_test: false,
+            ..dyntex::TextureOptions::default()
+        };
+        let tex1 = vx.dyntex().push_texture(TESTURE, options);
+        let tex2 = vx.strtex().push_texture(strtex::TextureOptions {
+            depth_test: false,
+            width: 1,
+            height: 1,
+            ..strtex::TextureOptions::default()
+        });
+
+        vx.strtex()
+            .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
+
+        vx.dyntex().push_sprite(
+            &tex1,
+            dyntex::Sprite {
+                rotation: 0.0,
+                scale: 0.5,
+                ..dyntex::Sprite::default()
+            },
+        );
+        vx.strtex().push_sprite(
+            &tex2,
+            strtex::Sprite {
+                rotation: 0.5,
+                ..strtex::Sprite::default()
+            },
+        );
+
+        vx.swap_layers(&tex1, &tex2);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "swap_layers", img);
     }
 
     // ---

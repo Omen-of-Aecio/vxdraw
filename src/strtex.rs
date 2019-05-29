@@ -1184,6 +1184,20 @@ pub struct SpriteHandle(usize, usize);
 /// Handle to a texture
 pub struct TextureHandle(usize);
 
+impl Layerable for TextureHandle {
+    fn get_layer(&self, vx: &VxDraw) -> usize {
+        for (idx, ord) in vx.draw_order.iter().enumerate() {
+            match ord {
+                DrawType::StreamingTexture { id } if *id == self.0 => {
+                    return idx;
+                }
+                _ => {}
+            }
+        }
+        panic!["Unable to get layer"]
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct TextureOptions {
     /// Perform depth testing (and fragment culling) when drawing sprites from this texture
