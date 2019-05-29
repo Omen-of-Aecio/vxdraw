@@ -79,11 +79,11 @@ pub struct DebugTriangleData {
     pub rotbuf_touch: u32,
     pub scalebuf_touch: u32,
 
-    pub posbuffer: Vec<f32>,   // 6 per triangle
-    pub colbuffer: Vec<u8>,    // 12 per triangle
-    pub tranbuffer: Vec<f32>,  // 6 per triangle
-    pub rotbuffer: Vec<f32>,   // 3 per triangle
-    pub scalebuffer: Vec<f32>, // 3 per triangle
+    pub posbuffer: Vec<[f32; 6]>, // 6 per triangle
+    pub colbuffer: Vec<u8>,       // 12 per triangle
+    pub tranbuffer: Vec<f32>,     // 6 per triangle
+    pub rotbuffer: Vec<f32>,      // 3 per triangle
+    pub scalebuffer: Vec<f32>,    // 3 per triangle
 
     pub posbuf: Vec<super::utils::ResizBuf>,
     pub colbuf: Vec<super::utils::ResizBuf>,

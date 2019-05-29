@@ -59,7 +59,7 @@ impl<'a> Debtri<'a> {
     fn check_health(&self) {
         debug_assert![self.vx.debtris.holes.len() <= self.vx.debtris.triangles_count];
 
-        debug_assert![self.vx.debtris.posbuffer.len() == self.vx.debtris.triangles_count * 6];
+        debug_assert![self.vx.debtris.posbuffer.len() == self.vx.debtris.triangles_count];
         debug_assert![self.vx.debtris.colbuffer.len() == self.vx.debtris.triangles_count * 12];
         debug_assert![self.vx.debtris.tranbuffer.len() == self.vx.debtris.triangles_count * 6];
         debug_assert![self.vx.debtris.rotbuffer.len() == self.vx.debtris.triangles_count * 3];
@@ -115,9 +115,7 @@ impl<'a> Debtri<'a> {
     pub fn swap(&mut self, left: &mut Handle, right: &mut Handle) {
         let debtris = &mut self.vx.debtris;
 
-        for i in 0..6 {
-            debtris.posbuffer.swap(left.0 * 6 + i, right.0 * 6 + i);
-        }
+        debtris.posbuffer.swap(left.0, right.0);
         for i in 0..12 {
             debtris.colbuffer.swap(left.0 * 12 + i, right.0 * 12 + i);
         }
@@ -153,8 +151,8 @@ impl<'a> Debtri<'a> {
 
         let handle = if let Some(hole) = debtris.holes.pop() {
             for (idx, origin) in triangle.origin.iter().enumerate() {
-                debtris.posbuffer[hole * 6 + idx * 2] = origin.0;
-                debtris.posbuffer[hole * 6 + idx * 2 + 1] = origin.1;
+                debtris.posbuffer[hole][idx * 2] = origin.0;
+                debtris.posbuffer[hole][idx * 2 + 1] = origin.1;
             }
 
             for (idx, col) in triangle.colors_rgba.iter().enumerate() {
@@ -178,10 +176,14 @@ impl<'a> Debtri<'a> {
             }
             Handle(hole)
         } else {
-            for origin in &triangle.origin {
-                debtris.posbuffer.push(origin.0);
-                debtris.posbuffer.push(origin.1);
-            }
+            debtris.posbuffer.push([
+                triangle.origin[0].0,
+                triangle.origin[0].1,
+                triangle.origin[1].0,
+                triangle.origin[1].1,
+                triangle.origin[2].0,
+                triangle.origin[2].1,
+            ]);
 
             for col in &triangle.colors_rgba {
                 debtris.colbuffer.push(col.0);
@@ -227,9 +229,7 @@ impl<'a> Debtri<'a> {
 
         debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
 
-        for _ in 0..6 {
-            debtris.posbuffer.pop();
-        }
+        debtris.posbuffer.pop();
 
         for _ in 0..12 {
             debtris.colbuffer.pop();
@@ -257,7 +257,7 @@ impl<'a> Debtri<'a> {
         let begin = end.checked_sub(n).unwrap_or(0);
 
         let debtris = &mut self.vx.debtris;
-        debtris.posbuffer.drain(begin * 6..end * 6);
+        debtris.posbuffer.drain(begin..end);
         debtris.colbuffer.drain(begin * 12..end * 12);
         debtris.tranbuffer.drain(begin * 6..end * 6);
         debtris.rotbuffer.drain(begin * 3..end * 3);
@@ -285,13 +285,13 @@ impl<'a> Debtri<'a> {
     /// triangle.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, vertex) in self.vx.debtris.posbuffer[handle.0 * 6..(handle.0 + 1) * 6]
-            .chunks_exact_mut(2)
-            .enumerate()
-        {
-            vertex[0] = points[idx].0;
-            vertex[1] = points[idx].1;
-        }
+        let vertex = &mut self.vx.debtris.posbuffer[handle.0];
+        vertex[0] = points[0].0;
+        vertex[1] = points[0].1;
+        vertex[2] = points[1].0;
+        vertex[3] = points[1].1;
+        vertex[4] = points[2].0;
+        vertex[5] = points[2].1;
     }
 
     /// Set a solid color of a debug triangle
@@ -343,13 +343,13 @@ impl<'a> Debtri<'a> {
     /// Adds the delta vertices to the debug triangle. Beware: This changes model space form.
     pub fn deform(&mut self, handle: &Handle, delta: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, trn) in self.vx.debtris.posbuffer[handle.0 * 6..(handle.0 + 1) * 6]
-            .chunks_exact_mut(2)
-            .enumerate()
-        {
-            trn[0] += delta[idx].0;
-            trn[1] += delta[idx].1;
-        }
+        let trn = &mut self.vx.debtris.posbuffer[handle.0];
+        trn[0] += delta[0].0;
+        trn[1] += delta[0].1;
+        trn[2] += delta[1].0;
+        trn[3] += delta[1].1;
+        trn[4] += delta[2].0;
+        trn[5] += delta[2].1;
     }
 
     /// Color a debug triangle by adding a color
@@ -408,9 +408,13 @@ impl<'a> Debtri<'a> {
     /// See [Debtri::deform] for more information.
     pub fn deform_all(&mut self, delta: [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, trn) in self.vx.debtris.posbuffer.chunks_exact_mut(2).enumerate() {
-            trn[0] += delta[idx % 3].0;
-            trn[1] += delta[idx % 3].1;
+        for trn in self.vx.debtris.posbuffer.iter_mut() {
+            trn[0] += delta[0].0;
+            trn[1] += delta[0].1;
+            trn[2] += delta[1].0;
+            trn[3] += delta[1].1;
+            trn[4] += delta[2].0;
+            trn[5] += delta[2].1;
         }
     }
 
