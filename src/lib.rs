@@ -1361,6 +1361,42 @@ mod tests {
         utils::assert_swapchain_eq(&mut vx, "swap_layers", img);
     }
 
+    #[test]
+    fn swap_layers_quad() {
+        use quads::{Quad, QuadOptions};
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let quad1 = vx.quads().create_quad(QuadOptions::default());
+        vx.quads().push(
+            &quad1,
+            Quad {
+                scale: 0.25,
+                ..Quad::default()
+            },
+        );
+
+        let options = dyntex::TextureOptions {
+            depth_test: false,
+            ..dyntex::TextureOptions::default()
+        };
+        let tex1 = vx.dyntex().push_texture(TESTURE, options);
+
+        vx.dyntex().push_sprite(
+            &tex1,
+            dyntex::Sprite {
+                rotation: 0.0,
+                scale: 0.5,
+                ..dyntex::Sprite::default()
+            },
+        );
+
+        vx.swap_layers(&tex1, &quad1);
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "swap_layers_quad", img);
+    }
+
     // ---
 
     #[bench]

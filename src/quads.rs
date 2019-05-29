@@ -577,6 +577,21 @@ impl<'a> Quads<'a> {
 // ---
 
 pub struct Layer(usize);
+
+impl Layerable for Layer {
+    fn get_layer(&self, vx: &VxDraw) -> usize {
+        for (idx, ord) in vx.draw_order.iter().enumerate() {
+            match ord {
+                DrawType::Quad { id } if *id == self.0 => {
+                    return idx;
+                }
+                _ => {}
+            }
+        }
+        panic!["Unable to get layer"]
+    }
+}
+
 pub struct QuadHandle(usize, usize);
 
 #[derive(Clone, Copy)]
