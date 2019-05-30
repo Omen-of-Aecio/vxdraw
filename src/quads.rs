@@ -152,11 +152,27 @@ impl Layerable for Layer {
 /// Options for creating a layer of quads
 pub struct LayerOptions {
     depth_test: bool,
+    hide: bool,
 }
 
 impl Default for LayerOptions {
     fn default() -> Self {
-        Self { depth_test: false }
+        Self {
+            depth_test: false,
+            hide: false,
+        }
+    }
+}
+
+impl LayerOptions {
+    fn hide(mut self) -> Self {
+        self.hide = true;
+        self
+    }
+
+    fn show(mut self) -> Self {
+        self.hide = false;
+        self
     }
 }
 
@@ -208,6 +224,16 @@ impl<'a> Quads<'a> {
     /// This is a very cheap operation.
     pub fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
+    }
+
+    /// Disable drawing of the quads at this layer
+    pub fn hide(&mut self, layer: &Layer) {
+        self.vx.quads[layer.0].hidden = true;
+    }
+
+    /// Enable drawing of the quads at this layer
+    pub fn show(&mut self, layer: &Layer) {
+        self.vx.quads[layer.0].hidden = false;
     }
 
     /// Create a new layer for quads
@@ -466,6 +492,7 @@ impl<'a> Quads<'a> {
         let indices = super::utils::ResizBufIdx4::new(&s.device, &s.adapter);
 
         let quads = ColoredQuadList {
+            hidden: options.hide,
             count: 0,
 
             holes: vec![],
@@ -780,6 +807,22 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad", img);
+    }
+
+    #[test]
+    fn simple_quad_hide() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+
+        let layer = vx.quads().new_layer(LayerOptions::default());
+        vx.quads().add(&layer, quad);
+        vx.quads().hide(&layer);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_hide", img);
     }
 
     #[test]

@@ -98,6 +98,7 @@ pub struct DebugTriangleData {
 }
 
 pub struct ColoredQuadList {
+    pub hidden: bool,
     pub count: usize,
 
     pub holes: Vec<usize>,

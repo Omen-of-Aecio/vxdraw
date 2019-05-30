@@ -1001,79 +1001,81 @@ impl VxDraw {
                             }
                             DrawType::Quad { id } => {
                                 if let Some(quad) = self.quads.get_mut(*id) {
-                                    enc.bind_graphics_pipeline(&quad.pipeline);
-                                    enc.push_graphics_constants(
-                                        &quad.pipeline_layout,
-                                        pso::ShaderStageFlags::VERTEX,
-                                        0,
-                                        &*(view.as_ptr() as *const [u32; 16]),
-                                    );
-                                    if quad.posbuf_touch != 0 {
-                                        quad.posbuf[self.current_frame]
-                                            .copy_from_slice_and_maybe_resize(
-                                                &self.device,
-                                                &self.adapter,
-                                                &quad.posbuffer[..],
-                                            );
-                                        quad.posbuf_touch -= 1;
+                                    if !quad.hidden {
+                                        enc.bind_graphics_pipeline(&quad.pipeline);
+                                        enc.push_graphics_constants(
+                                            &quad.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(view.as_ptr() as *const [u32; 16]),
+                                        );
+                                        if quad.posbuf_touch != 0 {
+                                            quad.posbuf[self.current_frame]
+                                                .copy_from_slice_and_maybe_resize(
+                                                    &self.device,
+                                                    &self.adapter,
+                                                    &quad.posbuffer[..],
+                                                );
+                                            quad.posbuf_touch -= 1;
+                                        }
+                                        if quad.colbuf_touch != 0 {
+                                            quad.colbuf[self.current_frame]
+                                                .copy_from_slice_and_maybe_resize(
+                                                    &self.device,
+                                                    &self.adapter,
+                                                    &quad.colbuffer[..],
+                                                );
+                                            quad.colbuf_touch -= 1;
+                                        }
+                                        if quad.tranbuf_touch != 0 {
+                                            quad.tranbuf[self.current_frame]
+                                                .copy_from_slice_and_maybe_resize(
+                                                    &self.device,
+                                                    &self.adapter,
+                                                    &quad.tranbuffer[..],
+                                                );
+                                            quad.tranbuf_touch -= 1;
+                                        }
+                                        if quad.rotbuf_touch != 0 {
+                                            quad.rotbuf[self.current_frame]
+                                                .copy_from_slice_and_maybe_resize(
+                                                    &self.device,
+                                                    &self.adapter,
+                                                    &quad.rotbuffer[..],
+                                                );
+                                            quad.rotbuf_touch -= 1;
+                                        }
+                                        if quad.scalebuf_touch != 0 {
+                                            quad.scalebuf[self.current_frame]
+                                                .copy_from_slice_and_maybe_resize(
+                                                    &self.device,
+                                                    &self.adapter,
+                                                    &quad.scalebuffer[..],
+                                                );
+                                            quad.scalebuf_touch -= 1;
+                                        }
+                                        let count = quad.posbuffer.len();
+                                        quad.indices.ensure_capacity(
+                                            &self.device,
+                                            &self.adapter,
+                                            count,
+                                        );
+                                        let buffers: ArrayVec<[_; 5]> = [
+                                            (quad.posbuf[self.current_frame].buffer(), 0),
+                                            (quad.colbuf[self.current_frame].buffer(), 0),
+                                            (quad.tranbuf[self.current_frame].buffer(), 0),
+                                            (quad.rotbuf[self.current_frame].buffer(), 0),
+                                            (quad.scalebuf[self.current_frame].buffer(), 0),
+                                        ]
+                                        .into();
+                                        enc.bind_vertex_buffers(0, buffers);
+                                        enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                            buffer: &quad.indices.buffer(),
+                                            offset: 0,
+                                            index_type: gfx_hal::IndexType::U16,
+                                        });
+                                        enc.draw_indexed(0..quad.count as u32 * 6, 0, 0..1);
                                     }
-                                    if quad.colbuf_touch != 0 {
-                                        quad.colbuf[self.current_frame]
-                                            .copy_from_slice_and_maybe_resize(
-                                                &self.device,
-                                                &self.adapter,
-                                                &quad.colbuffer[..],
-                                            );
-                                        quad.colbuf_touch -= 1;
-                                    }
-                                    if quad.tranbuf_touch != 0 {
-                                        quad.tranbuf[self.current_frame]
-                                            .copy_from_slice_and_maybe_resize(
-                                                &self.device,
-                                                &self.adapter,
-                                                &quad.tranbuffer[..],
-                                            );
-                                        quad.tranbuf_touch -= 1;
-                                    }
-                                    if quad.rotbuf_touch != 0 {
-                                        quad.rotbuf[self.current_frame]
-                                            .copy_from_slice_and_maybe_resize(
-                                                &self.device,
-                                                &self.adapter,
-                                                &quad.rotbuffer[..],
-                                            );
-                                        quad.rotbuf_touch -= 1;
-                                    }
-                                    if quad.scalebuf_touch != 0 {
-                                        quad.scalebuf[self.current_frame]
-                                            .copy_from_slice_and_maybe_resize(
-                                                &self.device,
-                                                &self.adapter,
-                                                &quad.scalebuffer[..],
-                                            );
-                                        quad.scalebuf_touch -= 1;
-                                    }
-                                    let count = quad.posbuffer.len();
-                                    quad.indices.ensure_capacity(
-                                        &self.device,
-                                        &self.adapter,
-                                        count,
-                                    );
-                                    let buffers: ArrayVec<[_; 5]> = [
-                                        (quad.posbuf[self.current_frame].buffer(), 0),
-                                        (quad.colbuf[self.current_frame].buffer(), 0),
-                                        (quad.tranbuf[self.current_frame].buffer(), 0),
-                                        (quad.rotbuf[self.current_frame].buffer(), 0),
-                                        (quad.scalebuf[self.current_frame].buffer(), 0),
-                                    ]
-                                    .into();
-                                    enc.bind_vertex_buffers(0, buffers);
-                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                        buffer: &quad.indices.buffer(),
-                                        offset: 0,
-                                        index_type: gfx_hal::IndexType::U16,
-                                    });
-                                    enc.draw_indexed(0..quad.count as u32 * 6, 0, 0..1);
                                 }
                             }
                         }
