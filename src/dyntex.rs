@@ -927,10 +927,26 @@ impl Layerable for Layer {
 #[derive(Clone, Copy)]
 pub struct LayerOptions {
     /// Perform depth testing (and fragment culling) when drawing sprites from this texture
-    pub depth_test: bool,
+    depth_test: bool,
     /// Fix the perspective, this ignores the perspective sent into draw for this texture and
     /// all its associated sprites
-    pub fixed_perspective: Option<Matrix4<f32>>,
+    fixed_perspective: Option<Matrix4<f32>>,
+}
+
+impl LayerOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn depth(mut self, depth: bool) -> Self {
+        self.depth_test = depth;
+        self
+    }
+
+    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
+        self.fixed_perspective = Some(mat);
+        self
+    }
 }
 
 impl Default for LayerOptions {

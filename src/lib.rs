@@ -1325,10 +1325,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = dyntex::LayerOptions {
-            depth_test: false,
-            ..dyntex::LayerOptions::default()
-        };
+        let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
         let tex2 = vx
             .strtex()
@@ -1371,10 +1368,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = dyntex::LayerOptions {
-            depth_test: false,
-            ..dyntex::LayerOptions::default()
-        };
+        let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
         let tex2 = vx
             .strtex()
@@ -1414,10 +1408,7 @@ mod tests {
             },
         );
 
-        let options = dyntex::LayerOptions {
-            depth_test: false,
-            ..dyntex::LayerOptions::default()
-        };
+        let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
 
         vx.dyntex().add(
