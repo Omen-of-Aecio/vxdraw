@@ -875,16 +875,67 @@ impl<'a> Dyntex<'a> {
 /// A sprite is a rectangular view into a texture.
 #[derive(Clone, Copy)]
 pub struct Sprite {
-    pub width: f32,
-    pub height: f32,
-    pub depth: f32,
-    pub colors: [(u8, u8, u8, u8); 4],
-    pub uv_begin: (f32, f32),
-    pub uv_end: (f32, f32),
-    pub translation: (f32, f32),
-    pub rotation: f32,
-    pub scale: f32,
-    pub origin: (f32, f32),
+    width: f32,
+    height: f32,
+    depth: f32,
+    colors: [(u8, u8, u8, u8); 4],
+    uv_begin: (f32, f32),
+    uv_end: (f32, f32),
+    translation: (f32, f32),
+    rotation: f32,
+    scale: f32,
+    origin: (f32, f32),
+}
+
+impl Sprite {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+
+    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
+        self.colors = colors;
+        self
+    }
+
+    pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
+        self.uv_begin = uv;
+        self
+    }
+
+    pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
+        self.uv_end = uv;
+        self
+    }
+
+    pub fn translation(mut self, trn: (f32, f32)) -> Self {
+        self.translation = trn;
+        self
+    }
+
+    pub fn rotation(mut self, rot: f32) -> Self {
+        self.rotation = rot;
+        self
+    }
+
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    pub fn origin(mut self, origin: (f32, f32)) -> Self {
+        self.origin = origin;
+        self
+    }
 }
 
 impl Default for Sprite {
