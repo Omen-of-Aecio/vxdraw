@@ -49,13 +49,32 @@ pub(crate) struct StreamingTexture {
 pub(crate) struct SingleTexture {
     pub(crate) hidden: bool,
     pub(crate) count: u32,
-
-    pub(crate) fixed_perspective: Option<Matrix4<f32>>,
-    pub(crate) mockbuffer: Vec<u8>,
     pub(crate) removed: Vec<usize>,
 
-    pub(crate) texture_vertex_sprites: super::utils::ResizBuf,
-    pub(crate) indices: super::utils::ResizBufIdx4,
+    pub(crate) fixed_perspective: Option<Matrix4<f32>>,
+
+    pub(crate) posbuf_touch: u32,
+    pub(crate) colbuf_touch: u32,
+    pub(crate) uvbuf_touch: u32,
+    pub(crate) tranbuf_touch: u32,
+    pub(crate) rotbuf_touch: u32,
+    pub(crate) scalebuf_touch: u32,
+
+    pub(crate) posbuffer: Vec<[f32; 8]>,   // 8 per quad
+    pub(crate) colbuffer: Vec<[u8; 16]>,   // 16 per quad
+    pub(crate) uvbuffer: Vec<[f32; 8]>,    // 8 per quad
+    pub(crate) tranbuffer: Vec<[f32; 8]>,  // 8 per quad
+    pub(crate) rotbuffer: Vec<[f32; 4]>,   // 4 per quad
+    pub(crate) scalebuffer: Vec<[f32; 4]>, // 4 per quad
+
+    pub(crate) posbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) colbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) uvbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) tranbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) rotbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) scalebuf: Vec<super::utils::ResizBuf>,
+
+    pub(crate) indices: Vec<super::utils::ResizBufIdx4>,
 
     pub(crate) texture_image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
     pub(crate) texture_image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
@@ -316,8 +335,27 @@ impl Drop for VxDraw {
                 .destroy_swapchain(ManuallyDrop::into_inner(read(&self.swapchain)));
 
             for mut simple_tex in self.dyntexs.drain(..) {
-                simple_tex.indices.destroy(&self.device);
-                simple_tex.texture_vertex_sprites.destroy(&self.device);
+                for mut indices in simple_tex.indices.drain(..) {
+                    indices.destroy(&self.device);
+                }
+                for mut posbuf in simple_tex.posbuf.drain(..) {
+                    posbuf.destroy(&self.device);
+                }
+                for mut colbuf in simple_tex.colbuf.drain(..) {
+                    colbuf.destroy(&self.device);
+                }
+                for mut uvbuf in simple_tex.uvbuf.drain(..) {
+                    uvbuf.destroy(&self.device);
+                }
+                for mut tranbuf in simple_tex.tranbuf.drain(..) {
+                    tranbuf.destroy(&self.device);
+                }
+                for mut rotbuf in simple_tex.rotbuf.drain(..) {
+                    rotbuf.destroy(&self.device);
+                }
+                for mut scalebuf in simple_tex.scalebuf.drain(..) {
+                    scalebuf.destroy(&self.device);
+                }
                 self.device.destroy_image(ManuallyDrop::into_inner(read(
                     &simple_tex.texture_image_buffer,
                 )));

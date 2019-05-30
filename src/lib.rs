@@ -963,6 +963,75 @@ impl VxDraw {
                                 let dyntex = &mut self.dyntexs[*id];
                                 if !dyntex.hidden {
                                     enc.bind_graphics_pipeline(&dyntex.pipeline);
+                                    if dyntex.posbuf_touch != 0 {
+                                        dyntex.posbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &dyntex.posbuffer[..],
+                                            );
+                                        dyntex.posbuf_touch -= 1;
+                                    }
+                                    if dyntex.colbuf_touch != 0 {
+                                        dyntex.colbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &dyntex.colbuffer[..],
+                                            );
+                                        dyntex.colbuf_touch -= 1;
+                                    }
+                                    if dyntex.uvbuf_touch != 0 {
+                                        dyntex.uvbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &dyntex.uvbuffer[..],
+                                            );
+                                        dyntex.uvbuf_touch -= 1;
+                                    }
+                                    if dyntex.tranbuf_touch != 0 {
+                                        dyntex.tranbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &dyntex.tranbuffer[..],
+                                            );
+                                        dyntex.tranbuf_touch -= 1;
+                                    }
+                                    if dyntex.rotbuf_touch != 0 {
+                                        dyntex.rotbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &dyntex.rotbuffer[..],
+                                            );
+                                        dyntex.rotbuf_touch -= 1;
+                                    }
+                                    if dyntex.scalebuf_touch != 0 {
+                                        dyntex.scalebuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &dyntex.scalebuffer[..],
+                                            );
+                                        dyntex.scalebuf_touch -= 1;
+                                    }
+                                    let count = dyntex.posbuffer.len();
+                                    dyntex.indices[self.current_frame].ensure_capacity(
+                                        &self.device,
+                                        &self.adapter,
+                                        count,
+                                    );
+                                    let buffers: ArrayVec<[_; 6]> = [
+                                        (dyntex.posbuf[self.current_frame].buffer(), 0),
+                                        (dyntex.uvbuf[self.current_frame].buffer(), 0),
+                                        (dyntex.tranbuf[self.current_frame].buffer(), 0),
+                                        (dyntex.rotbuf[self.current_frame].buffer(), 0),
+                                        (dyntex.scalebuf[self.current_frame].buffer(), 0),
+                                        (dyntex.colbuf[self.current_frame].buffer(), 0),
+                                    ]
+                                    .into();
                                     if let Some(persp) = dyntex.fixed_perspective {
                                         enc.push_graphics_constants(
                                             &dyntex.pipeline_layout,
@@ -984,27 +1053,13 @@ impl VxDraw {
                                         Some(&*dyntex.descriptor_set),
                                         &[],
                                     );
-                                    dyntex
-                                        .texture_vertex_sprites
-                                        .copy_from_slice_and_maybe_resize(
-                                            &self.device,
-                                            &self.adapter,
-                                            &dyntex.mockbuffer[..],
-                                        );
-                                    let buffers: ArrayVec<[_; 1]> =
-                                        [(dyntex.texture_vertex_sprites.buffer(), 0)].into();
                                     enc.bind_vertex_buffers(0, buffers);
-                                    dyntex.indices.ensure_capacity(
-                                        &self.device,
-                                        &self.adapter,
-                                        dyntex.count as usize,
-                                    );
                                     enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                        buffer: dyntex.indices.buffer(),
+                                        buffer: dyntex.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U16,
                                     });
-                                    enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
+                                    enc.draw_indexed(0..dyntex.posbuffer.len() as u32 * 6, 0, 0..1);
                                 }
                             }
                             DrawType::Quad { id } => {

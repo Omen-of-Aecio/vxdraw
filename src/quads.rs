@@ -124,6 +124,7 @@
 use super::utils::*;
 use crate::data::{DrawType, QuadsData, VxDraw};
 use cgmath::Rad;
+use core::ptr::read;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -134,7 +135,6 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
 use std::mem::ManuallyDrop;
-use core::ptr::read;
 
 // ---
 
