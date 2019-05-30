@@ -157,12 +157,10 @@ pub struct VxDraw {
     pub(crate) current_frame: usize,
     pub(crate) max_frames_in_flight: usize,
 
-    pub(crate) image_count: usize,
     pub(crate) render_area: gfx_hal::pso::Rect,
 
     pub(crate) depth_images: Vec<<back::Backend as Backend>::Image>,
     pub(crate) depth_image_views: Vec<<back::Backend as Backend>::ImageView>,
-    pub(crate) depth_image_requirements: Vec<gfx_hal::memory::Requirements>,
     pub(crate) depth_image_memories: Vec<<back::Backend as Backend>::Memory>,
 
     pub(crate) frames_in_flight_fences: Vec<<back::Backend as Backend>::Fence>,
@@ -202,6 +200,7 @@ pub struct VxDraw {
     pub(crate) adapter: Adapter<back::Backend>,
 
     pub(crate) surf: <back::Backend as Backend>::Surface,
+    #[allow(dead_code)]
     #[cfg(not(feature = "gl"))]
     pub(crate) vk_inst: back::Instance,
     #[cfg(not(feature = "gl"))]

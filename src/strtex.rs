@@ -284,7 +284,7 @@ impl<'a> Strtex<'a> {
     /// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
     /// so on.
     ///
-    /// Each texture has options (See [strtex::LayerOptions]). This decides how the derivative sprites are
+    /// Each texture has options (See [LayerOptions]). This decides how the derivative sprites are
     /// drawn.
     ///
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.

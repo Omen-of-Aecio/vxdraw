@@ -226,7 +226,7 @@ impl<'a> Dyntex<'a> {
     /// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
     /// so on.
     ///
-    /// Each texture has options (See [dyntex::LayerOptions]). This decides how the derivative sprites are
+    /// Each texture has options (See [LayerOptions]). This decides how the derivative sprites are
     /// drawn.
     ///
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
@@ -819,12 +819,12 @@ impl<'a> Dyntex<'a> {
     /// Removes the texture from memory and destroys all sprites associated with it.
     /// All lingering sprite handles that were spawned using this texture handle will be
     /// invalidated.
-    pub fn remove_layer(&mut self, texture: Layer) {
+    pub fn remove_layer(&mut self, layer: Layer) {
         let s = &mut *self.vx;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
             match x {
-                DrawType::DynamicTexture { id } if *id == texture.0 => {
+                DrawType::DynamicTexture { id } if *id == layer.0 => {
                     index = Some(idx);
                     break;
                 }
@@ -834,8 +834,8 @@ impl<'a> Dyntex<'a> {
         if let Some(idx) = index {
             s.draw_order.remove(idx);
             // Can't delete here always because other textures may still be referring to later dyntexs,
-            // only when this is the last texture.
-            if s.dyntexs.len() == texture.0 + 1 {
+            // only when this is the last layer.
+            if s.dyntexs.len() == layer.0 + 1 {
                 let dyntex = s.dyntexs.pop().unwrap();
                 destroy_texture(s, dyntex);
             }

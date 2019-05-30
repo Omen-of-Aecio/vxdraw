@@ -4,12 +4,12 @@
 //! ```
 //! use cgmath::{prelude::*, Matrix4};
 //! use logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
-//!     vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
+//!     vx.debtri().add(DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
 //!
 //!     // Sleep here so the window does not instantly disappear
@@ -21,13 +21,13 @@
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
-//!     let handle = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
+//!     let handle = vx.debtri().add(DebugTriangle::default());
 //!
 //!     for _ in 0..360 {
 //!         // Rotate the triangle by 1 degree
@@ -524,7 +524,6 @@ impl VxDraw {
             frames_in_flight_fences,
             framebuffers,
             format,
-            image_count: image_count as usize,
             image_views,
             present_wait_semaphores,
             queue_group,
@@ -543,7 +542,6 @@ impl VxDraw {
             quads: vec![],
             depth_images,
             depth_image_views,
-            depth_image_requirements,
             depth_image_memories,
             #[cfg(not(feature = "gl"))]
             vk_inst,

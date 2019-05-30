@@ -11,7 +11,7 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::{MemoryTypeId, PhysicalDevice},
-    command::{self, BufferCopy},
+    command,
     device::Device,
     format, image, memory,
     memory::Properties,
@@ -64,42 +64,6 @@ pub(crate) fn make_vertex_buffer_with_data(
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
         let memory_type_id = find_memory_type_id(&s.adapter, requirements, Properties::CPU_VISIBLE);
-        let memory = device
-            .allocate_memory(memory_type_id, requirements.size)
-            .expect("Couldn't allocate vertex buffer memory");
-        device
-            .bind_buffer_memory(&memory, 0, &mut buffer)
-            .expect("Couldn't bind the buffer memory!");
-        (buffer, memory, requirements)
-    };
-    unsafe {
-        let mut data_target = device
-            .acquire_mapping_writer(&memory, 0..requirements.size)
-            .expect("Failed to acquire a memory writer!");
-        data_target[..data.len()].copy_from_slice(data);
-        device
-            .release_mapping_writer(data_target)
-            .expect("Couldn't release the mapping writer!");
-    }
-    (buffer, memory, requirements)
-}
-
-pub(crate) fn make_vertex_buffer_with_data2(
-    device: &back::Device,
-    adapter: &Adapter<back::Backend>,
-    data: &[f32],
-) -> (
-    <back::Backend as Backend>::Buffer,
-    <back::Backend as Backend>::Memory,
-    memory::Requirements,
-) {
-    let (buffer, memory, requirements) = unsafe {
-        let buffer_size: u64 = (std::mem::size_of::<f32>() * data.len()) as u64;
-        let mut buffer = device
-            .create_buffer(buffer_size, gfx_hal::buffer::Usage::VERTEX)
-            .expect("cant make bf");
-        let requirements = device.get_buffer_requirements(&buffer);
-        let memory_type_id = find_memory_type_id(adapter, requirements, Properties::CPU_VISIBLE);
         let memory = device
             .allocate_memory(memory_type_id, requirements.size)
             .expect("Couldn't allocate vertex buffer memory");
@@ -419,6 +383,7 @@ pub(crate) fn make_transfer_img_of_size(
     (buffer, memory, requirements)
 }
 
+#[cfg(test)]
 pub(crate) fn make_vertex_buffer_with_data_on_gpu(
     s: &mut VxDraw,
     data: &[f32],
@@ -489,7 +454,7 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
             gfx_hal::memory::Dependencies::empty(),
             &[buffer_barrier],
         );
-        let copy = once(BufferCopy {
+        let copy = once(command::BufferCopy {
             src: 0,
             dst: 0,
             size: buffer_size,

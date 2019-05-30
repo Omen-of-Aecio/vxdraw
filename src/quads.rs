@@ -134,6 +134,7 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
 use std::mem::ManuallyDrop;
+use core::ptr::read;
 
 // ---
 
@@ -775,6 +776,33 @@ impl<'a> Quads<'a> {
         handle
     }
 
+    /// Remove a layer of quads
+    ///
+    /// Removes the quad layer from memory and destroys all quads associated with it.
+    /// All lingering quad handles that were spawned using this layer will be invalidated.
+    pub fn remove_layer(&mut self, layer: Layer) {
+        let s = &mut *self.vx;
+        let mut index = None;
+        for (idx, x) in s.draw_order.iter().enumerate() {
+            match x {
+                DrawType::Quad { id } if *id == layer.0 => {
+                    index = Some(idx);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(idx) = index {
+            s.draw_order.remove(idx);
+            // Can't delete here always because other textures may still be referring to later dyntexs,
+            // only when this is the last texture.
+            if s.quads.len() == layer.0 + 1 {
+                let quads = s.quads.pop().unwrap();
+                destroy_layer(s, quads);
+            }
+        }
+    }
+
     /// Remove a quad
     ///
     /// The quad is set to a scale of 0 and its handle is stored internally in a list of
@@ -909,6 +937,40 @@ impl<'a> Quads<'a> {
             rot[2] += deg.into().0;
             rot[3] += deg.into().0;
         }
+    }
+}
+
+// ---
+
+fn destroy_layer(s: &mut VxDraw, mut quad: QuadsData) {
+    unsafe {
+        for mut indices in quad.indices.drain(..) {
+            indices.destroy(&s.device);
+        }
+        for mut posbuf in quad.posbuf.drain(..) {
+            posbuf.destroy(&s.device);
+        }
+        for mut colbuf in quad.colbuf.drain(..) {
+            colbuf.destroy(&s.device);
+        }
+        for mut tranbuf in quad.tranbuf.drain(..) {
+            tranbuf.destroy(&s.device);
+        }
+        for mut rotbuf in quad.rotbuf.drain(..) {
+            rotbuf.destroy(&s.device);
+        }
+        for mut scalebuf in quad.scalebuf.drain(..) {
+            scalebuf.destroy(&s.device);
+        }
+        for dsl in quad.descriptor_set.drain(..) {
+            s.device.destroy_descriptor_set_layout(dsl);
+        }
+        s.device
+            .destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&quad.pipeline)));
+        s.device
+            .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&quad.pipeline_layout)));
+        s.device
+            .destroy_render_pass(ManuallyDrop::into_inner(read(&quad.render_pass)));
     }
 }
 
@@ -1054,6 +1116,34 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "three_quads_add_remove", img);
+    }
+
+    #[test]
+    fn three_quads_add_remove_layer() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+        quad.colors[0].1 = 255;
+        quad.colors[3].1 = 255;
+
+        let mut quads = vx.quads();
+        let layer1 = quads.add_layer(LayerOptions::default());
+        let _q1 = quads.add(&layer1, quad);
+        let layer2 = quads.add_layer(LayerOptions::default());
+        let q2 = quads.add(&layer2, quad);
+        let layer3 = quads.add_layer(LayerOptions::default());
+        let q3 = quads.add(&layer3, quad);
+
+        quads.translate(&q2, (0.25, 0.4));
+        quads.set_solid_color(&q2, [0, 0, 255, 128]);
+
+        quads.translate(&q3, (0.35, 0.8));
+        quads.remove_layer(layer2);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "three_quads_add_remove_layer", img);
     }
 
     #[test]
