@@ -1356,13 +1356,8 @@ mod tests {
                 ..dyntex::Sprite::default()
             },
         );
-        vx.strtex().add(
-            &tex2,
-            strtex::Sprite {
-                rotation: 0.5,
-                ..strtex::Sprite::default()
-            },
-        );
+        vx.strtex()
+            .add(&tex2, strtex::Sprite::default().rotation(0.5));
         vx.dyntex().add(
             &tex3,
             dyntex::Sprite {
@@ -1370,14 +1365,7 @@ mod tests {
                 ..dyntex::Sprite::default()
             },
         );
-        vx.strtex().add(
-            &tex4,
-            strtex::Sprite {
-                scale: 0.5,
-                rotation: 0.0,
-                ..strtex::Sprite::default()
-            },
-        );
+        vx.strtex().add(&tex4, strtex::Sprite::new().scale(0.5));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "strtex_and_dyntex_respect_draw_order", img);
@@ -1412,13 +1400,7 @@ mod tests {
                 ..dyntex::Sprite::default()
             },
         );
-        vx.strtex().add(
-            &tex2,
-            strtex::Sprite {
-                rotation: 0.5,
-                ..strtex::Sprite::default()
-            },
-        );
+        vx.strtex().add(&tex2, strtex::Sprite::new().rotation(0.5));
 
         vx.swap_layers(&tex1, &tex2);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
