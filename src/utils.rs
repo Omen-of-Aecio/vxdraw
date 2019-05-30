@@ -1,3 +1,4 @@
+//! Various utilities and helpers for vxdraw
 use crate::data::VxDraw;
 use cgmath::Matrix4;
 #[cfg(feature = "dx12")]
@@ -24,12 +25,13 @@ use std::mem::ManuallyDrop;
 
 /// Trait for describing layers and their ordering
 pub trait Layerable {
+    /// Get the layer number from this layer
     fn get_layer(&self, vx: &VxDraw) -> usize;
 }
 
 /// Find the memory type id that satisfies the requirements and the memory properties for the given
 /// adapter
-pub fn find_memory_type_id<B: gfx_hal::Backend>(
+pub(crate) fn find_memory_type_id<B: gfx_hal::Backend>(
     adap: &Adapter<B>,
     reqs: memory::Requirements,
     prop: memory::Properties,
@@ -46,7 +48,7 @@ pub fn find_memory_type_id<B: gfx_hal::Backend>(
         .expect("Unable to find memory type id")
 }
 
-pub fn make_vertex_buffer_with_data(
+pub(crate) fn make_vertex_buffer_with_data(
     s: &mut VxDraw,
     data: &[f32],
 ) -> (
@@ -82,7 +84,7 @@ pub fn make_vertex_buffer_with_data(
     (buffer, memory, requirements)
 }
 
-pub fn make_vertex_buffer_with_data2(
+pub(crate) fn make_vertex_buffer_with_data2(
     device: &back::Device,
     adapter: &Adapter<back::Backend>,
     data: &[f32],
@@ -120,18 +122,18 @@ pub fn make_vertex_buffer_with_data2(
 
 /// A more opinionated resizable buffer
 #[derive(Debug)]
-pub struct ResizBufIdx4 {
+pub(crate) struct ResizBufIdx4 {
     buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
     capacity: usize,
 }
 
 impl ResizBufIdx4 {
-    pub fn new(device: &back::Device, adapter: &Adapter<back::Backend>) -> Self {
+    pub(crate) fn new(device: &back::Device, adapter: &Adapter<back::Backend>) -> Self {
         Self::with_capacity(device, adapter, 1)
     }
 
-    pub fn with_capacity(
+    pub(crate) fn with_capacity(
         device: &back::Device,
         adapter: &Adapter<back::Backend>,
         capacity: usize,
@@ -179,7 +181,7 @@ impl ResizBufIdx4 {
         }
     }
 
-    pub fn buffer(&self) -> &<back::Backend as Backend>::Buffer {
+    pub(crate) fn buffer(&self) -> &<back::Backend as Backend>::Buffer {
         &self.buffer
     }
 
@@ -191,7 +193,7 @@ impl ResizBufIdx4 {
         new_resizbuf.destroy(device);
     }
 
-    pub fn ensure_capacity(
+    pub(crate) fn ensure_capacity(
         &mut self,
         device: &back::Device,
         adapter: &Adapter<back::Backend>,
@@ -209,7 +211,7 @@ impl ResizBufIdx4 {
         }
     }
 
-    pub fn destroy(&mut self, device: &back::Device) {
+    pub(crate) fn destroy(&mut self, device: &back::Device) {
         use core::ptr::read;
         unsafe {
             device.destroy_buffer(ManuallyDrop::into_inner(read(&self.buffer)));
@@ -219,7 +221,7 @@ impl ResizBufIdx4 {
 }
 
 #[derive(Debug)]
-pub struct ResizBuf {
+pub(crate) struct ResizBuf {
     buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
     requirements: memory::Requirements,
@@ -227,11 +229,11 @@ pub struct ResizBuf {
 }
 
 impl ResizBuf {
-    pub fn new(device: &back::Device, adapter: &Adapter<back::Backend>) -> Self {
+    pub(crate) fn new(device: &back::Device, adapter: &Adapter<back::Backend>) -> Self {
         Self::with_capacity(device, adapter, 1)
     }
 
-    pub fn with_capacity(
+    pub(crate) fn with_capacity(
         device: &back::Device,
         adapter: &Adapter<back::Backend>,
         capacity_in_bytes: usize,
@@ -260,7 +262,7 @@ impl ResizBuf {
         }
     }
 
-    pub fn buffer(&self) -> &<back::Backend as Backend>::Buffer {
+    pub(crate) fn buffer(&self) -> &<back::Backend as Backend>::Buffer {
         &self.buffer
     }
 
@@ -275,7 +277,7 @@ impl ResizBuf {
         new_resizbuf.destroy(device);
     }
 
-    pub fn copy_from_slice_and_maybe_resize<T: Copy>(
+    pub(crate) fn copy_from_slice_and_maybe_resize<T: Copy>(
         &mut self,
         device: &back::Device,
         adapter: &Adapter<back::Backend>,
@@ -312,7 +314,7 @@ impl ResizBuf {
         }
     }
 
-    pub fn destroy(&mut self, device: &back::Device) {
+    pub(crate) fn destroy(&mut self, device: &back::Device) {
         use core::ptr::read;
         unsafe {
             device.destroy_buffer(ManuallyDrop::into_inner(read(&self.buffer)));
@@ -321,7 +323,7 @@ impl ResizBuf {
     }
 }
 
-pub fn make_index_buffer_with_data(
+pub(crate) fn make_index_buffer_with_data(
     s: &mut VxDraw,
     data: &[f32],
 ) -> (
@@ -357,7 +359,7 @@ pub fn make_index_buffer_with_data(
     (buffer, memory, requirements)
 }
 
-pub fn make_transfer_buffer_of_size(
+pub(crate) fn make_transfer_buffer_of_size(
     s: &mut VxDraw,
     size: u64,
 ) -> (
@@ -383,7 +385,7 @@ pub fn make_transfer_buffer_of_size(
     (buffer, memory, requirements)
 }
 
-pub fn make_transfer_img_of_size(
+pub(crate) fn make_transfer_img_of_size(
     s: &mut VxDraw,
     w: u32,
     h: u32,
@@ -417,7 +419,7 @@ pub fn make_transfer_img_of_size(
     (buffer, memory, requirements)
 }
 
-pub fn make_vertex_buffer_with_data_on_gpu(
+pub(crate) fn make_vertex_buffer_with_data_on_gpu(
     s: &mut VxDraw,
     data: &[f32],
 ) -> (
@@ -519,7 +521,7 @@ pub fn make_vertex_buffer_with_data_on_gpu(
     (buffer_gpu, memory_gpu, memory_gpu_requirements)
 }
 
-pub fn make_centered_equilateral_triangle() -> [f32; 6] {
+pub(crate) fn make_centered_equilateral_triangle() -> [f32; 6] {
     let mut tri = [0.0f32; 6];
     tri[2] = 1.0f32 * (60.0f32 / 180.0f32 * PI).cos();
     tri[3] = -1.0f32 * (60.0f32 / 180.0f32 * PI).sin();
@@ -535,6 +537,10 @@ pub fn make_centered_equilateral_triangle() -> [f32; 6] {
     tri
 }
 
+/// Generate a perspective that scales the view according to the window
+///
+/// This means that a window wider than tall will show a little more on the left and right edges
+/// instead of stretching the image to fill the window.
 pub fn gen_perspective(s: &VxDraw) -> Matrix4<f32> {
     let size = s.swapconfig.extent;
     let w_over_h = size.width as f32 / size.height as f32;
@@ -546,7 +552,10 @@ pub fn gen_perspective(s: &VxDraw) -> Matrix4<f32> {
     }
 }
 
-pub fn copy_image_to_rgb(s: &mut VxDraw, image_index: gfx_hal::window::SwapImageIndex) -> Vec<u8> {
+pub(crate) fn copy_image_to_rgb(
+    s: &mut VxDraw,
+    image_index: gfx_hal::window::SwapImageIndex,
+) -> Vec<u8> {
     let width = s.swapconfig.extent.width;
     let height = s.swapconfig.extent.height;
 
@@ -737,19 +746,18 @@ pub fn copy_image_to_rgb(s: &mut VxDraw, image_index: gfx_hal::window::SwapImage
     }
 }
 
-pub struct Align {
-    pub access_offset: u64,
-    pub how_many_bytes_you_need: u64,
-    pub non_coherent_atom_size: u64,
-    pub memory_size: u64,
+pub(crate) struct Align {
+    pub(crate) access_offset: u64,
+    pub(crate) how_many_bytes_you_need: u64,
+    pub(crate) non_coherent_atom_size: u64,
 }
-pub struct AlignResult {
-    pub begin: u64,
-    pub end: u64,
-    pub index_offset: usize,
+pub(crate) struct AlignResult {
+    pub(crate) begin: u64,
+    pub(crate) end: u64,
+    pub(crate) index_offset: usize,
 }
-pub fn perfect_mapping_alignment(align: Align) -> AlignResult {
-    struct Alignment(pub u64);
+pub(crate) fn perfect_mapping_alignment(align: Align) -> AlignResult {
+    struct Alignment(pub(crate) u64);
     fn align_top(alignment: Alignment, value: u64) -> u64 {
         if value % alignment.0 != 0 {
             let alig = value + (alignment.0 - value % alignment.0);
@@ -773,7 +781,7 @@ pub fn perfect_mapping_alignment(align: Align) -> AlignResult {
 }
 
 #[cfg(test)]
-pub fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
+pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
     use load_image::ImageDecoder;
     use std::io::Read;
@@ -881,33 +889,36 @@ pub fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
 }
 
 #[cfg(test)]
-pub fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::Handle> {
+pub(crate) fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::Handle> {
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     let mut rng = random::new(0);
     let mut debtris = Vec::with_capacity(1000);
     for _ in 0..1000 {
-        let mut tri = super::debtri::DebugTriangle::default();
+        let tri = super::debtri::DebugTriangle::new();
         let (dx, dy) = (
             rng.gen_range(-1.0f32, 1.0f32),
             rng.gen_range(-1.0f32, 1.0f32),
         );
         let scale = rng.gen_range(0.03f32, 0.1f32);
-        if rand_rotat {
-            tri.rotation = rng.gen_range(-PI, PI);
-        }
-        tri.scale = scale;
-        tri.translation = (dx, dy);
+        let tri = if rand_rotat {
+            tri.rotation(rng.gen_range(-PI, PI))
+        } else {
+            tri
+        };
+        let tri = tri.scale(scale).translation((dx, dy));
         debtris.push(vx.debtri().add(tri));
     }
     debtris
 }
 
-pub fn remove_windmills(vx: &mut VxDraw) {
+#[cfg(test)]
+pub(crate) fn remove_windmills(vx: &mut VxDraw) {
     vx.debtri().pop_many(1000);
 }
 
-pub fn add_4_screencorners(vx: &mut VxDraw) {
+#[cfg(test)]
+pub(crate) fn add_4_screencorners(vx: &mut VxDraw) {
     vx.debtri().add(super::debtri::DebugTriangle::from([
         -1.0f32, -1.0, 0.0, -1.0, -1.0, 0.0,
     ]));

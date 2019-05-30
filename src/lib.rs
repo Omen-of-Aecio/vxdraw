@@ -42,9 +42,11 @@
 //! }
 //! ```
 #![feature(test)]
+#![deny(missing_docs)]
 extern crate test;
 
-pub use crate::data::{DrawType, VxDraw};
+use crate::data::DrawType;
+pub use crate::data::VxDraw;
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -82,12 +84,16 @@ use utils::*;
 
 // ---
 
+/// Information regarding window visibility
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ShowWindow {
     /// Runs vulkan in headless mode (hidden window) with a swapchain of 1000x1000
     Headless1k,
+    /// Runs vulkan in headless mode (hidden window) with a swapchain of 2000x1000
     Headless2x1k,
+    /// Runs vulkan in headless mode (hidden window) with a swapchain of 1000x2000
     Headless1x2k,
+    /// Runs vulkan with a visible window
     Enable,
 }
 
@@ -1231,11 +1237,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let large_triangle = {
-            let mut tri = debtri::DebugTriangle::default();
-            tri.scale = 3.7;
-            tri
-        };
+        let large_triangle = debtri::DebugTriangle::new().scale(3.7);
         vx.debtri().add(large_triangle);
 
         vx.draw_frame(&prspect);
@@ -1378,13 +1380,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let quad1 = vx.quads().add_layer(LayerOptions::default());
-        vx.quads().add(
-            &quad1,
-            Quad {
-                scale: 0.25,
-                ..Quad::default()
-            },
-        );
+        vx.quads().add(&quad1, Quad::new().scale(0.25));
 
         let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().add_layer(TESTURE, options);

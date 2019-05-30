@@ -57,21 +57,29 @@
 //!     let fade_width = 0.5;
 //!
 //!     // The left quad data, has the right vertices completely transparent
-//!     let mut quad_data = Quad::default();
-//!     quad_data.width = fade_width;
-//!     quad_data.colors[2].3 = 0;
-//!     quad_data.colors[3].3 = 0;
-//!     quad_data.translation = (-1.0 - fade_width / 2.0, 0.0);
+//!     let quad_data = Quad::new()
+//!         .width(fade_width)
+//!         .colors([
+//!             (0, 0, 0, 255),
+//!             (0, 0, 0, 255),
+//!             (0, 0, 0, 0),
+//!             (0, 0, 0, 0),
+//!         ])
+//!         .translation((- 1.0 - fade_width / 2.0, 0.0));
 //!
 //!     // Create a new quad
 //!     let left_quad_fade = vx.quads().add(&layer, quad_data);
 //!
 //!     // The right quad data, has the left vertices completely transparent
-//!     let mut quad_data = Quad::default();
-//!     quad_data.width = fade_width;
-//!     quad_data.colors[0].3 = 0;
-//!     quad_data.colors[1].3 = 0;
-//!     quad_data.translation = (1.0 + fade_width / 2.0, 0.0);
+//!     let quad_data = Quad::new()
+//!         .width(fade_width)
+//!         .colors([
+//!             (0, 0, 0, 0),
+//!             (0, 0, 0, 0),
+//!             (0, 0, 0, 255),
+//!             (0, 0, 0, 255),
+//!         ])
+//!         .translation((1.0 + fade_width / 2.0, 0.0));
 //!
 //!     // Create a new quad
 //!     let right_quad_fade = vx.quads().add(&layer, quad_data);
@@ -186,16 +194,67 @@ impl LayerOptions {
 /// Quad information used for creating and getting
 #[derive(Clone, Copy, Debug)]
 pub struct Quad {
-    pub width: f32,
-    pub height: f32,
-    pub depth: f32,
-    pub colors: [(u8, u8, u8, u8); 4],
-    pub translation: (f32, f32),
-    pub rotation: f32,
-    pub scale: f32,
+    width: f32,
+    height: f32,
+    depth: f32,
+    colors: [(u8, u8, u8, u8); 4],
+    translation: (f32, f32),
+    rotation: f32,
+    scale: f32,
     /// Moves the origin of the quad to some point, for instance, you may want a corner of the quad
     /// to be the origin. This affects rotation and translation of the quad.
-    pub origin: (f32, f32),
+    origin: (f32, f32),
+}
+
+impl Quad {
+    /// Same as default
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the width of the quad
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+
+    /// Set the height of the quad
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+
+    /// Set the colors of the quad
+    ///
+    /// The colors are added on top of whatever the quad's texture data is
+    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
+        self.colors = colors;
+        self
+    }
+
+    /// Set the translation
+    pub fn translation(mut self, trn: (f32, f32)) -> Self {
+        self.translation = trn;
+        self
+    }
+
+    /// Set the rotation. Rotation is counter-clockwise
+    pub fn rotation(mut self, rot: f32) -> Self {
+        self.rotation = rot;
+        self
+    }
+
+    /// Set the scaling factor of this quad
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    /// Set the origin of this quad
+    pub fn origin(mut self, origin: (f32, f32)) -> Self {
+        self.origin = origin;
+        self
+    }
 }
 
 impl Default for Quad {

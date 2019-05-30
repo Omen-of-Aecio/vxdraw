@@ -259,6 +259,10 @@ pub struct Strtex<'a> {
 }
 
 impl<'a> Strtex<'a> {
+    /// Prepare to edit streaming textures
+    ///
+    /// You're not supposed to use this function directly (although you can).
+    /// The recommended way of spawning a dyntex is via [VxDraw::strtex()].
     pub fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
@@ -853,6 +857,7 @@ impl<'a> Strtex<'a> {
 
     // ---
 
+    /// Set multiple pixels in the texture
     pub fn set_pixels(
         &mut self,
         id: &Layer,
@@ -907,7 +912,8 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    pub fn streaming_texture_set_pixels_block(
+    /// Set a block of pixels
+    pub fn set_pixels_block(
         &mut self,
         id: &Layer,
         start: (u32, u32),
@@ -942,7 +948,6 @@ impl<'a> Strtex<'a> {
                     access_offset: access_begin,
                     how_many_bytes_you_need: access_end - access_begin,
                     non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
-                    memory_size: strtex.image_requirements.size,
                 });
 
                 s.device
@@ -977,6 +982,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Set the color of a specific pixel
     pub fn set_pixel(&mut self, id: &Layer, w: u32, h: u32, color: (u8, u8, u8, u8)) {
         let s = &mut *self.vx;
         if let Some(ref strtex) = s.strtexs.get(id.0) {
@@ -998,7 +1004,6 @@ impl<'a> Strtex<'a> {
                     access_offset: access,
                     how_many_bytes_you_need: 4,
                     non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
-                    memory_size: strtex.image_requirements.size,
                 });
 
                 s.device
@@ -1024,6 +1029,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Read pixels from arbitrary coordinates
     pub fn read(&mut self, id: &Layer, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
         if let Some(ref strtex) = s.strtexs.get(id.0) {
@@ -1052,6 +1058,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Write pixels to arbitrary coordinates
     pub fn write(&mut self, id: &Layer, mut map: impl FnMut(&mut [(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
         if let Some(ref strtex) = s.strtexs.get(id.0) {
@@ -1082,6 +1089,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Fills the streaming texture with perlin noise generated from an input seed
     pub fn fill_with_perlin_noise(&mut self, blitid: &Layer, seed: [f32; 3]) {
         let s = &mut *self.vx;
         static VERTEX_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.vert.spirv");
@@ -1483,10 +1491,10 @@ mod tests {
         let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, strtex::Sprite::default());
 
-        strtex.streaming_texture_set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
-        strtex.streaming_texture_set_pixels_block(&id, (500, 0), (500, 500), (0, 255, 0, 255));
-        strtex.streaming_texture_set_pixels_block(&id, (0, 500), (500, 500), (0, 0, 255, 255));
-        strtex.streaming_texture_set_pixels_block(&id, (500, 500), (500, 500), (0, 0, 0, 0));
+        strtex.set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
+        strtex.set_pixels_block(&id, (500, 0), (500, 500), (0, 255, 0, 255));
+        strtex.set_pixels_block(&id, (0, 500), (500, 500), (0, 0, 255, 255));
+        strtex.set_pixels_block(&id, (500, 500), (500, 500), (0, 0, 0, 0));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks", img);
@@ -1502,21 +1510,21 @@ mod tests {
         let id = strtex.add_layer(LayerOptions::new().width(10).height(1));
         strtex.add(&id, strtex::Sprite::default());
 
-        strtex.streaming_texture_set_pixels_block(&id, (0, 0), (10, 1), (0, 255, 0, 255));
+        strtex.set_pixels_block(&id, (0, 0), (10, 1), (0, 255, 0, 255));
 
-        strtex.streaming_texture_set_pixels_block(&id, (3, 0), (1, 1), (0, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (1, 1), (0, 0, 255, 255));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks_off_by_one", img);
 
         let mut strtex = vx.strtex();
-        strtex.streaming_texture_set_pixels_block(&id, (3, 0), (0, 1), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (0, 1), (255, 0, 255, 255));
 
-        strtex.streaming_texture_set_pixels_block(&id, (3, 0), (0, 0), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (0, 0), (255, 0, 255, 255));
 
-        strtex.streaming_texture_set_pixels_block(&id, (3, 0), (1, 0), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (1, 0), (255, 0, 255, 255));
 
-        strtex.streaming_texture_set_pixels_block(&id, (30, 0), (800, 0), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (30, 0), (800, 0), (255, 0, 255, 255));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks_off_by_one", img);
@@ -1592,7 +1600,7 @@ mod tests {
             let start = (rng.gen_range(0, 100), rng.gen_range(0, 100));
             let wh = (rng.gen_range(0, 100), rng.gen_range(0, 100));
 
-            strtex.streaming_texture_set_pixels_block(&id, start, wh, (0, 255, 0, 255));
+            strtex.set_pixels_block(&id, start, wh, (0, 255, 0, 255));
         }
     }
 
@@ -1604,11 +1612,11 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let strtex1 = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        strtex.streaming_texture_set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
+        strtex.set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
         strtex.add(&strtex1, strtex::Sprite::default());
 
         let strtex2 = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        strtex.streaming_texture_set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
+        strtex.set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
         strtex.add(
             &strtex2,
             strtex::Sprite {
@@ -1657,12 +1665,8 @@ mod tests {
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
-            vx.strtex().streaming_texture_set_pixels_block(
-                &id,
-                (0, 0),
-                (500, 500),
-                (255, 0, 0, 255),
-            );
+            vx.strtex()
+                .set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
         });
     }
 

@@ -14,159 +14,165 @@ use std::mem::ManuallyDrop;
 
 /// A texture that host can read/write into directly, functions similarly to a sprite
 #[derive(Debug)]
-pub struct StreamingTexture {
-    pub hidden: bool,
-    pub count: u32,
+pub(crate) struct StreamingTexture {
+    pub(crate) hidden: bool,
+    pub(crate) count: u32,
 
-    pub width: u32,
-    pub height: u32,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 
-    pub vertex_buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    pub vertex_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub vertex_requirements: gfx_hal::memory::Requirements,
+    pub(crate) vertex_buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
+    pub(crate) vertex_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
+    pub(crate) vertex_requirements: gfx_hal::memory::Requirements,
 
-    pub vertex_buffer_indices: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    pub vertex_memory_indices: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub vertex_requirements_indices: gfx_hal::memory::Requirements,
+    pub(crate) vertex_buffer_indices: ManuallyDrop<<back::Backend as Backend>::Buffer>,
+    pub(crate) vertex_memory_indices: ManuallyDrop<<back::Backend as Backend>::Memory>,
+    pub(crate) vertex_requirements_indices: gfx_hal::memory::Requirements,
 
-    pub image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
-    pub image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub image_requirements: gfx_hal::memory::Requirements,
+    pub(crate) image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
+    pub(crate) image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
+    pub(crate) image_requirements: gfx_hal::memory::Requirements,
 
-    pub sampler: ManuallyDrop<<back::Backend as Backend>::Sampler>,
-    pub image_view: ManuallyDrop<<back::Backend as Backend>::ImageView>,
-    pub descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
+    pub(crate) sampler: ManuallyDrop<<back::Backend as Backend>::Sampler>,
+    pub(crate) image_view: ManuallyDrop<<back::Backend as Backend>::ImageView>,
+    pub(crate) descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
 
-    pub descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
-    pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
-    pub pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
-    pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
-    pub descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
+    pub(crate) descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
+    pub(crate) pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
+    pub(crate) pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
+    pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+    pub(crate) descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
 }
 
 /// Contains a single texture and associated sprites
 #[derive(Debug)]
-pub struct SingleTexture {
-    pub hidden: bool,
-    pub count: u32,
+pub(crate) struct SingleTexture {
+    pub(crate) hidden: bool,
+    pub(crate) count: u32,
 
-    pub fixed_perspective: Option<Matrix4<f32>>,
-    pub mockbuffer: Vec<u8>,
-    pub removed: Vec<usize>,
+    pub(crate) fixed_perspective: Option<Matrix4<f32>>,
+    pub(crate) mockbuffer: Vec<u8>,
+    pub(crate) removed: Vec<usize>,
 
-    pub texture_vertex_sprites: super::utils::ResizBuf,
-    pub indices: super::utils::ResizBufIdx4,
+    pub(crate) texture_vertex_sprites: super::utils::ResizBuf,
+    pub(crate) indices: super::utils::ResizBufIdx4,
 
-    pub texture_image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
-    pub texture_image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
+    pub(crate) texture_image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
+    pub(crate) texture_image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
 
-    pub sampler: ManuallyDrop<<back::Backend as Backend>::Sampler>,
-    pub image_view: ManuallyDrop<<back::Backend as Backend>::ImageView>,
-    pub descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
+    pub(crate) sampler: ManuallyDrop<<back::Backend as Backend>::Sampler>,
+    pub(crate) image_view: ManuallyDrop<<back::Backend as Backend>::ImageView>,
+    pub(crate) descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
 
-    pub descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
-    pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
-    pub pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
-    pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
-    pub descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
+    pub(crate) descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
+    pub(crate) pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
+    pub(crate) pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
+    pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+    pub(crate) descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
 }
 
 #[derive(Debug)]
-pub struct DebugTriangleData {
-    pub hidden: bool,
-    pub triangles_count: usize,
+pub(crate) struct DebugTriangleData {
+    pub(crate) hidden: bool,
+    pub(crate) triangles_count: usize,
 
-    pub holes: Vec<usize>,
+    pub(crate) holes: Vec<usize>,
 
-    pub posbuf_touch: u32,
-    pub colbuf_touch: u32,
-    pub tranbuf_touch: u32,
-    pub rotbuf_touch: u32,
-    pub scalebuf_touch: u32,
+    pub(crate) posbuf_touch: u32,
+    pub(crate) colbuf_touch: u32,
+    pub(crate) tranbuf_touch: u32,
+    pub(crate) rotbuf_touch: u32,
+    pub(crate) scalebuf_touch: u32,
 
-    pub posbuffer: Vec<[f32; 6]>, // 6 per triangle
-    pub colbuffer: Vec<u8>,       // 12 per triangle
-    pub tranbuffer: Vec<f32>,     // 6 per triangle
-    pub rotbuffer: Vec<f32>,      // 3 per triangle
-    pub scalebuffer: Vec<f32>,    // 3 per triangle
+    pub(crate) posbuffer: Vec<[f32; 6]>, // 6 per triangle
+    pub(crate) colbuffer: Vec<u8>,       // 12 per triangle
+    pub(crate) tranbuffer: Vec<f32>,     // 6 per triangle
+    pub(crate) rotbuffer: Vec<f32>,      // 3 per triangle
+    pub(crate) scalebuffer: Vec<f32>,    // 3 per triangle
 
-    pub posbuf: Vec<super::utils::ResizBuf>,
-    pub colbuf: Vec<super::utils::ResizBuf>,
-    pub tranbuf: Vec<super::utils::ResizBuf>,
-    pub rotbuf: Vec<super::utils::ResizBuf>,
-    pub scalebuf: Vec<super::utils::ResizBuf>,
+    pub(crate) posbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) colbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) tranbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) rotbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) scalebuf: Vec<super::utils::ResizBuf>,
 
-    pub descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
-    pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
-    pub pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
-    pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+    pub(crate) descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
+    pub(crate) pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
+    pub(crate) pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
+    pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
 }
 
 #[derive(Debug)]
-pub struct QuadsData {
-    pub hidden: bool,
-    pub count: usize,
+pub(crate) struct QuadsData {
+    pub(crate) hidden: bool,
+    pub(crate) count: usize,
 
-    pub holes: Vec<usize>,
+    pub(crate) holes: Vec<usize>,
 
-    pub posbuf_touch: u32,
-    pub colbuf_touch: u32,
-    pub tranbuf_touch: u32,
-    pub rotbuf_touch: u32,
-    pub scalebuf_touch: u32,
+    pub(crate) posbuf_touch: u32,
+    pub(crate) colbuf_touch: u32,
+    pub(crate) tranbuf_touch: u32,
+    pub(crate) rotbuf_touch: u32,
+    pub(crate) scalebuf_touch: u32,
 
-    pub posbuffer: Vec<[f32; 8]>,   // 8 per quad
-    pub colbuffer: Vec<[u8; 16]>,   // 16 per quad
-    pub tranbuffer: Vec<[f32; 8]>,  // 8 per quad
-    pub rotbuffer: Vec<[f32; 4]>,   // 4 per quad
-    pub scalebuffer: Vec<[f32; 4]>, // 4 per quad
+    pub(crate) posbuffer: Vec<[f32; 8]>,   // 8 per quad
+    pub(crate) colbuffer: Vec<[u8; 16]>,   // 16 per quad
+    pub(crate) tranbuffer: Vec<[f32; 8]>,  // 8 per quad
+    pub(crate) rotbuffer: Vec<[f32; 4]>,   // 4 per quad
+    pub(crate) scalebuffer: Vec<[f32; 4]>, // 4 per quad
 
-    pub posbuf: Vec<super::utils::ResizBuf>,
-    pub colbuf: Vec<super::utils::ResizBuf>,
-    pub tranbuf: Vec<super::utils::ResizBuf>,
-    pub rotbuf: Vec<super::utils::ResizBuf>,
-    pub scalebuf: Vec<super::utils::ResizBuf>,
+    pub(crate) posbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) colbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) tranbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) rotbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) scalebuf: Vec<super::utils::ResizBuf>,
 
-    pub indices: Vec<super::utils::ResizBufIdx4>,
+    pub(crate) indices: Vec<super::utils::ResizBufIdx4>,
 
-    pub descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
-    pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
-    pub pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
-    pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+    pub(crate) descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
+    pub(crate) pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
+    pub(crate) pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
+    pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
 }
 
 #[derive(Debug)]
-pub enum DrawType {
+pub(crate) enum DrawType {
     StreamingTexture { id: usize },
     DynamicTexture { id: usize },
     Quad { id: usize },
 }
 
+/// Main structure that holds all vulkan draw states
+///
+/// [VxDraw] is the entry-point of the library, from here all resources are spawned and managed.
+///
+/// This structure can safely be dropped and all associated resources will be cleaned up correctly.
 pub struct VxDraw {
-    pub draw_order: Vec<DrawType>,
-    pub strtexs: Vec<StreamingTexture>,
-    pub dyntexs: Vec<SingleTexture>,
-    pub quads: Vec<QuadsData>,
-    pub debtris: DebugTriangleData,
+    pub(crate) draw_order: Vec<DrawType>,
+    pub(crate) strtexs: Vec<StreamingTexture>,
+    pub(crate) dyntexs: Vec<SingleTexture>,
+    pub(crate) quads: Vec<QuadsData>,
+    pub(crate) debtris: DebugTriangleData,
     //
-    pub current_frame: usize,
-    pub max_frames_in_flight: usize,
+    pub(crate) current_frame: usize,
+    pub(crate) max_frames_in_flight: usize,
 
-    pub image_count: usize,
-    pub render_area: gfx_hal::pso::Rect,
+    pub(crate) image_count: usize,
+    pub(crate) render_area: gfx_hal::pso::Rect,
 
-    pub depth_images: Vec<<back::Backend as Backend>::Image>,
-    pub depth_image_views: Vec<<back::Backend as Backend>::ImageView>,
-    pub depth_image_requirements: Vec<gfx_hal::memory::Requirements>,
-    pub depth_image_memories: Vec<<back::Backend as Backend>::Memory>,
+    pub(crate) depth_images: Vec<<back::Backend as Backend>::Image>,
+    pub(crate) depth_image_views: Vec<<back::Backend as Backend>::ImageView>,
+    pub(crate) depth_image_requirements: Vec<gfx_hal::memory::Requirements>,
+    pub(crate) depth_image_memories: Vec<<back::Backend as Backend>::Memory>,
 
-    pub frames_in_flight_fences: Vec<<back::Backend as Backend>::Fence>,
-    pub acquire_image_semaphore_free: ManuallyDrop<<back::Backend as Backend>::Semaphore>,
-    pub acquire_image_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
-    pub present_wait_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
-    pub command_pool: ManuallyDrop<gfx_hal::pool::CommandPool<back::Backend, gfx_hal::Graphics>>,
-    pub framebuffers: Vec<<back::Backend as Backend>::Framebuffer>,
-    pub command_buffers: Vec<
+    pub(crate) frames_in_flight_fences: Vec<<back::Backend as Backend>::Fence>,
+    pub(crate) acquire_image_semaphore_free: ManuallyDrop<<back::Backend as Backend>::Semaphore>,
+    pub(crate) acquire_image_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
+    pub(crate) present_wait_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
+    pub(crate) command_pool:
+        ManuallyDrop<gfx_hal::pool::CommandPool<back::Backend, gfx_hal::Graphics>>,
+    pub(crate) framebuffers: Vec<<back::Backend as Backend>::Framebuffer>,
+    pub(crate) command_buffers: Vec<
         gfx_hal::command::CommandBuffer<
             back::Backend,
             gfx_hal::Graphics,
@@ -174,16 +180,16 @@ pub struct VxDraw {
             gfx_hal::command::Primary,
         >,
     >,
-    pub images: Vec<<back::Backend as Backend>::Image>,
-    pub image_views: Vec<<back::Backend as Backend>::ImageView>,
-    pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
-    pub swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
-    pub swapconfig: gfx_hal::window::SwapchainConfig,
-    pub format: gfx_hal::format::Format,
+    pub(crate) images: Vec<<back::Backend as Backend>::Image>,
+    pub(crate) image_views: Vec<<back::Backend as Backend>::ImageView>,
+    pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+    pub(crate) swapchain: ManuallyDrop<<back::Backend as Backend>::Swapchain>,
+    pub(crate) swapconfig: gfx_hal::window::SwapchainConfig,
+    pub(crate) format: gfx_hal::format::Format,
 
-    pub log: Logpass,
+    pub(crate) log: Logpass,
 
-    pub queue_group: gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>,
+    pub(crate) queue_group: gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>,
 
     ////////////////////////////////////////////////////////////
     // WARNING: ORDER SENSITIVE CODE
@@ -191,17 +197,17 @@ pub struct VxDraw {
     // Re-ordering may break dependencies and cause _rare_ segmentation faults, aborts, or illegal
     // instructions.
     ////////////////////////////////////////////////////////////
-    pub device_limits: gfx_hal::Limits,
-    pub device: back::Device,
-    pub adapter: Adapter<back::Backend>,
+    pub(crate) device_limits: gfx_hal::Limits,
+    pub(crate) device: back::Device,
+    pub(crate) adapter: Adapter<back::Backend>,
 
-    pub surf: <back::Backend as Backend>::Surface,
+    pub(crate) surf: <back::Backend as Backend>::Surface,
     #[cfg(not(feature = "gl"))]
-    pub vk_inst: back::Instance,
+    pub(crate) vk_inst: back::Instance,
     #[cfg(not(feature = "gl"))]
-    pub window: winit::Window,
+    pub(crate) window: winit::Window,
 
-    pub events_loop: winit::EventsLoop,
+    pub(crate) events_loop: winit::EventsLoop,
 }
 
 // ---

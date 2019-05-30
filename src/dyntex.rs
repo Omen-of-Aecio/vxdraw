@@ -63,15 +63,20 @@ pub struct LayerOptions {
 }
 
 impl LayerOptions {
+    /// Same as default
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Enable/disable depth testing
     pub fn depth(mut self, depth: bool) -> Self {
         self.depth_test = depth;
         self
     }
 
+    /// Set a fixed perspective for this layer
+    ///
+    /// The layer will ignore global perspective matrices if this is given.
     pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
         self.fixed_perspective = Some(mat);
         self
@@ -934,6 +939,7 @@ impl<'a> Dyntex<'a> {
         }
     }
 
+    /// Set the UV values of a single sprite
     pub fn set_uv(&mut self, handle: &Handle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
         let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
@@ -963,6 +969,7 @@ impl<'a> Dyntex<'a> {
         }
     }
 
+    /// Set the UV values of multiple sprites
     pub fn set_uvs<'b>(
         &mut self,
         mut uvs: impl Iterator<Item = (&'b Handle, (f32, f32), (f32, f32))>,

@@ -55,11 +55,63 @@ pub struct Handle(usize);
 /// Information used when creating/updating a debug triangle
 #[derive(Clone, Copy, Debug)]
 pub struct DebugTriangle {
-    pub origin: [(f32, f32); 3],
-    pub colors_rgba: [(u8, u8, u8, u8); 3],
-    pub translation: (f32, f32),
-    pub rotation: f32,
-    pub scale: f32,
+    origin: [(f32, f32); 3],
+    colors_rgba: [(u8, u8, u8, u8); 3],
+    translation: (f32, f32),
+    rotation: f32,
+    scale: f32,
+}
+
+impl DebugTriangle {
+    /// Create a new debug triangle
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the vertices of this debug triangle
+    pub fn vertices(mut self, vertices: [(f32, f32); 3]) -> Self {
+        self.origin = vertices;
+        self
+    }
+
+    /// Set the colors of this debug triangle
+    pub fn colors(mut self, col: [(u8, u8, u8, u8); 3]) -> Self {
+        self.colors_rgba = col;
+        self
+    }
+
+    /// Set the translation of this debug triangle
+    pub fn translation(mut self, trn: (f32, f32)) -> Self {
+        self.translation = trn;
+        self
+    }
+
+    /// Set the rotation of this debug triangle
+    pub fn rotation(mut self, rot: f32) -> Self {
+        self.rotation = rot;
+        self
+    }
+
+    /// Set the scale of this debug triangle
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    /// Compute the circle that contains the entire triangle regardless of rotation
+    ///
+    /// Useful when making sure triangles do not touch by adding both their radii together and
+    /// using that to space triangles.
+    pub fn radius(&self) -> f32 {
+        (self.origin[0].0.powi(2) + self.origin[0].1.powi(2))
+            .sqrt()
+            .max(
+                (self.origin[1].0.powi(2) + self.origin[1].1.powi(2))
+                    .sqrt()
+                    .max((self.origin[2].0.powi(2) + self.origin[2].1.powi(2)).sqrt()),
+            )
+            * self.scale
+    }
 }
 
 impl From<[f32; 6]> for DebugTriangle {
@@ -90,23 +142,6 @@ impl Default for DebugTriangle {
             translation: (0f32, 0f32),
             scale: 1f32,
         }
-    }
-}
-
-impl DebugTriangle {
-    /// Compute the circle that contains the entire triangle regardless of rotation
-    ///
-    /// Useful when making sure triangles do not touch by adding both their radii together and
-    /// using that to space triangles.
-    pub fn radius(&self) -> f32 {
-        (self.origin[0].0.powi(2) + self.origin[0].1.powi(2))
-            .sqrt()
-            .max(
-                (self.origin[1].0.powi(2) + self.origin[1].1.powi(2))
-                    .sqrt()
-                    .max((self.origin[2].0.powi(2) + self.origin[2].1.powi(2)).sqrt()),
-            )
-            * self.scale
     }
 }
 
@@ -535,7 +570,7 @@ impl<'a> Debtri<'a> {
 
 // ---
 
-pub fn create_debug_triangle(
+pub(crate) fn create_debug_triangle(
     device: &back::Device,
     adapter: &Adapter<back::Backend>,
     format: format::Format,
