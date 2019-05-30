@@ -11,9 +11,9 @@
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
-//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
-//!     let quad = vx.quads().create_quad(vxdraw::quads::QuadOptions::default());
+//!     let quad = vx.quads().new_layer(vxdraw::quads::QuadOptions::default());
 //!     let handle = vx.quads().push(&quad, vxdraw::quads::Quad::default());
 //!
 //!     // Turn the quad white
@@ -151,7 +151,11 @@ impl<'a> Quads<'a> {
         }
     }
 
-    pub fn create_quad(&mut self, options: QuadOptions) -> Layer {
+    /// Create a new layer for quads
+    ///
+    /// This new layer will be ordered on top of all previous layers, meaning that its quads will
+    /// be drawn on top of all other drawn items.
+    pub fn new_layer(&mut self, options: QuadOptions) -> Layer {
         let s = &mut *self.vx;
         pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.vert.spirv"];
 
@@ -654,7 +658,7 @@ mod tests {
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        let layer = vx.quads().create_quad(QuadOptions::default());
+        let layer = vx.quads().new_layer(QuadOptions::default());
         vx.quads().push(&layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -672,7 +676,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.create_quad(QuadOptions::default());
+        let layer = quads.new_layer(QuadOptions::default());
         let handle = quads.push(&layer, quad);
         quads.translate(&handle, (0.25, 0.4));
 
@@ -691,7 +695,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.create_quad(QuadOptions::default());
+        let layer = quads.new_layer(QuadOptions::default());
         let handle = quads.push(&layer, quad);
         quads.set_translation(&handle, (0.25, 0.4));
 
@@ -710,7 +714,7 @@ mod tests {
         quad.colors[2].2 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.create_quad(QuadOptions::default());
+        let layer = quads.new_layer(QuadOptions::default());
         let handle = quads.push(&layer, quad);
         quads.set_scale(&handle, 0.5);
 
@@ -729,7 +733,7 @@ mod tests {
         quad.colors[2].2 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.create_quad(QuadOptions::default());
+        let layer = quads.new_layer(QuadOptions::default());
         let handle = quads.push(&layer, quad);
         quads.scale(&handle, 0.5);
         quads.deform(&handle, [(-0.5, 0.0), (0.0, 0.0), (0.0, 0.0), (0.5, 0.1)]);
@@ -749,7 +753,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.create_quad(QuadOptions::default());
+        let layer = quads.new_layer(QuadOptions::default());
         let handle = quads.push(&layer, quad);
 
         for _ in 0..3 {
@@ -773,7 +777,7 @@ mod tests {
         quad.colors[0].0 = 255;
         quad.colors[3].0 = 255;
 
-        let layer = vx.quads().create_quad(QuadOptions::default());
+        let layer = vx.quads().new_layer(QuadOptions::default());
         vx.quads().push(&layer, quad);
 
         let mut quad = quads::Quad::default();
@@ -838,7 +842,7 @@ mod tests {
     //     quad.depth = 0.0;
     //     quad.translation = (0.25, 0.25);
 
-    //     let layer = vx.quads().create_quad(QuadOptions {
+    //     let layer = vx.quads().new_layer(QuadOptions {
     //         depth_test: true,
     //         ..QuadOptions::default()
     //     });
@@ -894,8 +898,8 @@ mod tests {
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
 
-        let layer1 = vx.quads().create_quad(QuadOptions::default());
-        let layer2 = vx.quads().create_quad(QuadOptions::default());
+        let layer1 = vx.quads().new_layer(QuadOptions::default());
+        let layer2 = vx.quads().new_layer(QuadOptions::default());
 
         vx.quads().push(&layer2, quad);
 

@@ -1426,7 +1426,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let quad1 = vx.quads().create_quad(QuadOptions::default());
+        let quad1 = vx.quads().new_layer(QuadOptions::default());
         vx.quads().push(
             &quad1,
             Quad {

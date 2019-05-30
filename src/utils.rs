@@ -118,6 +118,7 @@ pub fn make_vertex_buffer_with_data2(
 }
 
 /// A more opinionated resizable buffer
+#[derive(Debug)]
 pub struct ResizBufIdx4 {
     buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
@@ -216,6 +217,7 @@ impl ResizBufIdx4 {
     }
 }
 
+#[derive(Debug)]
 pub struct ResizBuf {
     buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
     memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
