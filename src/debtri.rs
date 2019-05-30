@@ -46,6 +46,72 @@ use std::mem::ManuallyDrop;
 
 // ---
 
+/// Handle to a debug triangle
+///
+/// Used to update/remove a debug triangle.
+#[derive(Debug)]
+pub struct Handle(usize);
+
+/// Information used when creating/updating a debug triangle
+#[derive(Clone, Copy, Debug)]
+pub struct DebugTriangle {
+    pub origin: [(f32, f32); 3],
+    pub colors_rgba: [(u8, u8, u8, u8); 3],
+    pub translation: (f32, f32),
+    pub rotation: f32,
+    pub scale: f32,
+}
+
+impl From<[f32; 6]> for DebugTriangle {
+    fn from(array: [f32; 6]) -> Self {
+        let mut tri = Self::default();
+        tri.origin[0].0 = array[0];
+        tri.origin[0].1 = array[1];
+        tri.origin[1].0 = array[2];
+        tri.origin[1].1 = array[3];
+        tri.origin[2].0 = array[4];
+        tri.origin[2].1 = array[5];
+        tri
+    }
+}
+
+impl Default for DebugTriangle {
+    /// Creates a default equilateral RGB triangle without opacity or rotation
+    fn default() -> Self {
+        let origin = make_centered_equilateral_triangle();
+        DebugTriangle {
+            origin: [
+                (origin[0], origin[1]),
+                (origin[2], origin[3]),
+                (origin[4], origin[5]),
+            ],
+            colors_rgba: [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)],
+            rotation: 0f32,
+            translation: (0f32, 0f32),
+            scale: 1f32,
+        }
+    }
+}
+
+impl DebugTriangle {
+    /// Compute the circle that contains the entire triangle regardless of rotation
+    ///
+    /// Useful when making sure triangles do not touch by adding both their radii together and
+    /// using that to space triangles.
+    pub fn radius(&self) -> f32 {
+        (self.origin[0].0.powi(2) + self.origin[0].1.powi(2))
+            .sqrt()
+            .max(
+                (self.origin[1].0.powi(2) + self.origin[1].1.powi(2))
+                    .sqrt()
+                    .max((self.origin[2].0.powi(2) + self.origin[2].1.powi(2)).sqrt()),
+            )
+            * self.scale
+    }
+}
+
+// ---
+
 /// Debug triangles accessor object returned by [VxDraw::debtri]
 ///
 /// Merely used for grouping together all operations on debug triangles. This is a very cheap
@@ -464,69 +530,6 @@ impl<'a> Debtri<'a> {
         for sc in &mut self.vx.debtris.scalebuffer {
             *sc *= scale;
         }
-    }
-}
-
-/// Handle to a debug triangle
-///
-/// Used to update/remove a debug triangle.
-pub struct Handle(usize);
-
-/// Information used when creating/updating a debug triangle
-#[derive(Clone, Copy)]
-pub struct DebugTriangle {
-    pub origin: [(f32, f32); 3],
-    pub colors_rgba: [(u8, u8, u8, u8); 3],
-    pub translation: (f32, f32),
-    pub rotation: f32,
-    pub scale: f32,
-}
-
-impl From<[f32; 6]> for DebugTriangle {
-    fn from(array: [f32; 6]) -> Self {
-        let mut tri = Self::default();
-        tri.origin[0].0 = array[0];
-        tri.origin[0].1 = array[1];
-        tri.origin[1].0 = array[2];
-        tri.origin[1].1 = array[3];
-        tri.origin[2].0 = array[4];
-        tri.origin[2].1 = array[5];
-        tri
-    }
-}
-
-impl Default for DebugTriangle {
-    /// Creates a default equilateral RGB triangle without opacity or rotation
-    fn default() -> Self {
-        let origin = make_centered_equilateral_triangle();
-        DebugTriangle {
-            origin: [
-                (origin[0], origin[1]),
-                (origin[2], origin[3]),
-                (origin[4], origin[5]),
-            ],
-            colors_rgba: [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)],
-            rotation: 0f32,
-            translation: (0f32, 0f32),
-            scale: 1f32,
-        }
-    }
-}
-
-impl DebugTriangle {
-    /// Compute the circle that contains the entire triangle regardless of rotation
-    ///
-    /// Useful when making sure triangles do not touch by adding both their radii together and
-    /// using that to space triangles.
-    pub fn radius(&self) -> f32 {
-        (self.origin[0].0.powi(2) + self.origin[0].1.powi(2))
-            .sqrt()
-            .max(
-                (self.origin[1].0.powi(2) + self.origin[1].1.powi(2))
-                    .sqrt()
-                    .max((self.origin[2].0.powi(2) + self.origin[2].1.powi(2)).sqrt()),
-            )
-            * self.scale
     }
 }
 

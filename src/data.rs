@@ -13,6 +13,7 @@ use logger::Logpass;
 use std::mem::ManuallyDrop;
 
 /// A texture that host can read/write into directly, functions similarly to a sprite
+#[derive(Debug)]
 pub struct StreamingTexture {
     pub count: u32,
 
@@ -43,6 +44,7 @@ pub struct StreamingTexture {
 }
 
 /// Contains a single texture and associated sprites
+#[derive(Debug)]
 pub struct SingleTexture {
     pub count: u32,
 
@@ -67,6 +69,7 @@ pub struct SingleTexture {
     pub descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
 }
 
+#[derive(Debug)]
 pub struct DebugTriangleData {
     pub hidden: bool,
     pub triangles_count: usize,
@@ -97,6 +100,7 @@ pub struct DebugTriangleData {
     pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
 }
 
+#[derive(Debug)]
 pub struct ColoredQuadList {
     pub hidden: bool,
     pub count: usize,
@@ -129,6 +133,7 @@ pub struct ColoredQuadList {
     pub render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
 }
 
+#[derive(Debug)]
 pub enum DrawType {
     StreamingTexture { id: usize },
     DynamicTexture { id: usize },

@@ -130,9 +130,11 @@ use std::mem::ManuallyDrop;
 // ---
 
 /// Handle referring to a single quad
+#[derive(Debug)]
 pub struct Handle(usize, usize);
 
 /// Handle referring to a quad layer
+#[derive(Debug)]
 pub struct Layer(usize);
 
 impl Layerable for Layer {
@@ -150,6 +152,7 @@ impl Layerable for Layer {
 }
 
 /// Options for creating a layer of quads
+#[derive(Debug)]
 pub struct LayerOptions {
     depth_test: bool,
     hide: bool,
@@ -179,7 +182,7 @@ impl LayerOptions {
 // ---
 
 /// Quad information used for creating and getting
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Quad {
     pub width: f32,
     pub height: f32,
