@@ -101,7 +101,7 @@ pub struct DebugTriangleData {
 }
 
 #[derive(Debug)]
-pub struct ColoredQuadList {
+pub struct QuadsData {
     pub hidden: bool,
     pub count: usize,
 
@@ -144,7 +144,7 @@ pub struct VxDraw {
     pub draw_order: Vec<DrawType>,
     pub strtexs: Vec<StreamingTexture>,
     pub dyntexs: Vec<SingleTexture>,
-    pub quads: Vec<ColoredQuadList>,
+    pub quads: Vec<QuadsData>,
     pub debtris: DebugTriangleData,
     //
     pub current_frame: usize,

@@ -114,7 +114,7 @@
 //! Note how the above has two overlapping, faded quads. This can be an undesired animation
 //! artifact. The intent of the example is to show how to work with the library.
 use super::utils::*;
-use crate::data::{ColoredQuadList, DrawType, VxDraw};
+use crate::data::{DrawType, QuadsData, VxDraw};
 use cgmath::Rad;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -561,7 +561,7 @@ impl<'a> Quads<'a> {
             .map(|_| super::utils::ResizBufIdx4::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
 
-        let quads = ColoredQuadList {
+        let quads = QuadsData {
             hidden: options.hide,
             count: 0,
 
