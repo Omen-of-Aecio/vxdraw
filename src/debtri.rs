@@ -102,17 +102,17 @@ impl<'a> Debtri<'a> {
     /// Compare triangle draw order
     ///
     /// All triangles are drawn in a specific order. This method figures out which order is used
-    /// between two triangles. The order can be manipulated by [Debtri::swap].
-    pub fn compare_triangle_order(&self, left: &Handle, right: &Handle) -> std::cmp::Ordering {
+    /// between two triangles. The order can be manipulated by [Debtri::swap_draw_order].
+    pub fn compare_draw_order(&self, left: &Handle, right: &Handle) -> std::cmp::Ordering {
         left.0.cmp(&right.0)
     }
 
     /// Swap two triangles with each other
     ///
     /// Swaps the internal data of each triangle (all vertices and their data, translation,
-    /// and so on). The side-effect of this is that the draw order is swapped too, meaning that the
-    /// triangles may reverse order (one drawn on top of the other).
-    pub fn swap(&mut self, left: &mut Handle, right: &mut Handle) {
+    /// and so on). The effect of this is that the draw order is swapped too, meaning that the
+    /// triangles reverse order (one drawn on top of the other).
+    pub fn swap_draw_order(&mut self, left: &mut Handle, right: &mut Handle) {
         let debtris = &mut self.vx.debtris;
 
         debtris.posbuffer.swap(left.0, right.0);
@@ -144,8 +144,8 @@ impl<'a> Debtri<'a> {
     ///
     /// The new triangle will be drawn upon the next draw invocation. The triangle generated is NOT
     /// guaranteed to be the triangle to be rendered on top of all other triangles if
-    /// [Debtri::remove] has been called earlier. In general, use [Debtri::compare_triangle_order]
-    /// and [Debtri::swap] to enforce drawing order if that's needed.
+    /// [Debtri::remove] has been called earlier. In general, use [Debtri::compare_draw_order]
+    /// and [Debtri::swap_draw_order] to enforce drawing order if that's needed.
     pub fn add(&mut self, triangle: DebugTriangle) -> Handle {
         let debtris = &mut self.vx.debtris;
 
@@ -963,12 +963,12 @@ mod tests {
 
         assert_eq![
             std::cmp::Ordering::Less,
-            debtri.compare_triangle_order(&left, &right)
+            debtri.compare_draw_order(&left, &right)
         ];
-        debtri.swap(&mut left, &mut right);
+        debtri.swap_draw_order(&mut left, &mut right);
         assert_eq![
             std::cmp::Ordering::Greater,
-            debtri.compare_triangle_order(&left, &right)
+            debtri.compare_draw_order(&left, &right)
         ];
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);

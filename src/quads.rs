@@ -236,6 +236,41 @@ impl<'a> Quads<'a> {
         self.vx.quads[layer.0].hidden = false;
     }
 
+    /// Compare quad draw order
+    ///
+    /// All quads are drawn in a specific order. This method figures out which order is used
+    /// between two quads. The order can be manipulated by [Quads::swap_draw_order].
+    pub fn compare_draw_order(&self, left: &Handle, right: &Handle) -> std::cmp::Ordering {
+        left.1.cmp(&right.1)
+    }
+
+    /// Swap two quads with each other
+    ///
+    /// Swaps the internal data of each quad (all vertices and their data, translation,
+    /// and so on). The effect of this is that the draw order is swapped too, meaning that the
+    /// quads reverse order (one drawn on top of the other).
+    pub fn swap_draw_order(&mut self, left: &mut Handle, right: &mut Handle) {
+        debug_assert![left.0 == right.0, "Layers must be the same"];
+
+        let layer = left.0;
+
+        let quads = &mut self.vx.quads[layer];
+
+        quads.posbuffer.swap(left.1, right.1);
+        quads.colbuffer.swap(left.1, right.1);
+        quads.tranbuffer.swap(left.1, right.1);
+        quads.rotbuffer.swap(left.1, right.1);
+        quads.scalebuffer.swap(left.1, right.1);
+
+        quads.posbuf_touch = self.vx.swapconfig.image_count;
+        quads.colbuf_touch = self.vx.swapconfig.image_count;
+        quads.tranbuf_touch = self.vx.swapconfig.image_count;
+        quads.rotbuf_touch = self.vx.swapconfig.image_count;
+        quads.scalebuf_touch = self.vx.swapconfig.image_count;
+
+        std::mem::swap(&mut left.1, &mut right.1);
+    }
+
     /// Create a new layer for quads
     ///
     /// This new layer will be ordered on top of all previous layers, meaning that its quads will
@@ -817,7 +852,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let quad = quads::Quad::default();
 
         let layer = vx.quads().new_layer(LayerOptions::default());
         vx.quads().add(&layer, quad);
@@ -844,6 +879,34 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_translated", img);
+    }
+
+    #[test]
+    fn swapping_quad_draw_order() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let quad = quads::Quad::default();
+        let layer = vx.quads().new_layer(LayerOptions::default());
+        let mut q1 = vx.quads().add(&layer, quad);
+        let mut q2 = vx.quads().add(&layer, quad);
+
+        let mut quads = vx.quads();
+        quads.translate(&q1, (-0.5, -0.5));
+        quads.set_solid_color(&q1, [255, 0, 255, 255]);
+        quads.translate(&q2, (0.5, 0.5));
+        quads.set_solid_color(&q2, [0, 255, 255, 128]);
+
+        assert_eq![std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2)];
+        quads.swap_draw_order(&mut q1, &mut q2);
+        assert_eq![
+            std::cmp::Ordering::Greater,
+            quads.compare_draw_order(&q1, &q2)
+        ];
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "swapping_quad_draw_order", img);
     }
 
     #[test]
