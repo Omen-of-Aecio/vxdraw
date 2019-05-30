@@ -1055,7 +1055,7 @@ impl VxDraw {
                                             quad.scalebuf_touch -= 1;
                                         }
                                         let count = quad.posbuffer.len();
-                                        quad.indices.ensure_capacity(
+                                        quad.indices[self.current_frame].ensure_capacity(
                                             &self.device,
                                             &self.adapter,
                                             count,
@@ -1070,7 +1070,7 @@ impl VxDraw {
                                         .into();
                                         enc.bind_vertex_buffers(0, buffers);
                                         enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                            buffer: &quad.indices.buffer(),
+                                            buffer: &quad.indices[self.current_frame].buffer(),
                                             offset: 0,
                                             index_type: gfx_hal::IndexType::U16,
                                         });

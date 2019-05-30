@@ -489,7 +489,9 @@ impl<'a> Quads<'a> {
             .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
 
-        let indices = super::utils::ResizBufIdx4::new(&s.device, &s.adapter);
+        let indices = (0..image_count)
+            .map(|_| super::utils::ResizBufIdx4::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
 
         let quads = ColoredQuadList {
             hidden: options.hide,

@@ -121,7 +121,7 @@ pub struct ColoredQuadList {
     pub rotbuf: Vec<super::utils::ResizBuf>,
     pub scalebuf: Vec<super::utils::ResizBuf>,
 
-    pub indices: super::utils::ResizBufIdx4,
+    pub indices: Vec<super::utils::ResizBufIdx4>,
 
     pub descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
     pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
@@ -266,7 +266,9 @@ impl Drop for VxDraw {
             }
 
             for mut quad in self.quads.drain(..) {
-                quad.indices.destroy(&self.device);
+                for mut indices in quad.indices.drain(..) {
+                    indices.destroy(&self.device);
+                }
                 for mut posbuf in quad.posbuf.drain(..) {
                     posbuf.destroy(&self.device);
                 }
