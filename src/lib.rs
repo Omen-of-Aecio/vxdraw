@@ -9,7 +9,7 @@
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
-//!     vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
+//!     vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
 //!
 //!     // Sleep here so the window does not instantly disappear
@@ -27,7 +27,7 @@
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
-//!     let handle = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
+//!     let handle = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!
 //!     for _ in 0..360 {
 //!         // Rotate the triangle by 1 degree
@@ -1230,7 +1230,7 @@ mod tests {
             tri.scale = 3.7;
             tri
         };
-        vx.debtri().push(large_triangle);
+        vx.debtri().add(large_triangle);
 
         vx.draw_frame(&prspect);
 
@@ -1274,7 +1274,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let _tri = make_centered_equilateral_triangle();
-        vx.debtri().push(debtri::DebugTriangle::default());
+        vx.debtri().add(debtri::DebugTriangle::default());
         for i in 0..=360 {
             if i % 2 == 0 {
                 add_4_screencorners(&mut vx);

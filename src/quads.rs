@@ -800,34 +800,6 @@ mod tests {
         utils::assert_swapchain_eq(&mut vx, "simple_quad_rotated_with_exotic_origin", img);
     }
 
-    #[test]
-    fn a_bunch_of_quads() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
-
-        let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
-        let mut bottomleft = debtri::DebugTriangle::from([-1.0, -1.0, -1.0, 1.0, 1.0, 1.0]);
-        topright.scale = 0.1;
-        bottomleft.scale = 0.1;
-        let radi = 0.1;
-        let trans = -1f32 + radi;
-
-        for j in 0..10 {
-            for i in 0..10 {
-                topright.translation =
-                    (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                bottomleft.translation =
-                    (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                vx.debtri().push(topright);
-                vx.debtri().push(bottomleft);
-            }
-        }
-
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut vx, "a_bunch_of_quads", img);
-    }
-
     // DISABLED because we might disable depth buffering altogether
     // #[test]
     // fn overlapping_quads_respect_z_order() {

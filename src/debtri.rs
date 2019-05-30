@@ -16,7 +16,7 @@
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
-//!     let tri = vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
+//!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!
 //!     // Turn the triangle white
 //!     vx.debtri().set_color(&tri, [255, 255, 255, 255]);
@@ -146,7 +146,7 @@ impl<'a> Debtri<'a> {
     /// guaranteed to be the triangle to be rendered on top of all other triangles if
     /// [Debtri::remove] has been called earlier. In general, use [Debtri::compare_triangle_order]
     /// and [Debtri::swap] to enforce drawing order if that's needed.
-    pub fn push(&mut self, triangle: DebugTriangle) -> Handle {
+    pub fn add(&mut self, triangle: DebugTriangle) -> Handle {
         let debtris = &mut self.vx.debtris;
 
         let handle = if let Some(hole) = debtris.holes.pop() {
@@ -825,7 +825,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        vx.debtri().push(tri);
+        vx.debtri().add(tri);
         utils::add_4_screencorners(&mut vx);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -840,7 +840,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        vx.debtri().push(tri);
+        vx.debtri().add(tri);
         utils::add_4_screencorners(&mut vx);
         for _ in 0..4 {
             vx.debtri().pop();
@@ -858,7 +858,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
-        let triangle = vx.debtri().push(tri);
+        let triangle = vx.debtri().add(tri);
         vx.debtri().color(&triangle, [-255, 0, 0, 0]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -878,7 +878,7 @@ mod tests {
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
-        let handle = debtri.push(tri);
+        let handle = debtri.add(tri);
         debtri.set_scale(&handle, 0.1);
         debtri.scale(&handle, 1.0);
         debtri.set_rotation(&handle, Deg(25.0));
@@ -899,14 +899,14 @@ mod tests {
 
         let mut debtri = vx.debtri();
 
-        let left = debtri.push(tri);
+        let left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
         debtri.set_color(&left, [255, 0, 0, 255]);
 
-        let middle = debtri.push(tri);
+        let middle = debtri.add(tri);
         debtri.set_color(&middle, [0, 255, 0, 255]);
 
-        let right = debtri.push(tri);
+        let right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, [0, 0, 255, 255]);
 
@@ -925,19 +925,19 @@ mod tests {
 
         let mut debtri = vx.debtri();
 
-        let left = debtri.push(tri);
+        let left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
         debtri.set_color(&left, [255, 0, 0, 255]);
 
-        let middle = debtri.push(tri);
+        let middle = debtri.add(tri);
         debtri.set_color(&middle, [0, 255, 0, 255]);
 
-        let right = debtri.push(tri);
+        let right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, [0, 0, 255, 255]);
 
         debtri.remove(middle);
-        let middle = debtri.push(tri);
+        let middle = debtri.add(tri);
         debtri.set_rotation(&middle, Deg(60.0));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -953,11 +953,11 @@ mod tests {
 
         let mut debtri = vx.debtri();
 
-        let mut left = debtri.push(tri);
+        let mut left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
         debtri.set_color(&left, [255, 0, 0, 255]);
 
-        let mut right = debtri.push(tri);
+        let mut right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, [0, 0, 255, 255]);
 
@@ -984,11 +984,11 @@ mod tests {
 
         let mut debtri = vx.debtri();
 
-        let left = debtri.push(tri);
+        let left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
         debtri.set_color(&left, [255, 0, 0, 255]);
 
-        let right = debtri.push(tri);
+        let right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, [0, 0, 255, 255]);
 
@@ -1010,7 +1010,7 @@ mod tests {
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
-        let idx = debtri.push(tri);
+        let idx = debtri.add(tri);
         debtri.set_color(&idx, [255, 0, 255, 255]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1028,7 +1028,7 @@ mod tests {
             for j in [-1f32, 1f32].iter() {
                 let mut tri = DebugTriangle::default();
                 tri.translation = (*i, *j);
-                let _idx = vx.debtri().push(tri);
+                let _idx = vx.debtri().add(tri);
             }
         }
 
@@ -1047,7 +1047,7 @@ mod tests {
             for j in [-1f32, 1f32].iter() {
                 let mut tri = DebugTriangle::default();
                 tri.translation = (*i, *j);
-                let _idx = vx.debtri().push(tri);
+                let _idx = vx.debtri().add(tri);
             }
         }
 
@@ -1066,7 +1066,7 @@ mod tests {
             let mut tri = DebugTriangle::default();
             tri.translation = ((i as f32).cos(), (i as f32).sin());
             tri.scale = 0.1f32;
-            let _idx = vx.debtri().push(tri);
+            let _idx = vx.debtri().add(tri);
         }
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1088,12 +1088,40 @@ mod tests {
         for j in 0..31 {
             for i in 0..31 {
                 tri.translation = (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
-                vx.debtri().push(tri);
+                vx.debtri().add(tri);
             }
         }
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "triangle_in_corner", img);
+    }
+
+    #[test]
+    fn a_bunch_of_quads() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
+        let mut bottomleft = debtri::DebugTriangle::from([-1.0, -1.0, -1.0, 1.0, 1.0, 1.0]);
+        topright.scale = 0.1;
+        bottomleft.scale = 0.1;
+        let radi = 0.1;
+        let trans = -1f32 + radi;
+
+        for j in 0..10 {
+            for i in 0..10 {
+                topright.translation =
+                    (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
+                bottomleft.translation =
+                    (trans + i as f32 * 2.0 * radi, trans + j as f32 * 2.0 * radi);
+                vx.debtri().add(topright);
+                vx.debtri().add(bottomleft);
+            }
+        }
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "a_bunch_of_quads", img);
     }
 
     #[test]
@@ -1218,7 +1246,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        vx.debtri().push(DebugTriangle::default());
+        vx.debtri().add(DebugTriangle::default());
         utils::add_4_screencorners(&mut vx);
 
         b.iter(|| {

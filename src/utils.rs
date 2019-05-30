@@ -897,7 +897,7 @@ pub fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::Ha
         }
         tri.scale = scale;
         tri.translation = (dx, dy);
-        debtris.push(vx.debtri().push(tri));
+        debtris.push(vx.debtri().add(tri));
     }
     debtris
 }
@@ -907,16 +907,16 @@ pub fn remove_windmills(vx: &mut VxDraw) {
 }
 
 pub fn add_4_screencorners(vx: &mut VxDraw) {
-    vx.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().add(super::debtri::DebugTriangle::from([
         -1.0f32, -1.0, 0.0, -1.0, -1.0, 0.0,
     ]));
-    vx.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().add(super::debtri::DebugTriangle::from([
         -1.0f32, 1.0, 0.0, 1.0, -1.0, 0.0,
     ]));
-    vx.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().add(super::debtri::DebugTriangle::from([
         1.0f32, -1.0, 0.0, -1.0, 1.0, 0.0,
     ]));
-    vx.debtri().push(super::debtri::DebugTriangle::from([
+    vx.debtri().add(super::debtri::DebugTriangle::from([
         1.0f32, 1.0, 0.0, 1.0, 1.0, 0.0,
     ]));
 }
