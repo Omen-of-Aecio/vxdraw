@@ -98,16 +98,29 @@ pub struct DebugTriangleData {
 }
 
 pub struct ColoredQuadList {
-    pub capacity: u64,
     pub count: usize,
 
-    pub quads_buffer: <back::Backend as Backend>::Buffer,
-    pub quads_memory: <back::Backend as Backend>::Memory,
-    pub memory_requirements: gfx_hal::memory::Requirements,
+    pub holes: Vec<usize>,
 
-    pub quads_buffer_indices: <back::Backend as Backend>::Buffer,
-    pub quads_memory_indices: <back::Backend as Backend>::Memory,
-    pub quads_requirements_indices: gfx_hal::memory::Requirements,
+    pub posbuf_touch: u32,
+    pub colbuf_touch: u32,
+    pub tranbuf_touch: u32,
+    pub rotbuf_touch: u32,
+    pub scalebuf_touch: u32,
+
+    pub posbuffer: Vec<[f32; 8]>,   // 8 per quad
+    pub colbuffer: Vec<[u8; 16]>,   // 16 per quad
+    pub tranbuffer: Vec<[f32; 8]>,  // 8 per quad
+    pub rotbuffer: Vec<[f32; 4]>,   // 4 per quad
+    pub scalebuffer: Vec<[f32; 4]>, // 4 per quad
+
+    pub posbuf: Vec<super::utils::ResizBuf>,
+    pub colbuf: Vec<super::utils::ResizBuf>,
+    pub tranbuf: Vec<super::utils::ResizBuf>,
+    pub rotbuf: Vec<super::utils::ResizBuf>,
+    pub scalebuf: Vec<super::utils::ResizBuf>,
+
+    pub indices: super::utils::ResizBufIdx4,
 
     pub descriptor_set: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
     pub pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
@@ -252,10 +265,22 @@ impl Drop for VxDraw {
             }
 
             for mut quad in self.quads.drain(..) {
-                self.device.destroy_buffer(quad.quads_buffer);
-                self.device.free_memory(quad.quads_memory);
-                self.device.destroy_buffer(quad.quads_buffer_indices);
-                self.device.free_memory(quad.quads_memory_indices);
+                quad.indices.destroy(&self.device);
+                for mut posbuf in quad.posbuf.drain(..) {
+                    posbuf.destroy(&self.device);
+                }
+                for mut colbuf in quad.colbuf.drain(..) {
+                    colbuf.destroy(&self.device);
+                }
+                for mut tranbuf in quad.tranbuf.drain(..) {
+                    tranbuf.destroy(&self.device);
+                }
+                for mut rotbuf in quad.rotbuf.drain(..) {
+                    rotbuf.destroy(&self.device);
+                }
+                for mut scalebuf in quad.scalebuf.drain(..) {
+                    scalebuf.destroy(&self.device);
+                }
                 for dsl in quad.descriptor_set.drain(..) {
                     self.device.destroy_descriptor_set_layout(dsl);
                 }

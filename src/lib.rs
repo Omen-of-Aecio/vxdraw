@@ -999,7 +999,7 @@ impl VxDraw {
                                 enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
                             }
                             DrawType::Quad { id } => {
-                                if let Some(ref quad) = self.quads.get(*id) {
+                                if let Some(quad) = self.quads.get_mut(*id) {
                                     enc.bind_graphics_pipeline(&quad.pipeline);
                                     enc.push_graphics_constants(
                                         &quad.pipeline_layout,
@@ -1007,11 +1007,68 @@ impl VxDraw {
                                         0,
                                         &*(view.as_ptr() as *const [u32; 16]),
                                     );
-                                    let buffers: ArrayVec<[_; 1]> =
-                                        [(&quad.quads_buffer, 0)].into();
+                                    if quad.posbuf_touch != 0 {
+                                        quad.posbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &quad.posbuffer[..],
+                                            );
+                                        quad.posbuf_touch -= 1;
+                                    }
+                                    if quad.colbuf_touch != 0 {
+                                        quad.colbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &quad.colbuffer[..],
+                                            );
+                                        quad.colbuf_touch -= 1;
+                                    }
+                                    if quad.tranbuf_touch != 0 {
+                                        quad.tranbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &quad.tranbuffer[..],
+                                            );
+                                        quad.tranbuf_touch -= 1;
+                                    }
+                                    if quad.rotbuf_touch != 0 {
+                                        quad.rotbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &quad.rotbuffer[..],
+                                            );
+                                        quad.rotbuf_touch -= 1;
+                                    }
+                                    if quad.scalebuf_touch != 0 {
+                                        quad.scalebuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &quad.scalebuffer[..],
+                                            );
+                                        quad.scalebuf_touch -= 1;
+                                    }
+                                    let count = quad.posbuffer.len();
+                                    quad.indices.ensure_capacity(
+                                        &self.device,
+                                        &self.adapter,
+                                        count,
+                                    );
+                                    let buffers: ArrayVec<[_; 5]> = [
+                                        (quad.posbuf[self.current_frame].buffer(), 0),
+                                        (quad.colbuf[self.current_frame].buffer(), 0),
+                                        (quad.tranbuf[self.current_frame].buffer(), 0),
+                                        (quad.rotbuf[self.current_frame].buffer(), 0),
+                                        (quad.scalebuf[self.current_frame].buffer(), 0),
+                                    ]
+                                    .into();
                                     enc.bind_vertex_buffers(0, buffers);
                                     enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                        buffer: &quad.quads_buffer_indices,
+                                        buffer: &quad.indices.buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U16,
                                     });
