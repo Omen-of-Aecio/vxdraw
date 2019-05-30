@@ -223,7 +223,7 @@ impl<'a> Debtri<'a> {
     /// Beware that this function is intended for simple use cases, when using [Debtri::remove],
     /// holes may be created which cause [Debtri::pop] to not work as expected. Please use
     /// [Debtri::remove] instead of [Debtri::pop] in complex applications.
-    /// See [Debtri::push] for more information.
+    /// See [Debtri::add] for more information.
     pub fn pop(&mut self) {
         let debtris = &mut self.vx.debtris;
 
@@ -269,7 +269,7 @@ impl<'a> Debtri<'a> {
     /// Remove a debug triangle
     ///
     /// The triangle is set to a scale of 0 and its handle is stored internally in a list of
-    /// `holes`. Calling [Debtri::push] with available holes will fill the first available hole
+    /// `holes`. Calling [Debtri::add] with available holes will fill the first available hole
     /// with the new triangle.
     pub fn remove(&mut self, handle: Handle) {
         self.vx.debtris.holes.push(handle.0);

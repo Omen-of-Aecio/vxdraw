@@ -4,7 +4,7 @@
 //! with it. By using different colors in the different points, the colors will "blend" into each
 //! other. Opacity is also supported on quads.
 //!
-//! See [quads::Quad] for all operations supported on debug triangles.
+//! See [quads::Quads] for all operations supported on debug triangles.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use logger::{Generic, GenericLogger, Logger};
@@ -17,7 +17,7 @@
 //!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::default());
 //!
 //!     // Turn the quad white
-//!     vx.quads().set_color(&handle, [255, 255, 255, 255]);
+//!     vx.quads().set_solid_color(&handle, [255, 255, 255, 255]);
 //!
 //!     // Rotate the quad 90 degrees (counter clockwise)
 //!     vx.quads().set_rotation(&handle, Deg(45.0));
@@ -45,11 +45,17 @@ use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
 use std::mem::{size_of, transmute, ManuallyDrop};
 
+/// Accessor object to all quads
+///
+/// A quad is a colored object with 4 points
 pub struct Quads<'a> {
     vx: &'a mut VxDraw,
 }
 
 impl<'a> Quads<'a> {
+    /// Spawn the accessor object from [VxDraw].
+    ///
+    /// This is a very cheap operation.
     pub fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
@@ -58,31 +64,59 @@ impl<'a> Quads<'a> {
     ///
     /// The new quad will be based on the data in [Quad], and inserted into the given [Layer].
     pub fn add(&mut self, layer: &Layer, quad: Quad) -> Handle {
-        if let Some(ref mut quads) = self.vx.quads.get_mut(layer.0) {
-            let width = quad.width;
-            let height = quad.height;
+        let width = quad.width;
+        let height = quad.height;
 
-            let topleft = (
-                -width / 2f32 - quad.origin.0,
-                -height / 2f32 - quad.origin.1,
-                quad.depth,
+        let topleft = (
+            -width / 2f32 - quad.origin.0,
+            -height / 2f32 - quad.origin.1,
+        );
+        let topright = (width / 2f32 - quad.origin.0, -height / 2f32 - quad.origin.1);
+        let bottomleft = (-width / 2f32 - quad.origin.0, height / 2f32 - quad.origin.1);
+        let bottomright = (width / 2f32 - quad.origin.0, height / 2f32 - quad.origin.1);
+        let replace = self.vx.quads.get(layer.0).map(|x| !x.holes.is_empty());
+        if replace.is_none() {
+            panic!["Layer does not exist"];
+        }
+        let handle = if replace.unwrap() {
+            let hole = self.vx.quads.get_mut(layer.0).unwrap().holes.pop().unwrap();
+            let handle = Handle(layer.0, hole);
+            self.set_deform(
+                &handle,
+                [
+                    (topleft.0, topleft.1),
+                    (bottomleft.0, bottomleft.1),
+                    (bottomright.0, bottomright.1),
+                    (topright.0, topright.1),
+                ],
             );
-            let topright = (
-                width / 2f32 - quad.origin.0,
-                -height / 2f32 - quad.origin.1,
-                quad.depth,
+            self.set_color(
+                &handle,
+                [
+                    quad.colors[0].0,
+                    quad.colors[0].1,
+                    quad.colors[0].2,
+                    quad.colors[0].3,
+                    quad.colors[1].0,
+                    quad.colors[1].1,
+                    quad.colors[1].2,
+                    quad.colors[1].3,
+                    quad.colors[2].0,
+                    quad.colors[2].1,
+                    quad.colors[2].2,
+                    quad.colors[2].3,
+                    quad.colors[3].0,
+                    quad.colors[3].1,
+                    quad.colors[3].2,
+                    quad.colors[3].3,
+                ],
             );
-            let bottomleft = (
-                -width / 2f32 - quad.origin.0,
-                height / 2f32 - quad.origin.1,
-                quad.depth,
-            );
-            let bottomright = (
-                width / 2f32 - quad.origin.0,
-                height / 2f32 - quad.origin.1,
-                quad.depth,
-            );
-
+            self.set_translation(&handle, (quad.translation.0, quad.translation.1));
+            self.set_rotation(&handle, Rad(quad.rotation));
+            self.set_scale(&handle, quad.scale);
+            handle
+        } else {
+            let quads = self.vx.quads.get_mut(layer.0).unwrap();
             quads.posbuffer.push([
                 topleft.0,
                 topleft.1,
@@ -128,18 +162,29 @@ impl<'a> Quads<'a> {
                 .scalebuffer
                 .push([quad.scale, quad.scale, quad.scale, quad.scale]);
 
-            quads.posbuf_touch = self.vx.swapconfig.image_count;
-            quads.colbuf_touch = self.vx.swapconfig.image_count;
-            quads.tranbuf_touch = self.vx.swapconfig.image_count;
-            quads.rotbuf_touch = self.vx.swapconfig.image_count;
-            quads.scalebuf_touch = self.vx.swapconfig.image_count;
-
             quads.count += 1;
 
             Handle(layer.0, quads.count - 1)
-        } else {
-            unreachable![]
-        }
+        };
+
+        let quads = self.vx.quads.get_mut(layer.0).unwrap();
+        quads.posbuf_touch = self.vx.swapconfig.image_count;
+        quads.colbuf_touch = self.vx.swapconfig.image_count;
+        quads.tranbuf_touch = self.vx.swapconfig.image_count;
+        quads.rotbuf_touch = self.vx.swapconfig.image_count;
+        quads.scalebuf_touch = self.vx.swapconfig.image_count;
+
+        handle
+    }
+
+    /// Remove a quad
+    ///
+    /// The quad is set to a scale of 0 and its handle is stored internally in a list of
+    /// `holes`. Calling [Quads::add] with available holes will fill the first available hole
+    /// with the new quad.
+    pub fn remove(&mut self, handle: Handle) {
+        self.vx.quads[handle.0].holes.push(handle.1);
+        self.set_scale(&handle, 0.0);
     }
 
     pub fn quad_pop(&mut self, layer: &Layer) {
@@ -462,12 +507,18 @@ impl<'a> Quads<'a> {
     }
 
     /// Set a solid color of a quad
-    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 4]) {
+    pub fn set_solid_color(&mut self, handle: &Handle, rgba: [u8; 4]) {
         self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
-            self.vx.quads[handle.0].colbuffer[handle.0][idx * 4..(idx + 1) * 4]
+            self.vx.quads[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
                 .copy_from_slice(&rgba);
         }
+    }
+
+    /// Set a solid color each vertex of a quad
+    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 16]) {
+        self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[handle.0].colbuffer[handle.1].copy_from_slice(&rgba);
     }
 
     /// Set the position (translation) of a quad triangle
@@ -685,6 +736,32 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_translated", img);
+    }
+
+    #[test]
+    fn three_quads_add_remove() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+        quad.colors[0].1 = 255;
+        quad.colors[3].1 = 255;
+
+        let mut quads = vx.quads();
+        let layer = quads.new_layer(QuadOptions::default());
+        let q1 = quads.add(&layer, quad);
+        let q2 = quads.add(&layer, quad);
+        let q3 = quads.add(&layer, quad);
+
+        quads.translate(&q2, (0.25, 0.4));
+        quads.set_solid_color(&q2, [0, 0, 255, 128]);
+
+        quads.translate(&q3, (0.35, 0.8));
+        quads.remove(q2);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "three_quads_add_remove", img);
     }
 
     #[test]
