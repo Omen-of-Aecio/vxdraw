@@ -8,6 +8,7 @@
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!
 //!     vx.debtri().push(vxdraw::debtri::DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
 //!

@@ -3,6 +3,34 @@
 //! A quad is a renderable consisting of 4 points. Each point has a color and position associated
 //! with it. By using different colors in the different points, the colors will "blend" into each
 //! other. Opacity is also supported on quads.
+//!
+//! See [quads::Quad] for all operations supported on debug triangles.
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use logger::{Generic, GenericLogger, Logger};
+//! use vxdraw::{ShowWindow, VxDraw};
+//! fn main() {
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!
+//!     let quad = vx.quads().create_quad(vxdraw::quads::QuadOptions::default());
+//!     let handle = vx.quads().push(&quad, vxdraw::quads::Quad::default());
+//!
+//!     // Turn the quad white
+//!     vx.quads().set_color(&handle, [255, 255, 255, 255]);
+//!
+//!     // Rotate the quad 90 degrees (counter clockwise)
+//!     vx.quads().set_rotation(&handle, Deg(45.0));
+//!
+//!     // Scale the quad to half its current size
+//!     vx.quads().scale(&handle, 0.5);
+//!
+//!     // Draw the frame with the identity matrix transformation (meaning no transformations)
+//!     vx.draw_frame(&Matrix4::identity());
+//!
+//!     // Sleep here so the window does not instantly disappear
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
 use super::utils::*;
 use crate::data::{ColoredQuadList, DrawType, VxDraw};
 use cgmath::Rad;
@@ -442,7 +470,6 @@ impl<'a> Quads<'a> {
     /// of the triangle with respect to the model-space's origin.
     pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
         self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
-        dbg![position];
         for idx in 0..4 {
             self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2] = position.0;
             self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2 + 1] = position.1;
@@ -455,7 +482,7 @@ impl<'a> Quads<'a> {
     pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         let angle = deg.into().0;
         self.vx.quads[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
-        self.vx.quads[handle.0].rotbuffer[handle.1].copy_from_slice(&[angle, angle, angle]);
+        self.vx.quads[handle.0].rotbuffer[handle.1].copy_from_slice(&[angle, angle, angle, angle]);
     }
 
     /// Set the scale of a quad
