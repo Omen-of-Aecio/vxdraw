@@ -410,21 +410,15 @@ impl<'a> Quads<'a> {
         Layer(s.quads.len() - 1)
     }
 
-    pub fn translate(&mut self, handle: &Handle, movement: (f32, f32)) {
-        self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
-        for idx in 0..4 {
-            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2] += movement.0;
-            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2 + 1] += movement.1;
-        }
-    }
+    // ---
 
     /// Change the vertices of the model-space
     ///
-    /// The name `set_deform` is used to keep consistent [Quads::deform] and [Quads::deform_all].
+    /// The name `set_deform` is used to keep consistent [Quads::deform].
     /// What this function does is just setting absolute vertex positions for each vertex in the
     /// triangle.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
-        self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
         let vertex = &mut self.vx.quads[handle.0].posbuffer[handle.1];
         for (idx, point) in points.iter().enumerate() {
             vertex[idx * 2] = points[idx].0;
@@ -443,7 +437,7 @@ impl<'a> Quads<'a> {
 
     /// Set the position (translation) of a quad triangle
     ///
-    /// The name `set_translation` is chosen to keep the counterparts `translate` and
+    /// The name `set_translation` is chosen to keep the counterparts [Quads::translate] and
     /// `translate_all` consistent. This function can purely be thought of as setting the position
     /// of the triangle with respect to the model-space's origin.
     pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
@@ -454,6 +448,74 @@ impl<'a> Quads<'a> {
             self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2 + 1] = position.1;
         }
     }
+
+    /// Set the rotation of a quad
+    ///
+    /// The rotation is about the model space origin.
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
+        let angle = deg.into().0;
+        self.vx.quads[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[handle.0].rotbuffer[handle.1].copy_from_slice(&[angle, angle, angle]);
+    }
+
+    /// Set the scale of a quad
+    pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.quads[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.quads[handle.0].scalebuffer[handle.1] {
+            *sc = scale;
+        }
+    }
+
+    // ---
+
+    /// Deform a quad by adding delta vertices
+    ///
+    /// Adds the delta vertices to the quad. Beware: This changes model space form.
+    pub fn deform(&mut self, handle: &Handle, delta: [(f32, f32); 4]) {
+        self.vx.quads[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
+        let points = &mut self.vx.quads[handle.0].posbuffer[handle.1];
+        points[0] += delta[0].0;
+        points[1] += delta[0].1;
+        points[2] += delta[1].0;
+        points[3] += delta[1].1;
+        points[4] += delta[2].0;
+        points[5] += delta[2].1;
+        points[6] += delta[3].0;
+        points[7] += delta[3].1;
+    }
+
+    /// Translate a quad by a vector
+    ///
+    /// Translation does not mutate the model-space of a quad.
+    pub fn translate(&mut self, handle: &Handle, movement: (f32, f32)) {
+        self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2] += movement.0;
+            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2 + 1] += movement.1;
+        }
+    }
+
+    /// Rotate a quad
+    ///
+    /// Rotation does not mutate the model-space of a quad.
+    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
+        self.vx.quads[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for rot in &mut self.vx.quads[handle.0].rotbuffer[handle.1] {
+            *rot += deg.into().0;
+        }
+    }
+
+    /// Scale a quad
+    ///
+    /// Scale does not mutate the model-space of a quad.
+    pub fn scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.quads[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.quads[handle.0].scalebuffer[handle.1] {
+            *sc *= scale;
+        }
+    }
+
+    // ---
 
     /// Rotate all quads
     ///
@@ -608,6 +670,45 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position", img);
+    }
+
+    #[test]
+    fn simple_quad_scale() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+        quad.colors[0].1 = 255;
+        quad.colors[2].2 = 255;
+
+        let mut quads = vx.quads();
+        let layer = quads.create_quad(QuadOptions::default());
+        let handle = quads.push(&layer, quad);
+        quads.set_scale(&handle, 0.5);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_scale", img);
+    }
+
+    #[test]
+    fn simple_quad_deform() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+        quad.colors[0].1 = 255;
+        quad.colors[2].2 = 255;
+
+        let mut quads = vx.quads();
+        let layer = quads.create_quad(QuadOptions::default());
+        let handle = quads.push(&layer, quad);
+        quads.scale(&handle, 0.5);
+        quads.deform(&handle, [(-0.5, 0.0), (0.0, 0.0), (0.0, 0.0), (0.5, 0.1)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_deform", img);
     }
 
     #[test]

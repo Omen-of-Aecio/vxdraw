@@ -280,7 +280,7 @@ impl<'a> Debtri<'a> {
 
     /// Change the vertices of the model-space
     ///
-    /// The name `set_deform` is used to keep consistent with the verb `deform` and `deform_all`.
+    /// The name `set_deform` is used to keep consistent with the verb [Debtri::deform] and [Debtri::deform_all].
     /// What this function does is just setting absolute vertex positions for each vertex in the
     /// triangle.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 3]) {
