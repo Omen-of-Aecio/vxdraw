@@ -783,10 +783,38 @@ impl<'a> Dyntex<'a> {
         Layer(s.dyntexs.len() - 1)
     }
 
+    /// Remove a layer
+    ///
+    /// Removes the layer from memory and destroys all sprites associated with it.
+    /// All lingering sprite handles that were spawned using this layer handle will be
+    /// invalidated.
+    pub fn remove_layer(&mut self, layer: Layer) {
+        let s = &mut *self.vx;
+        let mut index = None;
+        for (idx, x) in s.draw_order.iter().enumerate() {
+            match x {
+                DrawType::DynamicTexture { id } if *id == layer.0 => {
+                    index = Some(idx);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(idx) = index {
+            s.draw_order.remove(idx);
+            // Can't delete here always because other textures may still be referring to later dyntexs,
+            // only when this is the last layer.
+            if s.dyntexs.len() == layer.0 + 1 {
+                let dyntex = s.dyntexs.pop().unwrap();
+                destroy_texture(s, dyntex);
+            }
+        }
+    }
+
     /// Add a sprite (a rectangular view of a texture) to the system
     ///
-    /// The sprite is automatically drawn on each [crate::VxDraw::draw_frame] call, and must be removed by
-    /// [crate::dyntex::Dyntex::remove_sprite] to stop it from being drawn.
+    /// The sprite is automatically drawn on each [VxDraw::draw_frame] call, and must be removed by
+    /// [Dyntex::remove] to stop it from being drawn.
     pub fn add(&mut self, layer: &Layer, sprite: Sprite) -> Handle {
         // Derive xy from the sprite's initial UV
         let uv_a = sprite.uv_begin;
@@ -857,7 +885,7 @@ impl<'a> Dyntex<'a> {
                     sprite.colors[3].3,
                 ],
             );
-            self.set_position(&handle, (sprite.translation.0, sprite.translation.1));
+            self.set_translation(&handle, (sprite.translation.0, sprite.translation.1));
             self.set_rotation(&handle, Rad(sprite.rotation));
             self.set_scale(&handle, sprite.scale);
             self.set_uv(&handle, sprite.uv_begin, sprite.uv_end);
@@ -934,36 +962,8 @@ impl<'a> Dyntex<'a> {
         Handle(layer.0, handle)
     }
 
-    /// Remove a layer
-    ///
-    /// Removes the layer from memory and destroys all sprites associated with it.
-    /// All lingering sprite handles that were spawned using this layer handle will be
-    /// invalidated.
-    pub fn remove_layer(&mut self, layer: Layer) {
-        let s = &mut *self.vx;
-        let mut index = None;
-        for (idx, x) in s.draw_order.iter().enumerate() {
-            match x {
-                DrawType::DynamicTexture { id } if *id == layer.0 => {
-                    index = Some(idx);
-                    break;
-                }
-                _ => {}
-            }
-        }
-        if let Some(idx) = index {
-            s.draw_order.remove(idx);
-            // Can't delete here always because other textures may still be referring to later dyntexs,
-            // only when this is the last layer.
-            if s.dyntexs.len() == layer.0 + 1 {
-                let dyntex = s.dyntexs.pop().unwrap();
-                destroy_texture(s, dyntex);
-            }
-        }
-    }
-
     /// Removes a single sprite, making it not be drawn
-    pub fn remove_sprite(&mut self, handle: Handle) {
+    pub fn remove(&mut self, handle: Handle) {
         self.vx.dyntexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
         if let Some(dyntex) = self.vx.dyntexs.get_mut(handle.0) {
             dyntex.removed.push(handle.1);
@@ -971,9 +971,11 @@ impl<'a> Dyntex<'a> {
         }
     }
 
+    // ---
+
     /// Change the vertices of the model-space
     ///
-    /// The name `set_deform` is used to keep consistent [Quads::deform].
+    /// The name `set_deform` is used to keep consistent [Dyntex::deform].
     /// What this function does is just setting absolute vertex positions for each vertex in the
     /// triangle.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
@@ -985,14 +987,14 @@ impl<'a> Dyntex<'a> {
         }
     }
 
-    /// Set a solid color each vertex of a quad
+    /// Set a solid color each vertex of a sprite
     pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 16]) {
         self.vx.dyntexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
         self.vx.dyntexs[handle.0].colbuffer[handle.1].copy_from_slice(&rgba);
     }
 
     /// Set the position of a sprite
-    pub fn set_position(&mut self, handle: &Handle, position: (f32, f32)) {
+    pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
         if let Some(stex) = self.vx.dyntexs.get_mut(handle.0) {
             self.vx.dyntexs[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
             for idx in 0..4 {
@@ -1012,7 +1014,7 @@ impl<'a> Dyntex<'a> {
             .copy_from_slice(&[angle, angle, angle, angle]);
     }
 
-    /// Set the scale of a quad
+    /// Set the scale of a sprite
     pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
         self.vx.dyntexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for sc in &mut self.vx.dyntexs[handle.0].scalebuffer[handle.1] {
@@ -1020,9 +1022,35 @@ impl<'a> Dyntex<'a> {
         }
     }
 
-    /// Translate a quad by a vector
+    /// Set the UV values of a single sprite
+    pub fn set_uv(&mut self, handle: &Handle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
+        self.vx.dyntexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.dyntexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
+            uv_begin.0, uv_begin.1, uv_begin.0, uv_end.1, uv_end.0, uv_end.1, uv_end.0, uv_begin.1,
+        ]);
+    }
+
+    // ---
+
+    /// Deform a sprite by adding delta vertices
     ///
-    /// Translation does not mutate the model-space of a quad.
+    /// Adds the delta vertices to the sprite. Beware: This changes model space form.
+    pub fn deform(&mut self, handle: &Handle, delta: [(f32, f32); 4]) {
+        self.vx.dyntexs[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
+        let points = &mut self.vx.dyntexs[handle.0].posbuffer[handle.1];
+        points[0] += delta[0].0;
+        points[1] += delta[0].1;
+        points[2] += delta[1].0;
+        points[3] += delta[1].1;
+        points[4] += delta[2].0;
+        points[5] += delta[2].1;
+        points[6] += delta[3].0;
+        points[7] += delta[3].1;
+    }
+
+    /// Translate a sprite by a vector
+    ///
+    /// Translation does not mutate the model-space of a sprite.
     pub fn translate(&mut self, handle: &Handle, movement: (f32, f32)) {
         self.vx.dyntexs[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
@@ -1030,6 +1058,28 @@ impl<'a> Dyntex<'a> {
             self.vx.dyntexs[handle.0].tranbuffer[handle.1][idx * 2 + 1] += movement.1;
         }
     }
+
+    /// Rotate a sprite
+    ///
+    /// Rotation does not mutate the model-space of a sprite.
+    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
+        self.vx.dyntexs[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for rot in &mut self.vx.dyntexs[handle.0].rotbuffer[handle.1] {
+            *rot += deg.into().0;
+        }
+    }
+
+    /// Scale a sprite
+    ///
+    /// Scale does not mutate the model-space of a sprite.
+    pub fn scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.dyntexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.dyntexs[handle.0].scalebuffer[handle.1] {
+            *sc *= scale;
+        }
+    }
+
+    // ---
 
     /// Translate all sprites that depend on a given
     ///
@@ -1041,16 +1091,6 @@ impl<'a> Dyntex<'a> {
         }
     }
 
-    /// Rotate a quad
-    ///
-    /// Rotation does not mutate the model-space of a quad.
-    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
-        self.vx.dyntexs[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
-        for rot in &mut self.vx.dyntexs[handle.0].rotbuffer[handle.1] {
-            *rot += deg.into().0;
-        }
-    }
-
     /// Rotate all sprites that depend on a given
     ///
     /// Convenience method that rotates all sprites associated with the given .
@@ -1059,14 +1099,6 @@ impl<'a> Dyntex<'a> {
         for idx in 0..count {
             self.rotate(&Handle(layer.0, idx), deg);
         }
-    }
-
-    /// Set the UV values of a single sprite
-    pub fn set_uv(&mut self, handle: &Handle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
-        self.vx.dyntexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
-        self.vx.dyntexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
-            uv_begin.0, uv_begin.1, uv_begin.0, uv_end.1, uv_end.0, uv_end.1, uv_end.0, uv_begin.1,
-        ]);
     }
 
     /// Set the UV values of multiple sprites
@@ -1261,7 +1293,7 @@ mod tests {
                 ..Sprite::default()
             },
         );
-        dyntex.set_position(&sprite, (0.5, 0.3));
+        dyntex.set_translation(&sprite, (0.5, 0.3));
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1480,7 +1512,7 @@ mod tests {
             },
         );
 
-        dyntex.remove_sprite(middle);
+        dyntex.remove(middle);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_middle", img);
@@ -1646,7 +1678,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
         for _ in 0..100_000 {
             let sprite = dyntex.add(&testure, Sprite::default());
-            dyntex.remove_sprite(sprite);
+            dyntex.remove(sprite);
         }
 
         vx.draw_frame(&prspect);
@@ -1770,7 +1802,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
         b.iter(|| {
             let sprite = dyntex.add(&testure, Sprite::default());
-            dyntex.remove_sprite(sprite);
+            dyntex.remove(sprite);
         });
     }
 
