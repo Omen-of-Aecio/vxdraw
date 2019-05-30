@@ -1330,19 +1330,19 @@ mod tests {
             ..dyntex::TextureOptions::default()
         };
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
-        let tex2 = vx.strtex().new_layer(strtex::TextureOptions {
-            depth_test: false,
-            width: 1,
-            height: 1,
-            ..strtex::TextureOptions::default()
-        });
+        let tex2 = vx.strtex().new_layer(
+            strtex::TextureOptions::new()
+                .width(1)
+                .height(1)
+                .depth(false),
+        );
         let tex3 = vx.dyntex().new_layer(TESTURE, options);
-        let tex4 = vx.strtex().new_layer(strtex::TextureOptions {
-            depth_test: false,
-            width: 1,
-            height: 1,
-            ..strtex::TextureOptions::default()
-        });
+        let tex4 = vx.strtex().new_layer(
+            strtex::TextureOptions::new()
+                .width(1)
+                .height(1)
+                .depth(false),
+        );
 
         vx.strtex()
             .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
@@ -1382,12 +1382,12 @@ mod tests {
             ..dyntex::TextureOptions::default()
         };
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
-        let tex2 = vx.strtex().new_layer(strtex::TextureOptions {
-            depth_test: false,
-            width: 1,
-            height: 1,
-            ..strtex::TextureOptions::default()
-        });
+        let tex2 = vx.strtex().new_layer(
+            strtex::TextureOptions::new()
+                .width(1)
+                .height(1)
+                .depth(false),
+        );
 
         vx.strtex()
             .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
