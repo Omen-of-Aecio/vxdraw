@@ -411,7 +411,7 @@ impl<'a> Quads<'a> {
     }
 
     pub fn translate(&mut self, handle: &QuadHandle, movement: (f32, f32)) {
-        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
             self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2] += movement.0;
             self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2 + 1] += movement.1;
@@ -419,15 +419,16 @@ impl<'a> Quads<'a> {
     }
 
     pub fn set_position(&mut self, handle: &QuadHandle, position: (f32, f32)) {
-        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        dbg![position];
         for idx in 0..4 {
-            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2..(idx + 1) * 2]
-                .copy_from_slice(&[position.0, position.1]);
+            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2] = position.0;
+            self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2 + 1] = position.1;
         }
     }
 
     pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
-        self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for rot in self.vx.quads[layer.0].rotbuffer.iter_mut() {
             rot[0] += deg.into().0;
             rot[1] += deg.into().0;
@@ -437,7 +438,7 @@ impl<'a> Quads<'a> {
     }
 
     pub fn set_quad_color(&mut self, handle: &QuadHandle, rgba: [u8; 4]) {
-        self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
             self.vx.quads[handle.0].colbuffer[handle.0][idx * 4..(idx + 1) * 4]
                 .copy_from_slice(&rgba);
@@ -564,6 +565,49 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_translated", img);
+    }
+
+    #[test]
+    fn simple_quad_set_position() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+        quad.colors[0].1 = 255;
+        quad.colors[3].1 = 255;
+
+        let mut quads = vx.quads();
+        let layer = quads.create_quad(QuadOptions::default());
+        let handle = quads.push(&layer, quad);
+        quads.set_position(&handle, (0.25, 0.4));
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position", img);
+    }
+
+    #[test]
+    fn simple_quad_set_position_after_initial() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+        quad.colors[0].1 = 255;
+        quad.colors[3].1 = 255;
+
+        let mut quads = vx.quads();
+        let layer = quads.create_quad(QuadOptions::default());
+        let handle = quads.push(&layer, quad);
+
+        for _ in 0..3 {
+            vx.draw_frame(&prspect);
+        }
+
+        vx.quads().set_position(&handle, (0.25, 0.4));
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position_after_initial", img);
     }
 
     #[test]
