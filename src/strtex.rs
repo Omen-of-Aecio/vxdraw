@@ -13,16 +13,16 @@
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{ShowWindow, VxDraw};
+//! use vxdraw::{strtex::{LayerOptions, Sprite}, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
-//!     let clock = vx.strtex().new_layer(vxdraw::strtex::LayerOptions::new().width(8));
+//!     let clock = vx.strtex().add_layer(LayerOptions::new().width(8));
 //!
 //!     // Create a new sprite view into this streaming texture
-//!     let handle = vx.strtex().add(&clock, vxdraw::strtex::Sprite::new());
+//!     let handle = vx.strtex().add(&clock, Sprite::new());
 //!
 //!     for cnt in 0..=255 {
 //!
@@ -109,6 +109,7 @@ pub struct LayerOptions {
 }
 
 impl LayerOptions {
+    /// Create a default layer
     pub fn new() -> Self {
         Self::default()
     }
@@ -149,6 +150,10 @@ impl Default for LayerOptions {
     }
 }
 
+/// Sprite creation builder
+///
+/// A sprite is a rectangular view into a texture. This structure sets up the necessary data to
+/// call [Strtex::add] with.
 pub struct Sprite {
     width: f32,
     height: f32,
@@ -162,45 +167,56 @@ pub struct Sprite {
 }
 
 impl Sprite {
+    /// Same as default
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set the width of the sprite
     pub fn width(mut self, width: f32) -> Self {
         self.width = width;
         self
     }
 
+    /// Set the height of the sprite
     pub fn height(mut self, height: f32) -> Self {
         self.height = height;
         self
     }
 
+    /// Set the colors of the sprite
+    ///
+    /// The colors are added on top of whatever the sprite's texture data is
     pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
         self.colors = colors;
         self
     }
 
+    /// Set the topleft corner's UV coordinates
     pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
         self.uv_begin = uv;
         self
     }
 
+    /// Set the bottom right corner's UV coordinates
     pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
         self.uv_end = uv;
         self
     }
 
+    /// Set the translation
     pub fn translation(mut self, trn: (f32, f32)) -> Self {
         self.translation = trn;
         self
     }
 
+    /// Set the rotation. Rotation is counter-clockwise
     pub fn rotation(mut self, rot: f32) -> Self {
         self.rotation = rot;
         self
     }
 
+    /// Set the scaling factor of this sprite
     pub fn scale(mut self, scale: f32) -> Self {
         self.scale = scale;
         self
@@ -249,7 +265,20 @@ impl<'a> Strtex<'a> {
         self.vx.strtexs[layer.0].hidden = false;
     }
 
-    pub fn new_layer(&mut self, options: LayerOptions) -> Layer {
+    /// Add a streaming texture layer to the system
+    ///
+    /// You use a texture to create sprites. Sprites are rectangular views into a texture. Sprites
+    /// based on different texures are drawn in the order in which the textures were allocated, that
+    /// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
+    /// so on.
+    ///
+    /// Each texture has options (See [strtex::LayerOptions]). This decides how the derivative sprites are
+    /// drawn.
+    ///
+    /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
+    /// To make sure transparency works correctly you can turn off the depth test for foreground
+    /// objects and ensure that the foreground texture is allocated last.
+    pub fn add_layer(&mut self, options: LayerOptions) -> Layer {
         let s = &mut *self.vx;
         let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
             make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
@@ -657,7 +686,11 @@ impl<'a> Strtex<'a> {
         Layer(s.strtexs.len() - 1)
     }
 
-    pub fn remove_texture(&mut self, texture: Layer) {
+    /// Remove a texture (layer)
+    ///
+    /// This also stops drawing all associated sprites, so the sprite handles that use this layer
+    /// that still exist will be invalidated.
+    pub fn remove_layer(&mut self, texture: Layer) {
         let s = &mut *self.vx;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
@@ -1396,7 +1429,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.new_layer(LayerOptions::new().width(1000).height(1000));
+        let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::default());
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
@@ -1412,7 +1445,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
 
-        let id = strtex.new_layer(LayerOptions::new().width(1000).height(1000));
+        let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, strtex::Sprite::default());
 
         strtex.streaming_texture_set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
@@ -1431,7 +1464,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.new_layer(LayerOptions::new().width(10).height(1));
+        let id = strtex.add_layer(LayerOptions::new().width(10).height(1));
         strtex.add(&id, strtex::Sprite::default());
 
         strtex.streaming_texture_set_pixels_block(&id, (0, 0), (10, 1), (0, 255, 0, 255));
@@ -1460,7 +1493,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.new_layer(LayerOptions::new().width(10).height(10));
+        let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
         strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
         let mut green_value = 0;
         strtex.read(&id, |arr, pitch| {
@@ -1475,7 +1508,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.new_layer(LayerOptions::new().width(10).height(10));
+        let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
         strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
         strtex.write(&id, |arr, pitch| {
             arr[3 + 2 * pitch].1 = 124;
@@ -1495,7 +1528,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
 
-        let id = strtex.new_layer(LayerOptions::new().width(20).height(20));
+        let id = strtex.add_layer(LayerOptions::new().width(20).height(20));
         strtex.add(&id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
@@ -1515,7 +1548,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.new_layer(LayerOptions::new().width(64).height(64));
+        let id = strtex.add_layer(LayerOptions::new().width(64).height(64));
         strtex.add(&id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
@@ -1535,11 +1568,11 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let strtex1 = strtex.new_layer(LayerOptions::new().width(10).height(10));
+        let strtex1 = strtex.add_layer(LayerOptions::new().width(10).height(10));
         strtex.streaming_texture_set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
         strtex.add(&strtex1, strtex::Sprite::default());
 
-        let strtex2 = strtex.new_layer(LayerOptions::new().width(10).height(10));
+        let strtex2 = strtex.add_layer(LayerOptions::new().width(10).height(10));
         strtex.streaming_texture_set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
         strtex.add(
             &strtex2,
@@ -1552,7 +1585,7 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering", img);
 
-        vx.strtex().remove_texture(strtex1);
+        vx.strtex().remove_layer(strtex1);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering_removed", img);
@@ -1568,7 +1601,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .new_layer(LayerOptions::new().width(50).height(50));
+            .add_layer(LayerOptions::new().width(50).height(50));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -1585,7 +1618,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .new_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(LayerOptions::new().width(1000).height(1000));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -1606,7 +1639,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .new_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(LayerOptions::new().width(1000).height(1000));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -1626,7 +1659,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .new_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(LayerOptions::new().width(1000).height(1000));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {

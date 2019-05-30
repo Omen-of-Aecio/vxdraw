@@ -32,6 +32,61 @@ use std::mem::{size_of, ManuallyDrop};
 
 // ---
 
+/// A view into a texture
+pub struct Handle(usize, usize);
+
+/// Handle to a texture
+pub struct Layer(usize);
+
+impl Layerable for Layer {
+    fn get_layer(&self, vx: &VxDraw) -> usize {
+        for (idx, ord) in vx.draw_order.iter().enumerate() {
+            match ord {
+                DrawType::DynamicTexture { id } if *id == self.0 => {
+                    return idx;
+                }
+                _ => {}
+            }
+        }
+        panic!["Unable to get layer"]
+    }
+}
+
+/// Options for creating a layer of a dynamic texture with sprites
+#[derive(Clone, Copy)]
+pub struct LayerOptions {
+    /// Perform depth testing (and fragment culling) when drawing sprites from this texture
+    depth_test: bool,
+    /// Fix the perspective, this ignores the perspective sent into draw for this texture and
+    /// all its associated sprites
+    fixed_perspective: Option<Matrix4<f32>>,
+}
+
+impl LayerOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn depth(mut self, depth: bool) -> Self {
+        self.depth_test = depth;
+        self
+    }
+
+    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
+        self.fixed_perspective = Some(mat);
+        self
+    }
+}
+
+impl Default for LayerOptions {
+    fn default() -> Self {
+        Self {
+            depth_test: true,
+            fixed_perspective: None,
+        }
+    }
+}
+
 /// Sprite creation builder
 ///
 /// A sprite is a rectangular view into a texture. This structure sets up the necessary data to
@@ -51,6 +106,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
+    /// Same as default
     pub fn new() -> Self {
         Self::default()
     }
@@ -68,6 +124,8 @@ impl Sprite {
     }
 
     /// Set the colors of the sprite
+    ///
+    /// The colors are added on top of whatever the sprite's texture data is
     pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
         self.colors = colors;
         self
@@ -127,61 +185,6 @@ impl Default for Sprite {
     }
 }
 
-/// A view into a texture
-pub struct Handle(usize, usize);
-
-/// Handle to a texture
-pub struct Layer(usize);
-
-impl Layerable for Layer {
-    fn get_layer(&self, vx: &VxDraw) -> usize {
-        for (idx, ord) in vx.draw_order.iter().enumerate() {
-            match ord {
-                DrawType::DynamicTexture { id } if *id == self.0 => {
-                    return idx;
-                }
-                _ => {}
-            }
-        }
-        panic!["Unable to get layer"]
-    }
-}
-
-/// Options for creating a layer of a dynamic texture with sprites
-#[derive(Clone, Copy)]
-pub struct LayerOptions {
-    /// Perform depth testing (and fragment culling) when drawing sprites from this texture
-    depth_test: bool,
-    /// Fix the perspective, this ignores the perspective sent into draw for this texture and
-    /// all its associated sprites
-    fixed_perspective: Option<Matrix4<f32>>,
-}
-
-impl LayerOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn depth(mut self, depth: bool) -> Self {
-        self.depth_test = depth;
-        self
-    }
-
-    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
-        self.fixed_perspective = Some(mat);
-        self
-    }
-}
-
-impl Default for LayerOptions {
-    fn default() -> Self {
-        Self {
-            depth_test: true,
-            fixed_perspective: None,
-        }
-    }
-}
-
 // ---
 
 /// Accessor object to all dynamic textures
@@ -218,13 +221,13 @@ impl<'a> Dyntex<'a> {
     /// means that the first texture's sprites are drawn first, then, the second texture's sprites,and
     /// so on.
     ///
-    /// Each texture has options (See `LayerOptions`). This decides how the derivative sprites are
+    /// Each texture has options (See [dyntex::LayerOptions]). This decides how the derivative sprites are
     /// drawn.
     ///
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
     /// To make sure transparency works correctly you can turn off the depth test for foreground
     /// objects and ensure that the foreground texture is allocated last.
-    pub fn new_layer(&mut self, img_data: &[u8], options: LayerOptions) -> Layer {
+    pub fn add_layer(&mut self, img_data: &[u8], options: LayerOptions) -> Layer {
         let s = &mut *self.vx;
         let device = &s.device;
 
@@ -811,7 +814,7 @@ impl<'a> Dyntex<'a> {
     /// Removes the texture from memory and destroys all sprites associated with it.
     /// All lingering sprite handles that were spawned using this texture handle will be
     /// invalidated.
-    pub fn remove_texture(&mut self, texture: Layer) {
+    pub fn remove_layer(&mut self, texture: Layer) {
         let s = &mut *self.vx;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
@@ -1085,8 +1088,8 @@ mod tests {
 
         let mut dyntex = vx.dyntex();
 
-        let tree = dyntex.new_layer(TREE, LayerOptions::default());
-        let logo = dyntex.new_layer(LOGO, LayerOptions::default());
+        let tree = dyntex.add_layer(TREE, LayerOptions::default());
+        let logo = dyntex.add_layer(LOGO, LayerOptions::default());
 
         let sprite = Sprite {
             scale: 0.5,
@@ -1119,7 +1122,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.new_layer(LOGO, LayerOptions::default());
+        let tex = dyntex.add_layer(LOGO, LayerOptions::default());
         vx.dyntex().add(&tex, Sprite::default());
 
         let prspect = gen_perspective(&vx);
@@ -1131,7 +1134,7 @@ mod tests {
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let tex = vx.dyntex().new_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         vx.dyntex().add(&tex, Sprite::default());
 
         let prspect = gen_perspective(&vx);
@@ -1143,7 +1146,7 @@ mod tests {
     fn colored_simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().new_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         vx.dyntex().add(
             &tex,
             Sprite {
@@ -1168,7 +1171,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.new_layer(LOGO, LayerOptions::default());
+        let tex = dyntex.add_layer(LOGO, LayerOptions::default());
         let sprite = dyntex.add(
             &tex,
             Sprite {
@@ -1192,7 +1195,7 @@ mod tests {
     fn translated_texture() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().new_layer(
+        let tex = vx.dyntex().add_layer(
             LOGO,
             LayerOptions {
                 depth_test: false,
@@ -1252,7 +1255,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.new_layer(
+        let tex = dyntex.add_layer(
             LOGO,
             LayerOptions {
                 depth_test: false,
@@ -1309,7 +1312,7 @@ mod tests {
     fn many_sprites() {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().new_layer(
+        let tex = vx.dyntex().add_layer(
             LOGO,
             LayerOptions {
                 depth_test: false,
@@ -1343,9 +1346,9 @@ mod tests {
             ..LayerOptions::default()
         };
         let mut dyntex = vx.dyntex();
-        let forest = dyntex.new_layer(FOREST, options);
-        let player = dyntex.new_layer(LOGO, options);
-        let tree = dyntex.new_layer(TREE, options);
+        let forest = dyntex.add_layer(FOREST, options);
+        let player = dyntex.add_layer(LOGO, options);
+        let tree = dyntex.add_layer(TREE, options);
 
         vx.dyntex().add(&forest, Sprite::default());
         vx.dyntex().add(
@@ -1379,9 +1382,9 @@ mod tests {
             ..LayerOptions::default()
         };
         let mut dyntex = vx.dyntex();
-        let forest = dyntex.new_layer(FOREST, options);
-        let player = dyntex.new_layer(LOGO, options);
-        let tree = dyntex.new_layer(TREE, options);
+        let forest = dyntex.add_layer(FOREST, options);
+        let player = dyntex.add_layer(LOGO, options);
+        let tree = dyntex.add_layer(TREE, options);
 
         dyntex.add(&forest, Sprite::default());
         let middle = dyntex.add(
@@ -1417,9 +1420,9 @@ mod tests {
             ..LayerOptions::default()
         };
         let mut dyntex = vx.dyntex();
-        let forest = dyntex.new_layer(FOREST, options);
-        let player = dyntex.new_layer(LOGO, options);
-        let tree = dyntex.new_layer(TREE, options);
+        let forest = dyntex.add_layer(FOREST, options);
+        let player = dyntex.add_layer(LOGO, options);
+        let tree = dyntex.add_layer(TREE, options);
 
         dyntex.add(&forest, Sprite::default());
         dyntex.add(
@@ -1438,12 +1441,12 @@ mod tests {
             },
         );
 
-        dyntex.remove_texture(player);
+        dyntex.remove_layer(player);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_middle_texture", img);
 
-        vx.dyntex().remove_texture(tree);
+        vx.dyntex().remove_layer(tree);
 
         vx.draw_frame(&prspect);
     }
@@ -1460,9 +1463,9 @@ mod tests {
         };
 
         let mut dyntex = vx.dyntex();
-        let forest = dyntex.new_layer(FOREST, options);
-        let player = dyntex.new_layer(LOGO, options);
-        let tree = dyntex.new_layer(TREE, options);
+        let forest = dyntex.add_layer(FOREST, options);
+        let player = dyntex.add_layer(LOGO, options);
+        let tree = dyntex.add_layer(TREE, options);
 
         dyntex.add(&forest, Sprite::default());
         dyntex.add(
@@ -1481,12 +1484,12 @@ mod tests {
             },
         );
 
-        dyntex.remove_texture(tree);
+        dyntex.remove_layer(tree);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_last_texture", img);
 
-        vx.dyntex().remove_texture(player);
+        vx.dyntex().remove_layer(player);
 
         vx.draw_frame(&prspect);
     }
@@ -1502,7 +1505,7 @@ mod tests {
             fixed_perspective: Some(Matrix4::identity()),
             ..LayerOptions::default()
         };
-        let forest = vx.dyntex().new_layer(FOREST, options);
+        let forest = vx.dyntex().add_layer(FOREST, options);
 
         vx.dyntex().add(&forest, Sprite::default());
 
@@ -1519,7 +1522,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
 
         let options = LayerOptions::default();
-        let testure = dyntex.new_layer(TESTURE, options);
+        let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
 
         dyntex.set_uvs(std::iter::once((
@@ -1546,7 +1549,7 @@ mod tests {
 
         let mut dyntex = vx.dyntex();
         let options = LayerOptions::default();
-        let testure = dyntex.new_layer(TESTURE, options);
+        let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
         dyntex.set_rotation(&sprite, Rad(0.3));
 
@@ -1561,7 +1564,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let options = LayerOptions::default();
-        let testure = vx.dyntex().new_layer(TESTURE, options);
+        let testure = vx.dyntex().add_layer(TESTURE, options);
 
         let mut dyntex = vx.dyntex();
         for _ in 0..100_000 {
@@ -1576,7 +1579,7 @@ mod tests {
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().new_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         for i in 0..1000 {
             vx.dyntex().add(
                 &tex,
@@ -1598,7 +1601,7 @@ mod tests {
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().new_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         let mut rng = random::new(0);
         for i in 0..1000 {
             let (dx, dy) = (
@@ -1628,7 +1631,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let fireball_texture = vx.dyntex().new_layer(
+        let fireball_texture = vx.dyntex().add_layer(
             FIREBALL,
             LayerOptions {
                 depth_test: false,
@@ -1685,7 +1688,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let options = LayerOptions::default();
-        let testure = vx.dyntex().new_layer(TESTURE, options);
+        let testure = vx.dyntex().add_layer(TESTURE, options);
 
         let mut dyntex = vx.dyntex();
         b.iter(|| {
@@ -1702,8 +1705,8 @@ mod tests {
 
         b.iter(|| {
             let options = LayerOptions::default();
-            let testure = dyntex.new_layer(TESTURE, options);
-            dyntex.remove_texture(testure);
+            let testure = dyntex.add_layer(TESTURE, options);
+            dyntex.remove_layer(testure);
         });
     }
 }
