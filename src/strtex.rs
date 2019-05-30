@@ -29,6 +29,138 @@ use logger::debug;
 use std::iter::once;
 use std::mem::{size_of, ManuallyDrop};
 
+// ---
+
+/// A view into a texture
+pub struct Handle(usize, usize);
+
+/// Handle to a texture
+pub struct Layer(usize);
+
+impl Layerable for Layer {
+    fn get_layer(&self, vx: &VxDraw) -> usize {
+        for (idx, ord) in vx.draw_order.iter().enumerate() {
+            match ord {
+                DrawType::StreamingTexture { id } if *id == self.0 => {
+                    return idx;
+                }
+                _ => {}
+            }
+        }
+        panic!["Unable to get layer"]
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TextureOptions {
+    /// Perform depth testing (and fragment culling) when drawing sprites from this texture
+    pub depth_test: bool,
+    /// Fix the perspective, this ignores the perspective sent into draw for this texture and
+    /// all its associated sprites
+    pub fixed_perspective: Option<Matrix4<f32>>,
+    /// Width of this texture in pixels
+    pub width: usize,
+    /// Height of this texture in pixels
+    pub height: usize,
+}
+
+impl TextureOptions {
+    pub fn default_with_size(width: usize, height: usize) -> Self {
+        TextureOptions {
+            width,
+            height,
+            ..TextureOptions::default()
+        }
+    }
+}
+
+impl Default for TextureOptions {
+    fn default() -> Self {
+        Self {
+            depth_test: true,
+            fixed_perspective: None,
+            width: 1,
+            height: 1,
+        }
+    }
+}
+
+pub struct Sprite {
+    width: f32,
+    height: f32,
+    depth: f32,
+    colors: [(u8, u8, u8, u8); 4],
+    uv_begin: (f32, f32),
+    uv_end: (f32, f32),
+    translation: (f32, f32),
+    rotation: f32,
+    scale: f32,
+}
+
+impl Sprite {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+
+    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
+        self.colors = colors;
+        self
+    }
+
+    pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
+        self.uv_begin = uv;
+        self
+    }
+
+    pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
+        self.uv_end = uv;
+        self
+    }
+
+    pub fn translation(mut self, trn: (f32, f32)) -> Self {
+        self.translation = trn;
+        self
+    }
+
+    pub fn rotation(mut self, rot: f32) -> Self {
+        self.rotation = rot;
+        self
+    }
+
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+}
+
+impl Default for Sprite {
+    fn default() -> Self {
+        Sprite {
+            width: 2.0,
+            height: 2.0,
+            depth: 0.0,
+            colors: [(0, 0, 0, 255); 4],
+            uv_begin: (0.0, 0.0),
+            uv_end: (1.0, 1.0),
+            translation: (0.0, 0.0),
+            rotation: 0.0,
+            scale: 1.0,
+        }
+    }
+}
+
+// ---
+
 pub struct Strtex<'a> {
     vx: &'a mut VxDraw,
 }
@@ -519,7 +651,7 @@ impl<'a> Strtex<'a> {
     }
 
     /// Add a sprite (a rectangular view of a texture) to the system
-    pub fn add(&mut self, handle: &Layer, sprite: Sprite) -> SpriteHandle {
+    pub fn add(&mut self, handle: &Layer, sprite: Sprite) -> Handle {
         let s = &mut *self.vx;
         let tex = &mut s.strtexs[handle.0];
         let device = &s.device;
@@ -594,7 +726,7 @@ impl<'a> Strtex<'a> {
                 .release_mapping_writer(data_target)
                 .expect("Couldn't release the mapping writer!");
         }
-        SpriteHandle(handle.0, (tex.count - 1) as usize)
+        Handle(handle.0, (tex.count - 1) as usize)
     }
 
     // ---
@@ -1179,136 +1311,6 @@ impl<'a> Strtex<'a> {
             s.device.destroy_image_view(image_view);
             s.device.destroy_image(image);
             s.device.free_memory(memory);
-        }
-    }
-}
-
-// ---
-
-/// A view into a texture
-pub struct SpriteHandle(usize, usize);
-
-/// Handle to a texture
-pub struct Layer(usize);
-
-impl Layerable for Layer {
-    fn get_layer(&self, vx: &VxDraw) -> usize {
-        for (idx, ord) in vx.draw_order.iter().enumerate() {
-            match ord {
-                DrawType::StreamingTexture { id } if *id == self.0 => {
-                    return idx;
-                }
-                _ => {}
-            }
-        }
-        panic!["Unable to get layer"]
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct TextureOptions {
-    /// Perform depth testing (and fragment culling) when drawing sprites from this texture
-    pub depth_test: bool,
-    /// Fix the perspective, this ignores the perspective sent into draw for this texture and
-    /// all its associated sprites
-    pub fixed_perspective: Option<Matrix4<f32>>,
-    /// Width of this texture in pixels
-    pub width: usize,
-    /// Height of this texture in pixels
-    pub height: usize,
-}
-
-impl TextureOptions {
-    pub fn default_with_size(width: usize, height: usize) -> Self {
-        TextureOptions {
-            width,
-            height,
-            ..TextureOptions::default()
-        }
-    }
-}
-
-impl Default for TextureOptions {
-    fn default() -> Self {
-        Self {
-            depth_test: true,
-            fixed_perspective: None,
-            width: 1,
-            height: 1,
-        }
-    }
-}
-
-pub struct Sprite {
-    width: f32,
-    height: f32,
-    depth: f32,
-    colors: [(u8, u8, u8, u8); 4],
-    uv_begin: (f32, f32),
-    uv_end: (f32, f32),
-    translation: (f32, f32),
-    rotation: f32,
-    scale: f32,
-}
-
-impl Sprite {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn width(mut self, width: f32) -> Self {
-        self.width = width;
-        self
-    }
-
-    pub fn height(mut self, height: f32) -> Self {
-        self.height = height;
-        self
-    }
-
-    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
-        self.colors = colors;
-        self
-    }
-
-    pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
-        self.uv_begin = uv;
-        self
-    }
-
-    pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
-        self.uv_end = uv;
-        self
-    }
-
-    pub fn translation(mut self, trn: (f32, f32)) -> Self {
-        self.translation = trn;
-        self
-    }
-
-    pub fn rotation(mut self, rot: f32) -> Self {
-        self.rotation = rot;
-        self
-    }
-
-    pub fn scale(mut self, scale: f32) -> Self {
-        self.scale = scale;
-        self
-    }
-}
-
-impl Default for Sprite {
-    fn default() -> Self {
-        Sprite {
-            width: 2.0,
-            height: 2.0,
-            depth: 0.0,
-            colors: [(0, 0, 0, 255); 4],
-            uv_begin: (0.0, 0.0),
-            uv_end: (1.0, 1.0),
-            translation: (0.0, 0.0),
-            rotation: 0.0,
-            scale: 1.0,
         }
     }
 }

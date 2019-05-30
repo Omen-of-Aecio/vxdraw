@@ -555,7 +555,7 @@ impl<'a> Dyntex<'a> {
     ///
     /// The sprite is automatically drawn on each [crate::VxDraw::draw_frame] call, and must be removed by
     /// [crate::dyntex::Dyntex::remove_sprite] to stop it from being drawn.
-    pub fn add(&mut self, texture: &Layer, sprite: Sprite) -> SpriteHandle {
+    pub fn add(&mut self, texture: &Layer, sprite: Sprite) -> Handle {
         let s = &mut *self.vx;
         let tex = &mut s.dyntexs[texture.0];
 
@@ -645,7 +645,7 @@ impl<'a> Dyntex<'a> {
                 tex.mockbuffer[idx + 36..idx + 40].copy_from_slice(colors);
             }
         }
-        SpriteHandle(texture.0, index as usize)
+        Handle(texture.0, index as usize)
     }
 
     /// Remove a texture
@@ -677,7 +677,7 @@ impl<'a> Dyntex<'a> {
     }
 
     /// Removes a single sprite, making it not be drawn
-    pub fn remove_sprite(&mut self, handle: SpriteHandle) {
+    pub fn remove_sprite(&mut self, handle: Handle) {
         let s = &mut *self.vx;
         if let Some(dyntex) = s.dyntexs.get_mut(handle.0) {
             let idx = (handle.1 * 4 * 10 * 4) as usize;
@@ -690,7 +690,7 @@ impl<'a> Dyntex<'a> {
     }
 
     /// Set the position of a sprite
-    pub fn set_position(&mut self, handle: &SpriteHandle, position: (f32, f32)) {
+    pub fn set_position(&mut self, handle: &Handle, position: (f32, f32)) {
         let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
@@ -718,7 +718,7 @@ impl<'a> Dyntex<'a> {
     /// Set the rotation of a sprite
     ///
     /// Positive rotation goes counter-clockwise. The value of the rotation is in radians.
-    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &SpriteHandle, rotation: T) {
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, rotation: T) {
         let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             unsafe {
@@ -773,7 +773,7 @@ impl<'a> Dyntex<'a> {
         }
     }
 
-    pub fn set_uv(&mut self, handle: &SpriteHandle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
+    pub fn set_uv(&mut self, handle: &Handle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
         let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(handle.0) {
             if handle.1 < stex.count as usize {
@@ -804,7 +804,7 @@ impl<'a> Dyntex<'a> {
 
     pub fn set_uvs<'b>(
         &mut self,
-        mut uvs: impl Iterator<Item = (&'b SpriteHandle, (f32, f32), (f32, f32))>,
+        mut uvs: impl Iterator<Item = (&'b Handle, (f32, f32), (f32, f32))>,
     ) {
         let s = &mut *self.vx;
         if let Some(first) = uvs.next() {
@@ -905,7 +905,7 @@ impl Default for Sprite {
 }
 
 /// A view into a texture
-pub struct SpriteHandle(usize, usize);
+pub struct Handle(usize, usize);
 
 /// Handle to a texture
 pub struct Layer(usize);
