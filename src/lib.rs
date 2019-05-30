@@ -1421,12 +1421,12 @@ mod tests {
 
     #[test]
     fn swap_layers_quad() {
-        use quads::{Quad, QuadOptions};
+        use quads::{LayerOptions, Quad};
         let logger = Logger::<Generic>::spawn_void().to_logpass();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let quad1 = vx.quads().new_layer(QuadOptions::default());
+        let quad1 = vx.quads().new_layer(LayerOptions::default());
         vx.quads().add(
             &quad1,
             Quad {
