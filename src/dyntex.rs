@@ -32,10 +32,10 @@ use std::mem::{size_of, ManuallyDrop};
 
 // ---
 
-/// A view into a texture
+/// A view into a texture (a sprite)
 pub struct Handle(usize, usize);
 
-/// Handle to a texture
+/// Handle to a layer (a single texture)
 pub struct Layer(usize);
 
 impl Layerable for Layer {
@@ -1027,6 +1027,14 @@ impl<'a> Dyntex<'a> {
         self.vx.dyntexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
         self.vx.dyntexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
             uv_begin.0, uv_begin.1, uv_begin.0, uv_end.1, uv_end.0, uv_end.1, uv_end.0, uv_begin.1,
+        ]);
+    }
+
+    /// Set the raw UV values of each vertex in a sprite
+    pub fn set_uv_raw(&mut self, handle: &Handle, uvs: [(f32, f32); 4]) {
+        self.vx.dyntexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.dyntexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
+            uvs[0].0, uvs[0].1, uvs[1].0, uvs[1].1, uvs[2].0, uvs[2].1, uvs[3].0, uvs[3].1,
         ]);
     }
 
