@@ -14,7 +14,7 @@
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     let quad = vx.quads().new_layer(vxdraw::quads::QuadOptions::default());
-//!     let handle = vx.quads().push(&quad, vxdraw::quads::Quad::default());
+//!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::default());
 //!
 //!     // Turn the quad white
 //!     vx.quads().set_color(&handle, [255, 255, 255, 255]);
@@ -54,7 +54,10 @@ impl<'a> Quads<'a> {
         Self { vx }
     }
 
-    pub fn push(&mut self, layer: &Layer, quad: Quad) -> Handle {
+    /// Add a new quad to the given layer
+    ///
+    /// The new quad will be based on the data in [Quad], and inserted into the given [Layer].
+    pub fn add(&mut self, layer: &Layer, quad: Quad) -> Handle {
         if let Some(ref mut quads) = self.vx.quads.get_mut(layer.0) {
             let width = quad.width;
             let height = quad.height;
@@ -659,7 +662,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let layer = vx.quads().new_layer(QuadOptions::default());
-        vx.quads().push(&layer, quad);
+        vx.quads().add(&layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad", img);
@@ -677,7 +680,7 @@ mod tests {
 
         let mut quads = vx.quads();
         let layer = quads.new_layer(QuadOptions::default());
-        let handle = quads.push(&layer, quad);
+        let handle = quads.add(&layer, quad);
         quads.translate(&handle, (0.25, 0.4));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -696,7 +699,7 @@ mod tests {
 
         let mut quads = vx.quads();
         let layer = quads.new_layer(QuadOptions::default());
-        let handle = quads.push(&layer, quad);
+        let handle = quads.add(&layer, quad);
         quads.set_translation(&handle, (0.25, 0.4));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -715,7 +718,7 @@ mod tests {
 
         let mut quads = vx.quads();
         let layer = quads.new_layer(QuadOptions::default());
-        let handle = quads.push(&layer, quad);
+        let handle = quads.add(&layer, quad);
         quads.set_scale(&handle, 0.5);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -734,7 +737,7 @@ mod tests {
 
         let mut quads = vx.quads();
         let layer = quads.new_layer(QuadOptions::default());
-        let handle = quads.push(&layer, quad);
+        let handle = quads.add(&layer, quad);
         quads.scale(&handle, 0.5);
         quads.deform(&handle, [(-0.5, 0.0), (0.0, 0.0), (0.0, 0.0), (0.5, 0.1)]);
 
@@ -754,7 +757,7 @@ mod tests {
 
         let mut quads = vx.quads();
         let layer = quads.new_layer(QuadOptions::default());
-        let handle = quads.push(&layer, quad);
+        let handle = quads.add(&layer, quad);
 
         for _ in 0..3 {
             vx.draw_frame(&prspect);
@@ -778,7 +781,7 @@ mod tests {
         quad.colors[3].0 = 255;
 
         let layer = vx.quads().new_layer(QuadOptions::default());
-        vx.quads().push(&layer, quad);
+        vx.quads().add(&layer, quad);
 
         let mut quad = quads::Quad::default();
         quad.scale = 0.2;
@@ -787,7 +790,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        quads.push(&layer, quad);
+        quads.add(&layer, quad);
 
         // when
         quads.rotate_all(&layer, Deg(30.0));
@@ -846,14 +849,14 @@ mod tests {
     //         depth_test: true,
     //         ..QuadOptions::default()
     //     });
-    //     vx.quads().push(&layer, quad);
+    //     vx.quads().add(&layer, quad);
 
     //     for i in 0..4 {
     //         quad.colors[i] = (255, 0, 0, 255);
     //     }
     //     quad.depth = 0.5;
     //     quad.translation = (0.0, 0.0);
-    //     vx.quads().push(&layer, quad);
+    //     vx.quads().add(&layer, quad);
 
     //     let img = vx.draw_frame_copy_framebuffer(&prspect);
     //     utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
@@ -869,14 +872,14 @@ mod tests {
     //     }
     //     quad.depth = 0.5;
     //     quad.translation = (0.0, 0.0);
-    //     vx.quads().push(&layer, quad);
+    //     vx.quads().add(&layer, quad);
 
     //     for i in 0..4 {
     //         quad.colors[i] = (0, 255, 0, 255);
     //     }
     //     quad.depth = 0.0;
     //     quad.translation = (0.25, 0.25);
-    //     vx.quads().push(&layer, quad);
+    //     vx.quads().add(&layer, quad);
 
     //     let img = vx.draw_frame_copy_framebuffer(&prspect);
     //     utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
@@ -901,13 +904,13 @@ mod tests {
         let layer1 = vx.quads().new_layer(QuadOptions::default());
         let layer2 = vx.quads().new_layer(QuadOptions::default());
 
-        vx.quads().push(&layer2, quad);
+        vx.quads().add(&layer2, quad);
 
         quad.scale = 0.6;
         for i in 0..4 {
             quad.colors[i] = (0, 0, 255, 255);
         }
-        vx.quads().push(&layer1, quad);
+        vx.quads().add(&layer1, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "quad_layering", img);

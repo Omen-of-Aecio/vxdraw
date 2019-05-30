@@ -1427,7 +1427,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let quad1 = vx.quads().new_layer(QuadOptions::default());
-        vx.quads().push(
+        vx.quads().add(
             &quad1,
             Quad {
                 scale: 0.25,
