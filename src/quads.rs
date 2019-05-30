@@ -165,12 +165,12 @@ impl Default for LayerOptions {
 }
 
 impl LayerOptions {
-    fn hide(mut self) -> Self {
+    pub fn hide(mut self) -> Self {
         self.hide = true;
         self
     }
 
-    fn show(mut self) -> Self {
+    pub fn show(mut self) -> Self {
         self.hide = false;
         self
     }
