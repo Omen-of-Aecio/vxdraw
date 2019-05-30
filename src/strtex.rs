@@ -5,6 +5,46 @@
 //! during runtime.
 //!
 //! To display this texture we create sprites, which are rectangular views of the texture.
+//!
+//! See [strtex::Strtex] for all operations supported on streaming textures.
+//!
+//! # Example - Binary counter using a streaming texture #
+//! A showcase of basic operations on a quad.
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use logger::{Generic, GenericLogger, Logger};
+//! use vxdraw::{ShowWindow, VxDraw};
+//! fn main() {
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!
+//!     // Create a new layer/streaming texture, each streaming texture is on its own layer
+//!     let clock = vx.strtex().new_layer(vxdraw::strtex::LayerOptions::new().width(8));
+//!
+//!     // Create a new sprite view into this streaming texture
+//!     let handle = vx.strtex().add(&clock, vxdraw::strtex::Sprite::new());
+//!
+//!     for cnt in 0..=255 {
+//!         for idx in 0..8 {
+//!             let bit_set = cnt >> idx & 1 == 1;
+//!             vx.strtex().streaming_texture_set_pixel(&clock,
+//!                 idx,
+//!                 0,
+//!                 if bit_set {
+//!                     (0, (256 / 8 * idx) as u8, 0, 255)
+//!                 } else {
+//!                     (0, 0, 0, 128)
+//!                 }
+//!             );
+//!         }
+//!         // Draw the frame with the identity matrix transformation (meaning no transformations)
+//!         vx.draw_frame(&Matrix4::identity());
+//!
+//!         // Sleep here so we can see some animation
+//!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
+//!     }
+//! }
+//! ```
 use super::utils::*;
 use crate::data::{DrawType, StreamingTexture, VxDraw};
 use arrayvec::ArrayVec;
@@ -51,6 +91,7 @@ impl Layerable for Layer {
     }
 }
 
+/// Options for creating a layer of a single streaming texture with sprites
 #[derive(Clone, Copy)]
 pub struct LayerOptions {
     /// Perform depth testing (and fragment culling) when drawing sprites from this texture
@@ -181,6 +222,11 @@ impl Default for Sprite {
 
 // ---
 
+/// Accessor object to all streaming textures
+///
+/// A streaming texture is a texture which can be edited at run-time. Sprites are made from this
+/// texture and drawn to the screen.
+/// See [crate::strtex] for examples.
 pub struct Strtex<'a> {
     vx: &'a mut VxDraw,
 }

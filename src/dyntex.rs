@@ -32,9 +32,10 @@ use std::mem::{size_of, ManuallyDrop};
 
 // ---
 
-/// A view into a texture
+/// Sprite creation builder
 ///
-/// A sprite is a rectangular view into a texture.
+/// A sprite is a rectangular view into a texture. This structure sets up the necessary data to
+/// call [Dyntex::add] with.
 #[derive(Clone, Copy)]
 pub struct Sprite {
     width: f32,
@@ -54,46 +55,55 @@ impl Sprite {
         Self::default()
     }
 
+    /// Set the width of the sprite
     pub fn width(mut self, width: f32) -> Self {
         self.width = width;
         self
     }
 
+    /// Set the height of the sprite
     pub fn height(mut self, height: f32) -> Self {
         self.height = height;
         self
     }
 
+    /// Set the colors of the sprite
     pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
         self.colors = colors;
         self
     }
 
+    /// Set the topleft corner's UV coordinates
     pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
         self.uv_begin = uv;
         self
     }
 
+    /// Set the bottom right corner's UV coordinates
     pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
         self.uv_end = uv;
         self
     }
 
+    /// Set the translation
     pub fn translation(mut self, trn: (f32, f32)) -> Self {
         self.translation = trn;
         self
     }
 
+    /// Set the rotation. Rotation is counter-clockwise
     pub fn rotation(mut self, rot: f32) -> Self {
         self.rotation = rot;
         self
     }
 
+    /// Set the scaling factor of this sprite
     pub fn scale(mut self, scale: f32) -> Self {
         self.scale = scale;
         self
     }
 
+    /// Set the origin of this sprite
     pub fn origin(mut self, origin: (f32, f32)) -> Self {
         self.origin = origin;
         self
@@ -137,6 +147,7 @@ impl Layerable for Layer {
     }
 }
 
+/// Options for creating a layer of a dynamic texture with sprites
 #[derive(Clone, Copy)]
 pub struct LayerOptions {
     /// Perform depth testing (and fragment culling) when drawing sprites from this texture
@@ -173,6 +184,10 @@ impl Default for LayerOptions {
 
 // ---
 
+/// Accessor object to all dynamic textures
+///
+/// A dynamic texture is a texture which is used to display textured sprites.
+/// See [crate::dyntex] for examples.
 pub struct Dyntex<'a> {
     vx: &'a mut VxDraw,
 }
