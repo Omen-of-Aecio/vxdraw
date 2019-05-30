@@ -30,6 +30,149 @@ use gfx_hal::{
 };
 use std::mem::{size_of, ManuallyDrop};
 
+// ---
+
+/// A view into a texture
+///
+/// A sprite is a rectangular view into a texture.
+#[derive(Clone, Copy)]
+pub struct Sprite {
+    width: f32,
+    height: f32,
+    depth: f32,
+    colors: [(u8, u8, u8, u8); 4],
+    uv_begin: (f32, f32),
+    uv_end: (f32, f32),
+    translation: (f32, f32),
+    rotation: f32,
+    scale: f32,
+    origin: (f32, f32),
+}
+
+impl Sprite {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+
+    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
+        self.colors = colors;
+        self
+    }
+
+    pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
+        self.uv_begin = uv;
+        self
+    }
+
+    pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
+        self.uv_end = uv;
+        self
+    }
+
+    pub fn translation(mut self, trn: (f32, f32)) -> Self {
+        self.translation = trn;
+        self
+    }
+
+    pub fn rotation(mut self, rot: f32) -> Self {
+        self.rotation = rot;
+        self
+    }
+
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    pub fn origin(mut self, origin: (f32, f32)) -> Self {
+        self.origin = origin;
+        self
+    }
+}
+
+impl Default for Sprite {
+    fn default() -> Self {
+        Sprite {
+            width: 2.0,
+            height: 2.0,
+            depth: 0.0,
+            colors: [(0, 0, 0, 255); 4],
+            uv_begin: (0.0, 0.0),
+            uv_end: (1.0, 1.0),
+            translation: (0.0, 0.0),
+            rotation: 0.0,
+            scale: 1.0,
+            origin: (0.0, 0.0),
+        }
+    }
+}
+
+/// A view into a texture
+pub struct Handle(usize, usize);
+
+/// Handle to a texture
+pub struct Layer(usize);
+
+impl Layerable for Layer {
+    fn get_layer(&self, vx: &VxDraw) -> usize {
+        for (idx, ord) in vx.draw_order.iter().enumerate() {
+            match ord {
+                DrawType::DynamicTexture { id } if *id == self.0 => {
+                    return idx;
+                }
+                _ => {}
+            }
+        }
+        panic!["Unable to get layer"]
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct LayerOptions {
+    /// Perform depth testing (and fragment culling) when drawing sprites from this texture
+    depth_test: bool,
+    /// Fix the perspective, this ignores the perspective sent into draw for this texture and
+    /// all its associated sprites
+    fixed_perspective: Option<Matrix4<f32>>,
+}
+
+impl LayerOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn depth(mut self, depth: bool) -> Self {
+        self.depth_test = depth;
+        self
+    }
+
+    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
+        self.fixed_perspective = Some(mat);
+        self
+    }
+}
+
+impl Default for LayerOptions {
+    fn default() -> Self {
+        Self {
+            depth_test: true,
+            fixed_perspective: None,
+        }
+    }
+}
+
+// ---
+
 pub struct Dyntex<'a> {
     vx: &'a mut VxDraw,
 }
@@ -864,147 +1007,6 @@ impl<'a> Dyntex<'a> {
                     }
                 }
             }
-        }
-    }
-}
-
-// ---
-
-/// A view into a texture
-///
-/// A sprite is a rectangular view into a texture.
-#[derive(Clone, Copy)]
-pub struct Sprite {
-    width: f32,
-    height: f32,
-    depth: f32,
-    colors: [(u8, u8, u8, u8); 4],
-    uv_begin: (f32, f32),
-    uv_end: (f32, f32),
-    translation: (f32, f32),
-    rotation: f32,
-    scale: f32,
-    origin: (f32, f32),
-}
-
-impl Sprite {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn width(mut self, width: f32) -> Self {
-        self.width = width;
-        self
-    }
-
-    pub fn height(mut self, height: f32) -> Self {
-        self.height = height;
-        self
-    }
-
-    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
-        self.colors = colors;
-        self
-    }
-
-    pub fn uv_begin(mut self, uv: (f32, f32)) -> Self {
-        self.uv_begin = uv;
-        self
-    }
-
-    pub fn uv_end(mut self, uv: (f32, f32)) -> Self {
-        self.uv_end = uv;
-        self
-    }
-
-    pub fn translation(mut self, trn: (f32, f32)) -> Self {
-        self.translation = trn;
-        self
-    }
-
-    pub fn rotation(mut self, rot: f32) -> Self {
-        self.rotation = rot;
-        self
-    }
-
-    pub fn scale(mut self, scale: f32) -> Self {
-        self.scale = scale;
-        self
-    }
-
-    pub fn origin(mut self, origin: (f32, f32)) -> Self {
-        self.origin = origin;
-        self
-    }
-}
-
-impl Default for Sprite {
-    fn default() -> Self {
-        Sprite {
-            width: 2.0,
-            height: 2.0,
-            depth: 0.0,
-            colors: [(0, 0, 0, 255); 4],
-            uv_begin: (0.0, 0.0),
-            uv_end: (1.0, 1.0),
-            translation: (0.0, 0.0),
-            rotation: 0.0,
-            scale: 1.0,
-            origin: (0.0, 0.0),
-        }
-    }
-}
-
-/// A view into a texture
-pub struct Handle(usize, usize);
-
-/// Handle to a texture
-pub struct Layer(usize);
-
-impl Layerable for Layer {
-    fn get_layer(&self, vx: &VxDraw) -> usize {
-        for (idx, ord) in vx.draw_order.iter().enumerate() {
-            match ord {
-                DrawType::DynamicTexture { id } if *id == self.0 => {
-                    return idx;
-                }
-                _ => {}
-            }
-        }
-        panic!["Unable to get layer"]
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct LayerOptions {
-    /// Perform depth testing (and fragment culling) when drawing sprites from this texture
-    depth_test: bool,
-    /// Fix the perspective, this ignores the perspective sent into draw for this texture and
-    /// all its associated sprites
-    fixed_perspective: Option<Matrix4<f32>>,
-}
-
-impl LayerOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn depth(mut self, depth: bool) -> Self {
-        self.depth_test = depth;
-        self
-    }
-
-    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
-        self.fixed_perspective = Some(mat);
-        self
-    }
-}
-
-impl Default for LayerOptions {
-    fn default() -> Self {
-        Self {
-            depth_test: true,
-            fixed_perspective: None,
         }
     }
 }
