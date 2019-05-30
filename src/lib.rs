@@ -930,74 +930,78 @@ impl VxDraw {
                         match draw_cmd {
                             DrawType::StreamingTexture { id } => {
                                 let strtex = &self.strtexs[*id];
-                                enc.bind_graphics_pipeline(&strtex.pipeline);
-                                enc.push_graphics_constants(
-                                    &strtex.pipeline_layout,
-                                    pso::ShaderStageFlags::VERTEX,
-                                    0,
-                                    &*(view.as_ptr() as *const [u32; 16]),
-                                );
-                                enc.bind_graphics_descriptor_sets(
-                                    &strtex.pipeline_layout,
-                                    0,
-                                    Some(&*strtex.descriptor_set),
-                                    &[],
-                                );
-                                let buffers: ArrayVec<[_; 1]> =
-                                    [(&*strtex.vertex_buffer, 0)].into();
-                                enc.bind_vertex_buffers(0, buffers);
-                                enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                    buffer: &strtex.vertex_buffer_indices,
-                                    offset: 0,
-                                    index_type: gfx_hal::IndexType::U16,
-                                });
-                                enc.draw_indexed(0..strtex.count * 6, 0, 0..1);
-                            }
-                            DrawType::DynamicTexture { id } => {
-                                let dyntex = &mut self.dyntexs[*id];
-                                enc.bind_graphics_pipeline(&dyntex.pipeline);
-                                if let Some(persp) = dyntex.fixed_perspective {
+                                if !strtex.hidden {
+                                    enc.bind_graphics_pipeline(&strtex.pipeline);
                                     enc.push_graphics_constants(
-                                        &dyntex.pipeline_layout,
-                                        pso::ShaderStageFlags::VERTEX,
-                                        0,
-                                        &*(persp.as_ptr() as *const [u32; 16]),
-                                    );
-                                } else {
-                                    enc.push_graphics_constants(
-                                        &dyntex.pipeline_layout,
+                                        &strtex.pipeline_layout,
                                         pso::ShaderStageFlags::VERTEX,
                                         0,
                                         &*(view.as_ptr() as *const [u32; 16]),
                                     );
+                                    enc.bind_graphics_descriptor_sets(
+                                        &strtex.pipeline_layout,
+                                        0,
+                                        Some(&*strtex.descriptor_set),
+                                        &[],
+                                    );
+                                    let buffers: ArrayVec<[_; 1]> =
+                                        [(&*strtex.vertex_buffer, 0)].into();
+                                    enc.bind_vertex_buffers(0, buffers);
+                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                        buffer: &strtex.vertex_buffer_indices,
+                                        offset: 0,
+                                        index_type: gfx_hal::IndexType::U16,
+                                    });
+                                    enc.draw_indexed(0..strtex.count * 6, 0, 0..1);
                                 }
-                                enc.bind_graphics_descriptor_sets(
-                                    &dyntex.pipeline_layout,
-                                    0,
-                                    Some(&*dyntex.descriptor_set),
-                                    &[],
-                                );
-                                dyntex
-                                    .texture_vertex_sprites
-                                    .copy_from_slice_and_maybe_resize(
+                            }
+                            DrawType::DynamicTexture { id } => {
+                                let dyntex = &mut self.dyntexs[*id];
+                                if !dyntex.hidden {
+                                    enc.bind_graphics_pipeline(&dyntex.pipeline);
+                                    if let Some(persp) = dyntex.fixed_perspective {
+                                        enc.push_graphics_constants(
+                                            &dyntex.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(persp.as_ptr() as *const [u32; 16]),
+                                        );
+                                    } else {
+                                        enc.push_graphics_constants(
+                                            &dyntex.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(view.as_ptr() as *const [u32; 16]),
+                                        );
+                                    }
+                                    enc.bind_graphics_descriptor_sets(
+                                        &dyntex.pipeline_layout,
+                                        0,
+                                        Some(&*dyntex.descriptor_set),
+                                        &[],
+                                    );
+                                    dyntex
+                                        .texture_vertex_sprites
+                                        .copy_from_slice_and_maybe_resize(
+                                            &self.device,
+                                            &self.adapter,
+                                            &dyntex.mockbuffer[..],
+                                        );
+                                    let buffers: ArrayVec<[_; 1]> =
+                                        [(dyntex.texture_vertex_sprites.buffer(), 0)].into();
+                                    enc.bind_vertex_buffers(0, buffers);
+                                    dyntex.indices.ensure_capacity(
                                         &self.device,
                                         &self.adapter,
-                                        &dyntex.mockbuffer[..],
+                                        dyntex.count as usize,
                                     );
-                                let buffers: ArrayVec<[_; 1]> =
-                                    [(dyntex.texture_vertex_sprites.buffer(), 0)].into();
-                                enc.bind_vertex_buffers(0, buffers);
-                                dyntex.indices.ensure_capacity(
-                                    &self.device,
-                                    &self.adapter,
-                                    dyntex.count as usize,
-                                );
-                                enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                    buffer: dyntex.indices.buffer(),
-                                    offset: 0,
-                                    index_type: gfx_hal::IndexType::U16,
-                                });
-                                enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
+                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                        buffer: dyntex.indices.buffer(),
+                                        offset: 0,
+                                        index_type: gfx_hal::IndexType::U16,
+                                    });
+                                    enc.draw_indexed(0..dyntex.count * 6, 0, 0..1);
+                                }
                             }
                             DrawType::Quad { id } => {
                                 if let Some(quad) = self.quads.get_mut(*id) {

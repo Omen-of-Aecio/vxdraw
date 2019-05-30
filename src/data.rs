@@ -15,6 +15,7 @@ use std::mem::ManuallyDrop;
 /// A texture that host can read/write into directly, functions similarly to a sprite
 #[derive(Debug)]
 pub struct StreamingTexture {
+    pub hidden: bool,
     pub count: u32,
 
     pub width: u32,
@@ -46,6 +47,7 @@ pub struct StreamingTexture {
 /// Contains a single texture and associated sprites
 #[derive(Debug)]
 pub struct SingleTexture {
+    pub hidden: bool,
     pub count: u32,
 
     pub fixed_perspective: Option<Matrix4<f32>>,

@@ -43,6 +43,16 @@ impl<'a> Dyntex<'a> {
         Self { vx: s }
     }
 
+    /// Disable drawing of the sprites at this layer
+    pub fn hide(&mut self, layer: &Layer) {
+        self.vx.dyntexs[layer.0].hidden = true;
+    }
+
+    /// Enable drawing of the sprites at this layer
+    pub fn show(&mut self, layer: &Layer) {
+        self.vx.dyntexs[layer.0].hidden = false;
+    }
+
     /// Add a texture to the system
     ///
     /// You use a texture to create sprites. Sprites are rectangular views into a texture. Sprites
@@ -56,7 +66,7 @@ impl<'a> Dyntex<'a> {
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
     /// To make sure transparency works correctly you can turn off the depth test for foreground
     /// objects and ensure that the foreground texture is allocated last.
-    pub fn push_texture(&mut self, img_data: &[u8], options: TextureOptions) -> TextureHandle {
+    pub fn push_texture(&mut self, img_data: &[u8], options: TextureOptions) -> Layer {
         let s = &mut *self.vx;
         let device = &s.device;
 
@@ -512,6 +522,7 @@ impl<'a> Dyntex<'a> {
         let indices = super::utils::ResizBufIdx4::new(&s.device, &s.adapter);
 
         s.dyntexs.push(SingleTexture {
+            hidden: false,
             count: 0,
 
             fixed_perspective: options.fixed_perspective,
@@ -537,14 +548,14 @@ impl<'a> Dyntex<'a> {
         s.draw_order.push(DrawType::DynamicTexture {
             id: s.dyntexs.len() - 1,
         });
-        TextureHandle(s.dyntexs.len() - 1)
+        Layer(s.dyntexs.len() - 1)
     }
 
     /// Add a sprite (a rectangular view of a texture) to the system
     ///
     /// The sprite is automatically drawn on each [crate::VxDraw::draw_frame] call, and must be removed by
     /// [crate::dyntex::Dyntex::remove_sprite] to stop it from being drawn.
-    pub fn push_sprite(&mut self, texture: &TextureHandle, sprite: Sprite) -> SpriteHandle {
+    pub fn push_sprite(&mut self, texture: &Layer, sprite: Sprite) -> SpriteHandle {
         let s = &mut *self.vx;
         let tex = &mut s.dyntexs[texture.0];
 
@@ -642,7 +653,7 @@ impl<'a> Dyntex<'a> {
     /// Removes the texture from memory and destroys all sprites associated with it.
     /// All lingering sprite handles that were spawned using this texture handle will be
     /// invalidated.
-    pub fn remove_texture(&mut self, texture: TextureHandle) {
+    pub fn remove_texture(&mut self, texture: Layer) {
         let s = &mut *self.vx;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
@@ -730,7 +741,7 @@ impl<'a> Dyntex<'a> {
     /// Translate all sprites that depend on a given texture
     ///
     /// Convenience method that translates all sprites associated with the given texture.
-    pub fn sprite_translate_all(&mut self, tex: &TextureHandle, dxdy: (f32, f32)) {
+    pub fn sprite_translate_all(&mut self, tex: &Layer, dxdy: (f32, f32)) {
         let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
             unsafe {
@@ -748,7 +759,7 @@ impl<'a> Dyntex<'a> {
     /// Rotate all sprites that depend on a given texture
     ///
     /// Convenience method that rotates all sprites associated with the given texture.
-    pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, tex: &TextureHandle, deg: T) {
+    pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, tex: &Layer, deg: T) {
         let s = &mut *self.vx;
         if let Some(stex) = s.dyntexs.get_mut(tex.0) {
             unsafe {
@@ -897,9 +908,9 @@ impl Default for Sprite {
 pub struct SpriteHandle(usize, usize);
 
 /// Handle to a texture
-pub struct TextureHandle(usize);
+pub struct Layer(usize);
 
-impl Layerable for TextureHandle {
+impl Layerable for Layer {
     fn get_layer(&self, vx: &VxDraw) -> usize {
         for (idx, ord) in vx.draw_order.iter().enumerate() {
             match ord {

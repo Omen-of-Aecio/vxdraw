@@ -38,7 +38,17 @@ impl<'a> Strtex<'a> {
         Self { vx }
     }
 
-    pub fn push_texture(&mut self, options: TextureOptions) -> TextureHandle {
+    /// Disable drawing of the sprites at this layer
+    pub fn hide(&mut self, layer: &Layer) {
+        self.vx.strtexs[layer.0].hidden = true;
+    }
+
+    /// Enable drawing of the sprites at this layer
+    pub fn show(&mut self, layer: &Layer) {
+        self.vx.strtexs[layer.0].hidden = false;
+    }
+
+    pub fn push_texture(&mut self, options: TextureOptions) -> Layer {
         let s = &mut *self.vx;
         let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
             make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
@@ -412,6 +422,7 @@ impl<'a> Strtex<'a> {
         }
 
         s.strtexs.push(StreamingTexture {
+            hidden: false,
             count: 0,
 
             width: options.width as u32,
@@ -442,10 +453,10 @@ impl<'a> Strtex<'a> {
         s.draw_order.push(DrawType::StreamingTexture {
             id: s.strtexs.len() - 1,
         });
-        TextureHandle(s.strtexs.len() - 1)
+        Layer(s.strtexs.len() - 1)
     }
 
-    pub fn remove_texture(&mut self, texture: TextureHandle) {
+    pub fn remove_texture(&mut self, texture: Layer) {
         let s = &mut *self.vx;
         let mut index = None;
         for (idx, x) in s.draw_order.iter().enumerate() {
@@ -508,7 +519,7 @@ impl<'a> Strtex<'a> {
     }
 
     /// Add a sprite (a rectangular view of a texture) to the system
-    pub fn push_sprite(&mut self, handle: &TextureHandle, sprite: Sprite) -> SpriteHandle {
+    pub fn push_sprite(&mut self, handle: &Layer, sprite: Sprite) -> SpriteHandle {
         let s = &mut *self.vx;
         let tex = &mut s.strtexs[handle.0];
         let device = &s.device;
@@ -590,7 +601,7 @@ impl<'a> Strtex<'a> {
 
     pub fn streaming_texture_set_pixels(
         &mut self,
-        id: &TextureHandle,
+        id: &Layer,
         modifier: impl Iterator<Item = (u32, u32, (u8, u8, u8, u8))>,
     ) {
         let s = &mut *self.vx;
@@ -644,7 +655,7 @@ impl<'a> Strtex<'a> {
 
     pub fn streaming_texture_set_pixels_block(
         &mut self,
-        id: &TextureHandle,
+        id: &Layer,
         start: (u32, u32),
         wh: (u32, u32),
         color: (u8, u8, u8, u8),
@@ -714,7 +725,7 @@ impl<'a> Strtex<'a> {
 
     pub fn streaming_texture_set_pixel(
         &mut self,
-        id: &TextureHandle,
+        id: &Layer,
         w: u32,
         h: u32,
         color: (u8, u8, u8, u8),
@@ -765,7 +776,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    pub fn read(&mut self, id: &TextureHandle, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
+    pub fn read(&mut self, id: &Layer, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
         if let Some(ref strtex) = s.strtexs.get(id.0) {
             unsafe {
@@ -793,11 +804,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    pub fn write(
-        &mut self,
-        id: &TextureHandle,
-        mut map: impl FnMut(&mut [(u8, u8, u8, u8)], usize),
-    ) {
+    pub fn write(&mut self, id: &Layer, mut map: impl FnMut(&mut [(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
         if let Some(ref strtex) = s.strtexs.get(id.0) {
             unsafe {
@@ -827,7 +834,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    pub fn fill_with_perlin_noise(&mut self, blitid: &TextureHandle, seed: [f32; 3]) {
+    pub fn fill_with_perlin_noise(&mut self, blitid: &Layer, seed: [f32; 3]) {
         let s = &mut *self.vx;
         static VERTEX_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.vert.spirv");
         static FRAGMENT_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.frag.spirv");
@@ -1182,9 +1189,9 @@ impl<'a> Strtex<'a> {
 pub struct SpriteHandle(usize, usize);
 
 /// Handle to a texture
-pub struct TextureHandle(usize);
+pub struct Layer(usize);
 
-impl Layerable for TextureHandle {
+impl Layerable for Layer {
     fn get_layer(&self, vx: &VxDraw) -> usize {
         for (idx, ord) in vx.draw_order.iter().enumerate() {
             match ord {
