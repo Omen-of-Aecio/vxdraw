@@ -9,14 +9,14 @@
 //! See [strtex::Strtex] for all operations supported on streaming textures.
 //!
 //! # Example - Binary counter using a streaming texture #
-//! A showcase of basic operations on a quad.
+//! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
-//!         ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
 //!     let clock = vx.strtex().new_layer(vxdraw::strtex::LayerOptions::new().width(8));
@@ -25,9 +25,11 @@
 //!     let handle = vx.strtex().add(&clock, vxdraw::strtex::Sprite::new());
 //!
 //!     for cnt in 0..=255 {
+//!
+//!         // Set all pixels accoring to the current count (cnt)
 //!         for idx in 0..8 {
 //!             let bit_set = cnt >> idx & 1 == 1;
-//!             vx.strtex().streaming_texture_set_pixel(&clock,
+//!             vx.strtex().set_pixel(&clock,
 //!                 idx,
 //!                 0,
 //!                 if bit_set {
@@ -37,6 +39,7 @@
 //!                 }
 //!             );
 //!         }
+//!
 //!         // Draw the frame with the identity matrix transformation (meaning no transformations)
 //!         vx.draw_frame(&Matrix4::identity());
 //!
@@ -797,7 +800,7 @@ impl<'a> Strtex<'a> {
 
     // ---
 
-    pub fn streaming_texture_set_pixels(
+    pub fn set_pixels(
         &mut self,
         id: &Layer,
         modifier: impl Iterator<Item = (u32, u32, (u8, u8, u8, u8))>,
@@ -921,13 +924,7 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    pub fn streaming_texture_set_pixel(
-        &mut self,
-        id: &Layer,
-        w: u32,
-        h: u32,
-        color: (u8, u8, u8, u8),
-    ) {
+    pub fn set_pixel(&mut self, id: &Layer, w: u32, h: u32, color: (u8, u8, u8, u8)) {
         let s = &mut *self.vx;
         if let Some(ref strtex) = s.strtexs.get(id.0) {
             if !(w < strtex.width && h < strtex.height) {
@@ -1464,7 +1461,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.new_layer(LayerOptions::new().width(10).height(10));
-        strtex.streaming_texture_set_pixel(&id, 3, 2, (0, 123, 0, 255));
+        strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
         let mut green_value = 0;
         strtex.read(&id, |arr, pitch| {
             green_value = arr[3 + 2 * pitch].1;
@@ -1479,7 +1476,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.new_layer(LayerOptions::new().width(10).height(10));
-        strtex.streaming_texture_set_pixel(&id, 3, 2, (0, 123, 0, 255));
+        strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
         strtex.write(&id, |arr, pitch| {
             arr[3 + 2 * pitch].1 = 124;
         });
@@ -1507,8 +1504,8 @@ mod tests {
             let x = rng.gen_range(0, 30);
             let y = rng.gen_range(0, 30);
 
-            strtex.streaming_texture_set_pixel(&id, x, y, (0, 255, 0, 255));
-            strtex.streaming_texture_set_pixels(&id, once((x, y, (0, 255, 0, 255))));
+            strtex.set_pixel(&id, x, y, (0, 255, 0, 255));
+            strtex.set_pixels(&id, once((x, y, (0, 255, 0, 255))));
         }
     }
 
@@ -1575,12 +1572,8 @@ mod tests {
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
-            vx.strtex().streaming_texture_set_pixel(
-                &id,
-                black_box(1),
-                black_box(2),
-                (255, 0, 0, 255),
-            );
+            vx.strtex()
+                .set_pixel(&id, black_box(1), black_box(2), (255, 0, 0, 255));
             vx.draw_frame(&prspect);
         });
     }
@@ -1617,7 +1610,7 @@ mod tests {
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
-            vx.strtex().streaming_texture_set_pixels(
+            vx.strtex().set_pixels(
                 &id,
                 (0..500)
                     .cartesian_product(0..500)
@@ -1637,12 +1630,8 @@ mod tests {
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
-            vx.strtex().streaming_texture_set_pixel(
-                &id,
-                black_box(1),
-                black_box(2),
-                (255, 0, 0, 255),
-            );
+            vx.strtex()
+                .set_pixel(&id, black_box(1), black_box(2), (255, 0, 0, 255));
         });
     }
 }

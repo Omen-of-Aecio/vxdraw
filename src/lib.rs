@@ -1335,10 +1335,8 @@ mod tests {
             .strtex()
             .new_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
 
-        vx.strtex()
-            .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
-        vx.strtex()
-            .streaming_texture_set_pixel(&tex4, 0, 0, (255, 255, 255, 255));
+        vx.strtex().set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
+        vx.strtex().set_pixel(&tex4, 0, 0, (255, 255, 255, 255));
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new());
         vx.strtex()
@@ -1362,8 +1360,7 @@ mod tests {
             .strtex()
             .new_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
 
-        vx.strtex()
-            .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
+        vx.strtex().set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new().scale(0.5));
         vx.strtex().add(&tex2, strtex::Sprite::new().rotation(0.5));
