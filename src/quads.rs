@@ -168,11 +168,13 @@ impl Default for LayerOptions {
 }
 
 impl LayerOptions {
+    /// Hide this layer
     pub fn hide(mut self) -> Self {
         self.hide = true;
         self
     }
 
+    /// Show this layer (default)
     pub fn show(mut self) -> Self {
         self.hide = false;
         self
