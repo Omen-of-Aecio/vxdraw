@@ -26,7 +26,7 @@ impl<'a> Quads<'a> {
         Self { vx }
     }
 
-    pub fn push(&mut self, layer: &Layer, quad: Quad) -> QuadHandle {
+    pub fn push(&mut self, layer: &Layer, quad: Quad) -> Handle {
         if let Some(ref mut quads) = self.vx.quads.get_mut(layer.0) {
             let width = quad.width;
             let height = quad.height;
@@ -105,7 +105,7 @@ impl<'a> Quads<'a> {
 
             quads.count += 1;
 
-            QuadHandle(layer.0, quads.count - 1)
+            Handle(layer.0, quads.count - 1)
         } else {
             unreachable![]
         }
@@ -410,7 +410,7 @@ impl<'a> Quads<'a> {
         Layer(s.quads.len() - 1)
     }
 
-    pub fn translate(&mut self, handle: &QuadHandle, movement: (f32, f32)) {
+    pub fn translate(&mut self, handle: &Handle, movement: (f32, f32)) {
         self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
             self.vx.quads[handle.0].tranbuffer[handle.1][idx * 2] += movement.0;
@@ -418,7 +418,35 @@ impl<'a> Quads<'a> {
         }
     }
 
-    pub fn set_position(&mut self, handle: &QuadHandle, position: (f32, f32)) {
+    /// Change the vertices of the model-space
+    ///
+    /// The name `set_deform` is used to keep consistent [Quads::deform] and [Quads::deform_all].
+    /// What this function does is just setting absolute vertex positions for each vertex in the
+    /// triangle.
+    pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
+        self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        let vertex = &mut self.vx.quads[handle.0].posbuffer[handle.1];
+        for (idx, point) in points.iter().enumerate() {
+            vertex[idx * 2] = points[idx].0;
+            vertex[idx * 2 + 1] = points[idx].1;
+        }
+    }
+
+    /// Set a solid color of a quad
+    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 4]) {
+        self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.quads[handle.0].colbuffer[handle.0][idx * 4..(idx + 1) * 4]
+                .copy_from_slice(&rgba);
+        }
+    }
+
+    /// Set the position (translation) of a quad triangle
+    ///
+    /// The name `set_translation` is chosen to keep the counterparts `translate` and
+    /// `translate_all` consistent. This function can purely be thought of as setting the position
+    /// of the triangle with respect to the model-space's origin.
+    pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
         self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
         dbg![position];
         for idx in 0..4 {
@@ -427,21 +455,17 @@ impl<'a> Quads<'a> {
         }
     }
 
-    pub fn quad_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
+    /// Rotate all quads
+    ///
+    /// Adds the rotation in the argument to the existing rotation of each quad.
+    /// See [Quads::rotate] for more information.
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
         self.vx.quads[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for rot in self.vx.quads[layer.0].rotbuffer.iter_mut() {
             rot[0] += deg.into().0;
             rot[1] += deg.into().0;
             rot[2] += deg.into().0;
             rot[3] += deg.into().0;
-        }
-    }
-
-    pub fn set_quad_color(&mut self, handle: &QuadHandle, rgba: [u8; 4]) {
-        self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for idx in 0..4 {
-            self.vx.quads[handle.0].colbuffer[handle.0][idx * 4..(idx + 1) * 4]
-                .copy_from_slice(&rgba);
         }
     }
 }
@@ -464,7 +488,7 @@ impl Layerable for Layer {
     }
 }
 
-pub struct QuadHandle(usize, usize);
+pub struct Handle(usize, usize);
 
 #[derive(Clone, Copy)]
 pub struct Quad {
@@ -580,7 +604,7 @@ mod tests {
         let mut quads = vx.quads();
         let layer = quads.create_quad(QuadOptions::default());
         let handle = quads.push(&layer, quad);
-        quads.set_position(&handle, (0.25, 0.4));
+        quads.set_translation(&handle, (0.25, 0.4));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position", img);
@@ -604,7 +628,7 @@ mod tests {
             vx.draw_frame(&prspect);
         }
 
-        vx.quads().set_position(&handle, (0.25, 0.4));
+        vx.quads().set_translation(&handle, (0.25, 0.4));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position_after_initial", img);
@@ -634,7 +658,7 @@ mod tests {
         quads.push(&layer, quad);
 
         // when
-        quads.quad_rotate_all(&layer, Deg(30.0));
+        quads.rotate_all(&layer, Deg(30.0));
 
         // then
         let img = vx.draw_frame_copy_framebuffer(&prspect);
