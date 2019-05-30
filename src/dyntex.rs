@@ -93,16 +93,16 @@ impl Default for LayerOptions {
 /// call [Dyntex::add] with.
 #[derive(Clone, Copy)]
 pub struct Sprite {
-    width: f32,
-    height: f32,
-    depth: f32,
     colors: [(u8, u8, u8, u8); 4],
-    uv_begin: (f32, f32),
-    uv_end: (f32, f32),
-    translation: (f32, f32),
+    depth: f32,
+    height: f32,
+    origin: (f32, f32),
     rotation: f32,
     scale: f32,
-    origin: (f32, f32),
+    translation: (f32, f32),
+    uv_begin: (f32, f32),
+    uv_end: (f32, f32),
+    width: f32,
 }
 
 impl Sprite {

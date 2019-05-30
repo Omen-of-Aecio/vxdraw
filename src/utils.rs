@@ -22,6 +22,7 @@ use std::mem::ManuallyDrop;
 
 // ---
 
+/// Trait for describing layers and their ordering
 pub trait Layerable {
     fn get_layer(&self, vx: &VxDraw) -> usize;
 }

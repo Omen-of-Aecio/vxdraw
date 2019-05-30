@@ -155,15 +155,16 @@ impl Default for LayerOptions {
 /// A sprite is a rectangular view into a texture. This structure sets up the necessary data to
 /// call [Strtex::add] with.
 pub struct Sprite {
-    width: f32,
-    height: f32,
-    depth: f32,
     colors: [(u8, u8, u8, u8); 4],
-    uv_begin: (f32, f32),
-    uv_end: (f32, f32),
-    translation: (f32, f32),
+    depth: f32,
+    height: f32,
+    origin: (f32, f32),
     rotation: f32,
     scale: f32,
+    translation: (f32, f32),
+    uv_begin: (f32, f32),
+    uv_end: (f32, f32),
+    width: f32,
 }
 
 impl Sprite {
@@ -221,6 +222,12 @@ impl Sprite {
         self.scale = scale;
         self
     }
+
+    /// Set the origin of this sprite
+    pub fn origin(mut self, origin: (f32, f32)) -> Self {
+        self.origin = origin;
+        self
+    }
 }
 
 impl Default for Sprite {
@@ -235,6 +242,7 @@ impl Default for Sprite {
             translation: (0.0, 0.0),
             rotation: 0.0,
             scale: 1.0,
+            origin: (0.0, 0.0),
         }
     }
 }
@@ -765,16 +773,28 @@ impl<'a> Strtex<'a> {
         let width = sprite.width;
         let height = sprite.height;
 
-        let topleft = (-width / 2f32, -height / 2f32);
+        let topleft = (
+            -width / 2f32 - sprite.origin.0,
+            -height / 2f32 - sprite.origin.1,
+        );
         let topleft_uv = uv_a;
 
-        let topright = (width / 2f32, -height / 2f32);
+        let topright = (
+            width / 2f32 - sprite.origin.0,
+            -height / 2f32 - sprite.origin.1,
+        );
         let topright_uv = (uv_b.0, uv_a.1);
 
-        let bottomleft = (-width / 2f32, height / 2f32);
+        let bottomleft = (
+            -width / 2f32 - sprite.origin.0,
+            height / 2f32 - sprite.origin.1,
+        );
         let bottomleft_uv = (uv_a.0, uv_b.1);
 
-        let bottomright = (width / 2f32, height / 2f32);
+        let bottomright = (
+            width / 2f32 - sprite.origin.0,
+            height / 2f32 - sprite.origin.1,
+        );
         let bottomright_uv = (uv_b.0, uv_b.1);
 
         unsafe {
@@ -1435,6 +1455,21 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "generate_map_randomly", img);
+    }
+
+    #[test]
+    fn with_origin_11() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut strtex = vx.strtex();
+        let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
+        strtex.add(&id, Sprite::default().origin((1.0, 1.0)));
+        strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "with_origin_11", img);
     }
 
     #[test]
