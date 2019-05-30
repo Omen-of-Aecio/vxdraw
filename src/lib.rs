@@ -1325,24 +1325,18 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = dyntex::TextureOptions {
+        let options = dyntex::LayerOptions {
             depth_test: false,
-            ..dyntex::TextureOptions::default()
+            ..dyntex::LayerOptions::default()
         };
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
-        let tex2 = vx.strtex().new_layer(
-            strtex::TextureOptions::new()
-                .width(1)
-                .height(1)
-                .depth(false),
-        );
+        let tex2 = vx
+            .strtex()
+            .new_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
         let tex3 = vx.dyntex().new_layer(TESTURE, options);
-        let tex4 = vx.strtex().new_layer(
-            strtex::TextureOptions::new()
-                .width(1)
-                .height(1)
-                .depth(false),
-        );
+        let tex4 = vx
+            .strtex()
+            .new_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
 
         vx.strtex()
             .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
@@ -1377,17 +1371,14 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = dyntex::TextureOptions {
+        let options = dyntex::LayerOptions {
             depth_test: false,
-            ..dyntex::TextureOptions::default()
+            ..dyntex::LayerOptions::default()
         };
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
-        let tex2 = vx.strtex().new_layer(
-            strtex::TextureOptions::new()
-                .width(1)
-                .height(1)
-                .depth(false),
-        );
+        let tex2 = vx
+            .strtex()
+            .new_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
 
         vx.strtex()
             .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
@@ -1423,9 +1414,9 @@ mod tests {
             },
         );
 
-        let options = dyntex::TextureOptions {
+        let options = dyntex::LayerOptions {
             depth_test: false,
-            ..dyntex::TextureOptions::default()
+            ..dyntex::LayerOptions::default()
         };
         let tex1 = vx.dyntex().new_layer(TESTURE, options);
 
