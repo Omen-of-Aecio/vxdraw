@@ -1329,15 +1329,15 @@ mod tests {
             depth_test: false,
             ..dyntex::TextureOptions::default()
         };
-        let tex1 = vx.dyntex().push_texture(TESTURE, options);
-        let tex2 = vx.strtex().push_texture(strtex::TextureOptions {
+        let tex1 = vx.dyntex().new_layer(TESTURE, options);
+        let tex2 = vx.strtex().new_layer(strtex::TextureOptions {
             depth_test: false,
             width: 1,
             height: 1,
             ..strtex::TextureOptions::default()
         });
-        let tex3 = vx.dyntex().push_texture(TESTURE, options);
-        let tex4 = vx.strtex().push_texture(strtex::TextureOptions {
+        let tex3 = vx.dyntex().new_layer(TESTURE, options);
+        let tex4 = vx.strtex().new_layer(strtex::TextureOptions {
             depth_test: false,
             width: 1,
             height: 1,
@@ -1349,28 +1349,28 @@ mod tests {
         vx.strtex()
             .streaming_texture_set_pixel(&tex4, 0, 0, (255, 255, 255, 255));
 
-        vx.dyntex().push_sprite(
+        vx.dyntex().add(
             &tex1,
             dyntex::Sprite {
                 rotation: 0.0,
                 ..dyntex::Sprite::default()
             },
         );
-        vx.strtex().push_sprite(
+        vx.strtex().add(
             &tex2,
             strtex::Sprite {
                 rotation: 0.5,
                 ..strtex::Sprite::default()
             },
         );
-        vx.dyntex().push_sprite(
+        vx.dyntex().add(
             &tex3,
             dyntex::Sprite {
                 rotation: 1.0,
                 ..dyntex::Sprite::default()
             },
         );
-        vx.strtex().push_sprite(
+        vx.strtex().add(
             &tex4,
             strtex::Sprite {
                 scale: 0.5,
@@ -1393,8 +1393,8 @@ mod tests {
             depth_test: false,
             ..dyntex::TextureOptions::default()
         };
-        let tex1 = vx.dyntex().push_texture(TESTURE, options);
-        let tex2 = vx.strtex().push_texture(strtex::TextureOptions {
+        let tex1 = vx.dyntex().new_layer(TESTURE, options);
+        let tex2 = vx.strtex().new_layer(strtex::TextureOptions {
             depth_test: false,
             width: 1,
             height: 1,
@@ -1404,7 +1404,7 @@ mod tests {
         vx.strtex()
             .streaming_texture_set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
 
-        vx.dyntex().push_sprite(
+        vx.dyntex().add(
             &tex1,
             dyntex::Sprite {
                 rotation: 0.0,
@@ -1412,7 +1412,7 @@ mod tests {
                 ..dyntex::Sprite::default()
             },
         );
-        vx.strtex().push_sprite(
+        vx.strtex().add(
             &tex2,
             strtex::Sprite {
                 rotation: 0.5,
@@ -1445,9 +1445,9 @@ mod tests {
             depth_test: false,
             ..dyntex::TextureOptions::default()
         };
-        let tex1 = vx.dyntex().push_texture(TESTURE, options);
+        let tex1 = vx.dyntex().new_layer(TESTURE, options);
 
-        vx.dyntex().push_sprite(
+        vx.dyntex().add(
             &tex1,
             dyntex::Sprite {
                 rotation: 0.0,

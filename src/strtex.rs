@@ -48,7 +48,7 @@ impl<'a> Strtex<'a> {
         self.vx.strtexs[layer.0].hidden = false;
     }
 
-    pub fn push_texture(&mut self, options: TextureOptions) -> Layer {
+    pub fn new_layer(&mut self, options: TextureOptions) -> Layer {
         let s = &mut *self.vx;
         let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
             make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
@@ -519,7 +519,7 @@ impl<'a> Strtex<'a> {
     }
 
     /// Add a sprite (a rectangular view of a texture) to the system
-    pub fn push_sprite(&mut self, handle: &Layer, sprite: Sprite) -> SpriteHandle {
+    pub fn add(&mut self, handle: &Layer, sprite: Sprite) -> SpriteHandle {
         let s = &mut *self.vx;
         let tex = &mut s.strtexs[handle.0];
         let device = &s.device;
@@ -1285,8 +1285,8 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.push_texture(TextureOptions::default_with_size(1000, 1000));
-        strtex.push_sprite(&id, Sprite::default());
+        let id = strtex.new_layer(TextureOptions::default_with_size(1000, 1000));
+        strtex.add(&id, Sprite::default());
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1301,8 +1301,8 @@ mod tests {
 
         let mut strtex = vx.strtex();
 
-        let id = strtex.push_texture(TextureOptions::default_with_size(1000, 1000));
-        strtex.push_sprite(&id, strtex::Sprite::default());
+        let id = strtex.new_layer(TextureOptions::default_with_size(1000, 1000));
+        strtex.add(&id, strtex::Sprite::default());
 
         strtex.streaming_texture_set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
         strtex.streaming_texture_set_pixels_block(&id, (500, 0), (500, 500), (0, 255, 0, 255));
@@ -1320,8 +1320,8 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.push_texture(TextureOptions::default_with_size(10, 1));
-        strtex.push_sprite(&id, strtex::Sprite::default());
+        let id = strtex.new_layer(TextureOptions::default_with_size(10, 1));
+        strtex.add(&id, strtex::Sprite::default());
 
         strtex.streaming_texture_set_pixels_block(&id, (0, 0), (10, 1), (0, 255, 0, 255));
 
@@ -1349,7 +1349,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.push_texture(TextureOptions::default_with_size(10, 10));
+        let id = strtex.new_layer(TextureOptions::default_with_size(10, 10));
         strtex.streaming_texture_set_pixel(&id, 3, 2, (0, 123, 0, 255));
         let mut green_value = 0;
         strtex.read(&id, |arr, pitch| {
@@ -1364,7 +1364,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.push_texture(TextureOptions::default_with_size(10, 10));
+        let id = strtex.new_layer(TextureOptions::default_with_size(10, 10));
         strtex.streaming_texture_set_pixel(&id, 3, 2, (0, 123, 0, 255));
         strtex.write(&id, |arr, pitch| {
             arr[3 + 2 * pitch].1 = 124;
@@ -1384,8 +1384,8 @@ mod tests {
 
         let mut strtex = vx.strtex();
 
-        let id = strtex.push_texture(TextureOptions::default_with_size(20, 20));
-        strtex.push_sprite(&id, strtex::Sprite::default());
+        let id = strtex.new_layer(TextureOptions::default_with_size(20, 20));
+        strtex.add(&id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
 
@@ -1404,8 +1404,8 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.push_texture(TextureOptions::default_with_size(64, 64));
-        strtex.push_sprite(&id, strtex::Sprite::default());
+        let id = strtex.new_layer(TextureOptions::default_with_size(64, 64));
+        strtex.add(&id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
 
@@ -1424,13 +1424,13 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let strtex1 = strtex.push_texture(TextureOptions::default_with_size(10, 10));
+        let strtex1 = strtex.new_layer(TextureOptions::default_with_size(10, 10));
         strtex.streaming_texture_set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
-        strtex.push_sprite(&strtex1, strtex::Sprite::default());
+        strtex.add(&strtex1, strtex::Sprite::default());
 
-        let strtex2 = strtex.push_texture(TextureOptions::default_with_size(10, 10));
+        let strtex2 = strtex.new_layer(TextureOptions::default_with_size(10, 10));
         strtex.streaming_texture_set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
-        strtex.push_sprite(
+        strtex.add(
             &strtex2,
             strtex::Sprite {
                 depth: 0.1,
@@ -1457,8 +1457,8 @@ mod tests {
 
         let id = vx
             .strtex()
-            .push_texture(TextureOptions::default_with_size(50, 50));
-        vx.strtex().push_sprite(&id, strtex::Sprite::default());
+            .new_layer(TextureOptions::default_with_size(50, 50));
+        vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
             vx.strtex().streaming_texture_set_pixel(
@@ -1478,8 +1478,8 @@ mod tests {
 
         let id = vx
             .strtex()
-            .push_texture(TextureOptions::default_with_size(1000, 1000));
-        vx.strtex().push_sprite(&id, strtex::Sprite::default());
+            .new_layer(TextureOptions::default_with_size(1000, 1000));
+        vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
             vx.strtex().streaming_texture_set_pixels_block(
@@ -1499,8 +1499,8 @@ mod tests {
 
         let id = vx
             .strtex()
-            .push_texture(TextureOptions::default_with_size(1000, 1000));
-        vx.strtex().push_sprite(&id, strtex::Sprite::default());
+            .new_layer(TextureOptions::default_with_size(1000, 1000));
+        vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
             vx.strtex().streaming_texture_set_pixels(
@@ -1519,8 +1519,8 @@ mod tests {
 
         let id = vx
             .strtex()
-            .push_texture(TextureOptions::default_with_size(1000, 1000));
-        vx.strtex().push_sprite(&id, strtex::Sprite::default());
+            .new_layer(TextureOptions::default_with_size(1000, 1000));
+        vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
             vx.strtex().streaming_texture_set_pixel(
