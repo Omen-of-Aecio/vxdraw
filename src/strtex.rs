@@ -261,7 +261,7 @@ impl<'a> Strtex<'a> {
     /// Prepare to edit streaming textures
     ///
     /// You're not supposed to use this function directly (although you can).
-    /// The recommended way of spawning a dyntex is via [VxDraw::strtex()].
+    /// The recommended way of spawning a strtex is via [VxDraw::strtex()].
     pub fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
@@ -985,6 +985,53 @@ impl<'a> Strtex<'a> {
 
     // ---
 
+    /// Set the color of a specific pixel
+    pub fn set_pixel(&mut self, id: &Layer, w: u32, h: u32, color: (u8, u8, u8, u8)) {
+        let s = &mut *self.vx;
+        if let Some(ref strtex) = s.strtexs.get(id.0) {
+            if !(w < strtex.width && h < strtex.height) {
+                return;
+            }
+            unsafe {
+                let foot = s.device.get_image_subresource_footprint(
+                    &strtex.image_buffer,
+                    image::Subresource {
+                        aspects: format::Aspects::COLOR,
+                        level: 0,
+                        layer: 0,
+                    },
+                );
+                let access = foot.row_pitch * u64::from(h) + u64::from(w * 4);
+
+                let aligned = perfect_mapping_alignment(Align {
+                    access_offset: access,
+                    how_many_bytes_you_need: 4,
+                    non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
+                });
+
+                s.device
+                    .wait_for_fences(
+                        &s.frames_in_flight_fences,
+                        gfx_hal::device::WaitFor::All,
+                        u64::max_value(),
+                    )
+                    .expect("Unable to wait for fences");
+
+                let mut target = s
+                    .device
+                    .acquire_mapping_writer(&*strtex.image_memory, aligned.begin..aligned.end)
+                    .expect("unable to acquire mapping writer");
+
+                target[aligned.index_offset as usize..(aligned.index_offset + 4) as usize]
+                    .copy_from_slice(&[color.0, color.1, color.2, color.3]);
+
+                s.device
+                    .release_mapping_writer(target)
+                    .expect("Unable to release mapping writer");
+            }
+        }
+    }
+
     /// Set multiple pixels in the texture
     pub fn set_pixels(
         &mut self,
@@ -1110,56 +1157,11 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    /// Set the color of a specific pixel
-    pub fn set_pixel(&mut self, id: &Layer, w: u32, h: u32, color: (u8, u8, u8, u8)) {
-        let s = &mut *self.vx;
-        if let Some(ref strtex) = s.strtexs.get(id.0) {
-            if !(w < strtex.width && h < strtex.height) {
-                return;
-            }
-            unsafe {
-                let foot = s.device.get_image_subresource_footprint(
-                    &strtex.image_buffer,
-                    image::Subresource {
-                        aspects: format::Aspects::COLOR,
-                        level: 0,
-                        layer: 0,
-                    },
-                );
-                let access = foot.row_pitch * u64::from(h) + u64::from(w * 4);
-
-                let aligned = perfect_mapping_alignment(Align {
-                    access_offset: access,
-                    how_many_bytes_you_need: 4,
-                    non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
-                });
-
-                s.device
-                    .wait_for_fences(
-                        &s.frames_in_flight_fences,
-                        gfx_hal::device::WaitFor::All,
-                        u64::max_value(),
-                    )
-                    .expect("Unable to wait for fences");
-
-                let mut target = s
-                    .device
-                    .acquire_mapping_writer(&*strtex.image_memory, aligned.begin..aligned.end)
-                    .expect("unable to acquire mapping writer");
-
-                target[aligned.index_offset as usize..(aligned.index_offset + 4) as usize]
-                    .copy_from_slice(&[color.0, color.1, color.2, color.3]);
-
-                s.device
-                    .release_mapping_writer(target)
-                    .expect("Unable to release mapping writer");
-            }
-        }
-    }
+    // ---
 
     /// Change the vertices of the model-space
     ///
-    /// The name `set_deform` is used to keep consistent [Dyntex::deform].
+    /// The name `set_deform` is used to keep consistent [Strtex::deform].
     /// What this function does is just setting absolute vertex positions for each vertex in the
     /// triangle.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
