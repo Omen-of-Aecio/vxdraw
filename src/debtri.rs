@@ -506,9 +506,10 @@ impl<'a> Debtri<'a> {
     ///
     /// Adds the delta vertices to each debug triangle.
     /// See [Debtri::deform] for more information.
-    pub fn deform_all(&mut self, delta: [(f32, f32); 3]) {
+    pub fn deform_all(&mut self, mut delta: impl FnMut(usize) -> [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        for trn in self.vx.debtris.posbuffer.iter_mut() {
+        for (idx, trn) in self.vx.debtris.posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
             trn[0] += delta[0].0;
             trn[1] += delta[0].1;
             trn[2] += delta[1].0;
@@ -522,10 +523,11 @@ impl<'a> Debtri<'a> {
     ///
     /// Adds the color in the argument to the existing color of each triangle.
     /// See [Debtri::color] for more information.
-    pub fn color_all(&mut self, color: [i16; 4]) {
+    pub fn color_all(&mut self, mut delta: impl FnMut(usize) -> [i16; 4]) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
-        for cols in self.vx.debtris.colbuffer.chunks_exact_mut(4) {
-            for (idx, color) in color.iter().enumerate() {
+        for (idx, cols) in self.vx.debtris.colbuffer.chunks_exact_mut(4).enumerate() {
+            let delta = delta(idx);
+            for (idx, color) in delta.iter().enumerate() {
                 let excol = i16::from(cols[idx]);
                 cols[idx] = (excol + *color).min(255).max(0) as u8;
             }
@@ -536,9 +538,10 @@ impl<'a> Debtri<'a> {
     ///
     /// Adds the translation in the argument to the existing translation of each triangle.
     /// See [Debtri::translate] for more information.
-    pub fn translate_all(&mut self, delta: (f32, f32)) {
+    pub fn translate_all(&mut self, mut delta: impl FnMut(usize) -> (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        for trn in self.vx.debtris.tranbuffer.chunks_exact_mut(2) {
+        for (idx, trn) in self.vx.debtris.tranbuffer.chunks_exact_mut(2).enumerate() {
+            let delta = delta(idx);
             trn[0] += delta.0;
             trn[1] += delta.1;
         }
@@ -548,10 +551,11 @@ impl<'a> Debtri<'a> {
     ///
     /// Adds the rotation in the argument to the existing rotation of each triangle.
     /// See [Debtri::rotate] for more information.
-    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, rotation: T) {
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, mut delta: impl FnMut(usize) -> T) {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        for rot in &mut self.vx.debtris.rotbuffer {
-            *rot += rotation.into().0;
+        for (idx, rot) in &mut self.vx.debtris.rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            *rot += delta;
         }
     }
 
@@ -559,10 +563,11 @@ impl<'a> Debtri<'a> {
     ///
     /// Multiplies the scale in the argument with the existing scale of each triangle.
     /// See [Debtri::scale] for more information.
-    pub fn scale_all(&mut self, scale: f32) {
+    pub fn scale_all(&mut self, mut delta: impl FnMut(usize) -> f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for sc in &mut self.vx.debtris.scalebuffer {
-            *sc *= scale;
+        for (idx, sc) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            *sc *= delta;
         }
     }
 
@@ -571,9 +576,10 @@ impl<'a> Debtri<'a> {
     /// Set the deform on all debug triangles
     ///
     /// Applies [Debtri::set_deform] to all triangles.
-    pub fn set_deform_all(&mut self, delta: [(f32, f32); 3]) {
+    pub fn set_deform_all(&mut self, mut delta: impl FnMut(usize) -> [(f32, f32); 3]) {
         self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        for trn in self.vx.debtris.posbuffer.iter_mut() {
+        for (idx, trn) in self.vx.debtris.posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
             trn[0] = delta[0].0;
             trn[1] = delta[0].1;
             trn[2] = delta[1].0;
@@ -586,22 +592,21 @@ impl<'a> Debtri<'a> {
     /// Set the color on all debug triangles
     ///
     /// Applies [Debtri::set_color] to all triangles.
-    pub fn set_color_all(&mut self, color: [u8; 4]) {
+    pub fn set_color_all(&mut self, mut delta: impl FnMut(usize) -> [u8; 4]) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
-        for cols in self.vx.debtris.colbuffer.chunks_exact_mut(4) {
-            for (idx, color) in color.iter().enumerate() {
-                let excol = i16::from(cols[idx]);
-                cols[idx] = *color;
-            }
+        for (idx, cols) in self.vx.debtris.colbuffer.chunks_exact_mut(4).enumerate() {
+            let delta = delta(idx);
+            cols.copy_from_slice(&delta);
         }
     }
 
     /// Set the translation on all debug triangles
     ///
     /// Applies [Debtri::set_translation] to all triangles.
-    pub fn set_translation_all(&mut self, delta: (f32, f32)) {
+    pub fn set_translation_all(&mut self, mut delta: impl FnMut(usize) -> (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        for trn in self.vx.debtris.tranbuffer.chunks_exact_mut(2) {
+        for (idx, trn) in self.vx.debtris.tranbuffer.chunks_exact_mut(2).enumerate() {
+            let delta = delta(idx);
             trn[0] = delta.0;
             trn[1] = delta.1;
         }
@@ -610,20 +615,25 @@ impl<'a> Debtri<'a> {
     /// Set the rotation on all debug triangles
     ///
     /// Applies [Debtri::set_rotation] to all triangles.
-    pub fn set_rotation_all<T: Copy + Into<Rad<f32>>>(&mut self, rotation: T) {
+    pub fn set_rotation_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        for rot in &mut self.vx.debtris.rotbuffer {
-            *rot = rotation.into().0;
+        for (idx, rot) in &mut self.vx.debtris.rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            *rot = delta;
         }
     }
 
     /// Set the scale on all debug triangles
     ///
     /// Applies [Debtri::set_scale] to all triangles.
-    pub fn set_scale_all(&mut self, scale: f32) {
+    pub fn set_scale_all(&mut self, mut delta: impl FnMut(usize) -> f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for sc in &mut self.vx.debtris.scalebuffer {
-            *sc = scale;
+        for (idx, sc) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            *sc = delta;
         }
     }
 }
@@ -962,7 +972,7 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_color", img);
 
-        vx.debtri().color_all([0, 0, -128, 0]);
+        vx.debtri().color_all(|_| [0, 0, -128, 0]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_color_opacity", img);
@@ -1092,7 +1102,7 @@ mod tests {
 
         debtri.set_deform(&right, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]);
         debtri.deform(&left, [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]);
-        debtri.deform_all([(-1.0, 0.0), (0.0, 0.0), (0.0, 0.0)]);
+        debtri.deform_all(|_| [(-1.0, 0.0), (0.0, 0.0), (0.0, 0.0)]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "deform_triangles", img);
@@ -1243,9 +1253,9 @@ mod tests {
         utils::add_windmills(&mut vx, false);
         let mut debtri = vx.debtri();
 
-        debtri.translate_all((1.0, 0.5));
-        debtri.rotate_all(Deg(90.0));
-        debtri.scale_all(2.0);
+        debtri.translate_all(|_| (1.0, 0.5));
+        debtri.rotate_all(|_| Deg(90.0));
+        debtri.scale_all(|_| 2.0);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -1309,7 +1319,7 @@ mod tests {
 
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
-            vx.debtri().rotate_all(Deg(-1.0f32));
+            vx.debtri().rotate_all(|_| Deg(-1.0f32));
         }
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -1318,7 +1328,7 @@ mod tests {
 
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
-            vx.debtri().rotate_all(Deg(-1.0f32));
+            vx.debtri().rotate_all(|_| Deg(-1.0f32));
             vx.draw_frame(&prspect);
         }
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1387,7 +1397,7 @@ mod tests {
         utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            vx.debtri().rotate_all(Deg(1.0f32));
+            vx.debtri().rotate_all(|_| Deg(1.0f32));
             vx.draw_frame(&prspect);
         });
     }
@@ -1401,7 +1411,7 @@ mod tests {
         let last = utils::add_windmills(&mut vx, false).pop().unwrap();
 
         b.iter(|| {
-            vx.debtri().rotate_all(Deg(1.0f32));
+            vx.debtri().rotate_all(|_| Deg(1.0f32));
             vx.debtri().set_color(&last, [255, 0, 255, 255]);
             vx.draw_frame(&prspect);
         });
@@ -1415,7 +1425,7 @@ mod tests {
         utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            vx.debtri().rotate_all(Deg(1.0f32));
+            vx.debtri().rotate_all(|_| Deg(1.0f32));
         });
     }
 }

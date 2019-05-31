@@ -604,6 +604,13 @@ impl VxDraw {
         }
     }
 
+    /// Get how many swapchain images there exist
+    ///
+    /// 2 indicates double-buffering, 3 triple-buffering. May return 1 in the case of an OpenGL backend.
+    pub fn buffer_count(&self) -> usize {
+        self.swapconfig.image_count as usize
+    }
+
     /// Swap two layer orders
     pub fn swap_layers(&mut self, layer1: &impl Layerable, layer2: &impl Layerable) {
         let idx1 = layer1.get_layer(self);

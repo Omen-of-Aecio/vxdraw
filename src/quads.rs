@@ -1496,6 +1496,10 @@ mod tests {
             vx.quads().add(&layer, quad);
         }
 
+        for _ in 0..vx.buffer_count() {
+            vx.draw_frame(&prspect);
+        }
+
         vx.quads().set_translation_all(&layer, |idx| {
             if idx < 500 {
                 (

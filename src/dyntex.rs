@@ -1107,23 +1107,166 @@ impl<'a> Dyntex<'a> {
 
     // ---
 
-    /// Translate all sprites that depend on a given
+    /// Deform all dyntexs by adding delta vertices
     ///
-    /// Convenience method that translates all sprites associated with the given .
-    pub fn translate_all(&mut self, layer: &Layer, dxdy: (f32, f32)) {
-        let count = self.vx.dyntexs[layer.0].posbuffer.len();
-        for idx in 0..count {
-            self.translate(&Handle(layer.0, idx), dxdy);
+    /// Applies [Dyntex::deform] to each dynamic texture.
+    pub fn deform_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [(f32, f32); 4]) {
+        self.vx.dyntexs[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad[0] += delta[0].0;
+            quad[1] += delta[0].1;
+            quad[2] += delta[1].0;
+            quad[3] += delta[1].1;
+            quad[4] += delta[2].0;
+            quad[5] += delta[2].1;
+            quad[6] += delta[3].0;
+            quad[7] += delta[3].1;
         }
     }
 
-    /// Rotate all sprites that depend on a given
+    /// Translate all dyntexs by adding delta vertices
     ///
-    /// Convenience method that rotates all sprites associated with the given .
-    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
-        let count = self.vx.dyntexs[layer.0].posbuffer.len();
-        for idx in 0..count {
-            self.rotate(&Handle(layer.0, idx), deg);
+    /// Applies [Dyntex::translate] to each dynamic texture.
+    pub fn translate_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> (f32, f32)) {
+        self.vx.dyntexs[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].tranbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 2] += delta.0;
+                quad[idx * 2 + 1] += delta.1;
+            }
+        }
+    }
+
+    /// Rotate all dyntexs by adding delta rotations
+    ///
+    /// Applies [Dyntex::rotate] to each dynamic texture.
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
+        self.vx.dyntexs[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            for idx in 0..4 {
+                quad[idx] += delta;
+            }
+        }
+    }
+
+    /// Scale all dyntexs by multiplying a delta scale
+    ///
+    /// Applies [Dyntex::scale] to each dynamic texture.
+    pub fn scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
+        self.vx.dyntexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx] *= delta;
+            }
+        }
+    }
+
+    // ---
+
+    /// Deform all dyntexs by setting delta vertices
+    ///
+    /// Applies [Dyntex::set_deform] to each dynamic texture.
+    pub fn set_deform_all(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> [(f32, f32); 4],
+    ) {
+        self.vx.dyntexs[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad[0] = delta[0].0;
+            quad[1] = delta[0].1;
+            quad[2] = delta[1].0;
+            quad[3] = delta[1].1;
+            quad[4] = delta[2].0;
+            quad[5] = delta[2].1;
+            quad[6] = delta[3].0;
+            quad[7] = delta[3].1;
+        }
+    }
+
+    /// Set the color on all dyntexs
+    ///
+    /// Applies [Dyntex::set_solid_color] to each dynamic texture.
+    pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [u8; 4]) {
+        self.vx.dyntexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].colbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 4..(idx + 1) * 4].copy_from_slice(&delta);
+            }
+        }
+    }
+
+    /// Set the translation on all dyntexs
+    ///
+    /// Applies [Dyntex::set_translation] to each dynamic texture.
+    pub fn set_translation_all(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> (f32, f32),
+    ) {
+        self.vx.dyntexs[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].tranbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 2] = delta.0;
+                quad[idx * 2 + 1] = delta.1;
+            }
+        }
+    }
+
+    /// Set the uv on all dyntexs
+    ///
+    /// Applies [Dyntex::set_uv] to each dynamic texture.
+    pub fn set_uv_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [(f32, f32); 2]) {
+        self.vx.dyntexs[layer.0].uvbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].uvbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            let uv_begin = delta[0];
+            let uv_end = delta[1];
+            quad.copy_from_slice(&[
+                uv_begin.0, uv_begin.1, uv_begin.0, uv_end.1, uv_end.0, uv_end.1, uv_end.0,
+                uv_begin.1,
+            ]);
+        }
+    }
+
+    /// Set the rotation on all dyntexs
+    ///
+    /// Applies [Dyntex::set_rotation] to each dynamic texture.
+    pub fn set_rotation_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
+        self.vx.dyntexs[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            for idx in 0..4 {
+                quad[idx] = delta;
+            }
+        }
+    }
+
+    /// Set the scale on all dyntexs
+    ///
+    /// Applies [Dyntex::set_scale] to each dynamic texture.
+    pub fn set_scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
+        self.vx.dyntexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.dyntexs[layer.0].scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx] = delta;
+            }
         }
     }
 
@@ -1378,7 +1521,7 @@ mod tests {
                 ..base
             },
         );
-        dyntex.translate_all(&tex, (0.25, 0.35));
+        dyntex.translate_all(&tex, |_| (0.25, 0.35));
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1436,7 +1579,7 @@ mod tests {
                 ..base
             },
         );
-        dyntex.rotate_all(&tex, Deg(90.0));
+        dyntex.rotate_all(&tex, |_| Deg(90.0));
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
