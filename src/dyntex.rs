@@ -4,6 +4,25 @@
 //! refers to the sprites. A sprite is a rectangular view into the texture. The sprites can be
 //! changed freely during runtime. This allows movement of sprites, animations, and warping of
 //! their form.
+//! # Example - Drawing a sprite #
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use logger::{Generic, GenericLogger, Logger};
+//! use vxdraw::{dyntex::{LayerOptions, Sprite}, utils::gen_perspective, ShowWindow, VxDraw};
+//! fn main() {
+//!     static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
+//!     let logger = Logger::<Generic>::spawn_void().to_logpass();
+//!     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to spawn a window
+//!
+//!     let mut dyntex = vx.dyntex();
+//!     let tex = dyntex.add_layer(TESTURE, LayerOptions::default());
+//!     vx.dyntex().add(&tex, Sprite::new().scale(0.5));
+//!
+//!     let prspect = gen_perspective(&vx);
+//!     vx.draw_frame(&prspect);
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
+//! ```
 use super::utils::*;
 use crate::data::{DrawType, SingleTexture, VxDraw};
 use ::image as load_image;
@@ -28,7 +47,7 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use std::mem::{size_of, ManuallyDrop};
+use std::mem::ManuallyDrop;
 
 // ---
 
@@ -99,7 +118,6 @@ impl Default for LayerOptions {
 #[derive(Clone, Copy)]
 pub struct Sprite {
     colors: [(u8, u8, u8, u8); 4],
-    depth: f32,
     height: f32,
     origin: (f32, f32),
     rotation: f32,
@@ -178,7 +196,6 @@ impl Default for Sprite {
         Sprite {
             width: 2.0,
             height: 2.0,
-            depth: 0.0,
             colors: [(0, 0, 0, 255); 4],
             uv_begin: (0.0, 0.0),
             uv_end: (1.0, 1.0),
@@ -941,12 +958,12 @@ impl<'a> Dyntex<'a> {
             tex.uvbuffer.push([
                 topleft_uv.0,
                 topleft_uv.1,
-                topleft_uv.0,
-                bottomright_uv.1,
+                bottomleft_uv.0,
+                bottomleft_uv.1,
                 bottomright_uv.0,
                 bottomright_uv.1,
-                bottomright_uv.0,
-                topleft_uv.1,
+                topright_uv.0,
+                topright_uv.1,
             ]);
             tex.posbuffer.len() - 1
         };
@@ -995,12 +1012,10 @@ impl<'a> Dyntex<'a> {
 
     /// Set the position of a sprite
     pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
-        if let Some(stex) = self.vx.dyntexs.get_mut(handle.0) {
-            self.vx.dyntexs[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
-            for idx in 0..4 {
-                self.vx.dyntexs[handle.0].tranbuffer[handle.1][idx * 2] = position.0;
-                self.vx.dyntexs[handle.0].tranbuffer[handle.1][idx * 2 + 1] = position.1;
-            }
+        self.vx.dyntexs[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.dyntexs[handle.0].tranbuffer[handle.1][idx * 2] = position.0;
+            self.vx.dyntexs[handle.0].tranbuffer[handle.1][idx * 2 + 1] = position.1;
         }
     }
 
@@ -1118,12 +1133,10 @@ impl<'a> Dyntex<'a> {
         mut uvs: impl Iterator<Item = (&'b Handle, (f32, f32), (f32, f32))>,
     ) {
         if let Some(first) = uvs.next() {
-            if let Some(ref mut stex) = self.vx.dyntexs.get_mut((first.0).0) {
-                let current_texture_handle = first.0;
-                self.set_uv(current_texture_handle, first.1, first.2);
-                for handle in uvs {
-                    self.set_uv(handle.0, handle.1, handle.2);
-                }
+            let current_texture_handle = first.0;
+            self.set_uv(current_texture_handle, first.1, first.2);
+            for handle in uvs {
+                self.set_uv(handle.0, handle.1, handle.2);
             }
         }
     }
