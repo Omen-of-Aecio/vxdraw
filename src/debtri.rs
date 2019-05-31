@@ -565,6 +565,67 @@ impl<'a> Debtri<'a> {
             *sc *= scale;
         }
     }
+
+    // ---
+
+    /// Set the deform on all debug triangles
+    ///
+    /// Applies [Debtri::set_deform] to all triangles.
+    pub fn set_deform_all(&mut self, delta: [(f32, f32); 3]) {
+        self.vx.debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        for trn in self.vx.debtris.posbuffer.iter_mut() {
+            trn[0] = delta[0].0;
+            trn[1] = delta[0].1;
+            trn[2] = delta[1].0;
+            trn[3] = delta[1].1;
+            trn[4] = delta[2].0;
+            trn[5] = delta[2].1;
+        }
+    }
+
+    /// Set the color on all debug triangles
+    ///
+    /// Applies [Debtri::set_color] to all triangles.
+    pub fn set_color_all(&mut self, color: [u8; 4]) {
+        self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
+        for cols in self.vx.debtris.colbuffer.chunks_exact_mut(4) {
+            for (idx, color) in color.iter().enumerate() {
+                let excol = i16::from(cols[idx]);
+                cols[idx] = *color;
+            }
+        }
+    }
+
+    /// Set the translation on all debug triangles
+    ///
+    /// Applies [Debtri::set_translation] to all triangles.
+    pub fn set_translation_all(&mut self, delta: (f32, f32)) {
+        self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        for trn in self.vx.debtris.tranbuffer.chunks_exact_mut(2) {
+            trn[0] = delta.0;
+            trn[1] = delta.1;
+        }
+    }
+
+    /// Set the rotation on all debug triangles
+    ///
+    /// Applies [Debtri::set_rotation] to all triangles.
+    pub fn set_rotation_all<T: Copy + Into<Rad<f32>>>(&mut self, rotation: T) {
+        self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        for rot in &mut self.vx.debtris.rotbuffer {
+            *rot = rotation.into().0;
+        }
+    }
+
+    /// Set the scale on all debug triangles
+    ///
+    /// Applies [Debtri::set_scale] to all triangles.
+    pub fn set_scale_all(&mut self, scale: f32) {
+        self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.debtris.scalebuffer {
+            *sc = scale;
+        }
+    }
 }
 
 // ---
