@@ -1228,6 +1228,55 @@ impl<'a> Strtex<'a> {
 
     // ---
 
+    /// Deform a sprite by adding delta vertices
+    ///
+    /// Adds the delta vertices to the sprite. Beware: This changes model space form.
+    pub fn deform(&mut self, handle: &Handle, delta: [(f32, f32); 4]) {
+        self.vx.strtexs[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
+        let points = &mut self.vx.strtexs[handle.0].posbuffer[handle.1];
+        points[0] += delta[0].0;
+        points[1] += delta[0].1;
+        points[2] += delta[1].0;
+        points[3] += delta[1].1;
+        points[4] += delta[2].0;
+        points[5] += delta[2].1;
+        points[6] += delta[3].0;
+        points[7] += delta[3].1;
+    }
+
+    /// Translate a sprite by a vector
+    ///
+    /// Translation does not mutate the model-space of a sprite.
+    pub fn translate(&mut self, handle: &Handle, movement: (f32, f32)) {
+        self.vx.strtexs[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.strtexs[handle.0].tranbuffer[handle.1][idx * 2] += movement.0;
+            self.vx.strtexs[handle.0].tranbuffer[handle.1][idx * 2 + 1] += movement.1;
+        }
+    }
+
+    /// Rotate a sprite
+    ///
+    /// Rotation does not mutate the model-space of a sprite.
+    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, angle: T) {
+        self.vx.strtexs[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for rot in &mut self.vx.strtexs[handle.0].rotbuffer[handle.1] {
+            *rot += angle.into().0;
+        }
+    }
+
+    /// Scale a sprite
+    ///
+    /// Scale does not mutate the model-space of a sprite.
+    pub fn scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.strtexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.strtexs[handle.0].scalebuffer[handle.1] {
+            *sc *= scale;
+        }
+    }
+
+    // ---
+
     /// Read pixels from arbitrary coordinates
     pub fn read(&mut self, id: &Layer, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
