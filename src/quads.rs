@@ -923,17 +923,150 @@ impl<'a> Quads<'a> {
 
     // ---
 
-    /// Rotate all quads
+    /// Deform all quads by adding delta vertices
     ///
-    /// Adds the rotation in the argument to the existing rotation of each quad.
-    /// See [Quads::rotate] for more information.
-    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
+    /// Applies [Quads::deform] to each quad.
+    pub fn deform_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [(f32, f32); 4]) {
+        self.vx.quads[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad[0] += delta[0].0;
+            quad[1] += delta[0].1;
+            quad[2] += delta[1].0;
+            quad[3] += delta[1].1;
+            quad[4] += delta[2].0;
+            quad[5] += delta[2].1;
+            quad[6] += delta[3].0;
+            quad[7] += delta[3].1;
+        }
+    }
+
+    /// Translate all quads by adding delta vertices
+    ///
+    /// Applies [Quads::translate] to each quad.
+    pub fn translate_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> (f32, f32)) {
+        self.vx.quads[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].tranbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 2] += delta.0;
+                quad[idx * 2 + 1] += delta.1;
+            }
+        }
+    }
+
+    /// Rotate all quads by adding delta rotations
+    ///
+    /// Applies [Quads::rotate] to each quad.
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
         self.vx.quads[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
-        for rot in self.vx.quads[layer.0].rotbuffer.iter_mut() {
-            rot[0] += deg.into().0;
-            rot[1] += deg.into().0;
-            rot[2] += deg.into().0;
-            rot[3] += deg.into().0;
+        for (idx, quad) in self.vx.quads[layer.0].rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            for idx in 0..4 {
+                quad[idx] += delta;
+            }
+        }
+    }
+
+    /// Scale all quads by multiplying a delta scale
+    ///
+    /// Applies [Quads::scale] to each quad.
+    pub fn scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
+        self.vx.quads[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx] *= delta;
+            }
+        }
+    }
+
+    // ---
+
+    /// Deform all quads by setting delta vertices
+    ///
+    /// Applies [Quads::set_deform] to each quad.
+    pub fn set_deform_all(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> [(f32, f32); 4],
+    ) {
+        self.vx.quads[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad[0] = delta[0].0;
+            quad[1] = delta[0].1;
+            quad[2] = delta[1].0;
+            quad[3] = delta[1].1;
+            quad[4] = delta[2].0;
+            quad[5] = delta[2].1;
+            quad[6] = delta[3].0;
+            quad[7] = delta[3].1;
+        }
+    }
+
+    /// Set the color on all quads
+    ///
+    /// Applies [Quads::set_solid_color] to each quad.
+    pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [u8; 4]) {
+        self.vx.quads[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].colbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 4..(idx + 1) * 4].copy_from_slice(&delta);
+            }
+        }
+    }
+
+    /// Set the translation on all quads
+    ///
+    /// Applies [Quads::set_translation] to each quad.
+    pub fn set_translation_all(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> (f32, f32),
+    ) {
+        self.vx.quads[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].tranbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 2] = delta.0;
+                quad[idx * 2 + 1] = delta.1;
+            }
+        }
+    }
+
+    /// Set the rotation on all quads
+    ///
+    /// Applies [Quads::set_rotation] to each quad.
+    pub fn set_rotation_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
+        self.vx.quads[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            for idx in 0..4 {
+                quad[idx] = delta;
+            }
+        }
+    }
+
+    /// Set the scale on all quads
+    ///
+    /// Applies [Quads::set_scale] to each quad.
+    pub fn set_scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
+        self.vx.quads[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx] = delta;
+            }
         }
     }
 }
@@ -1250,7 +1383,7 @@ mod tests {
         quads.add(&layer, quad);
 
         // when
-        quads.rotate_all(&layer, Deg(30.0));
+        quads.rotate_all(&layer, |_| Deg(30.0));
 
         // then
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1343,5 +1476,59 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "quad_layering", img);
+    }
+
+    #[test]
+    fn quad_mass_manip() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let layer = vx.quads().add_layer(LayerOptions::default());
+
+        use rand::Rng;
+        use rand_pcg::Pcg64Mcg as random;
+        let mut rng = random::new(0);
+
+        let quad = quads::Quad::new();
+
+        for _ in 0..1000 {
+            vx.quads().add(&layer, quad);
+        }
+
+        vx.quads().set_translation_all(&layer, |idx| {
+            if idx < 500 {
+                (
+                    rng.gen_range(-1.0f32, 0.0f32),
+                    rng.gen_range(-1.0f32, 1.0f32),
+                )
+            } else {
+                (
+                    rng.gen_range(0.0f32, 1.0f32),
+                    rng.gen_range(-1.0f32, 1.0f32),
+                )
+            }
+        });
+
+        vx.quads()
+            .set_scale_all(&layer, |idx| if idx < 500 { 0.01 } else { 0.02 });
+
+        vx.quads().set_solid_color_all(&layer, |idx| {
+            if idx < 250 {
+                [0, 255, 255, 128]
+            } else if idx < 500 {
+                [0, 255, 0, 128]
+            } else if idx < 750 {
+                [0, 0, 255, 128]
+            } else {
+                [255, 255, 255, 128]
+            }
+        });
+
+        vx.quads()
+            .set_rotation_all(&layer, |idx| if idx < 500 { Deg(0.0) } else { Deg(30.0) });
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "quad_mass_manip", img);
     }
 }
