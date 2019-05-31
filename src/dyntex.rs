@@ -1031,6 +1031,9 @@ impl<'a> Dyntex<'a> {
     }
 
     /// Set the raw UV values of each vertex in a sprite
+    ///
+    /// This may be used to repeat a texture multiple times over the same sprite, or to do
+    /// something exotic with uv coordinates.
     pub fn set_uv_raw(&mut self, handle: &Handle, uvs: [(f32, f32); 4]) {
         self.vx.dyntexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
         self.vx.dyntexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
@@ -1672,6 +1675,22 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "set_single_sprite_rotation", img);
+    }
+
+    #[test]
+    fn raw_uvs() {
+        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut dyntex = vx.dyntex();
+        let options = LayerOptions::default();
+        let testure = dyntex.add_layer(TESTURE, options);
+        let sprite = dyntex.add(&testure, Sprite::default());
+        dyntex.set_uv_raw(&sprite, [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (0.0, 0.0)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "raw_uvs", img);
     }
 
     #[test]
