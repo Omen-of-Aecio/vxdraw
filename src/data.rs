@@ -17,17 +17,33 @@ use std::mem::ManuallyDrop;
 pub(crate) struct StreamingTexture {
     pub(crate) hidden: bool,
     pub(crate) count: u32,
+    pub(crate) removed: Vec<usize>,
 
     pub(crate) width: u32,
     pub(crate) height: u32,
 
-    pub(crate) vertex_buffer: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    pub(crate) vertex_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub(crate) vertex_requirements: gfx_hal::memory::Requirements,
+    pub(crate) posbuf_touch: u32,
+    pub(crate) colbuf_touch: u32,
+    pub(crate) uvbuf_touch: u32,
+    pub(crate) tranbuf_touch: u32,
+    pub(crate) rotbuf_touch: u32,
+    pub(crate) scalebuf_touch: u32,
 
-    pub(crate) vertex_buffer_indices: ManuallyDrop<<back::Backend as Backend>::Buffer>,
-    pub(crate) vertex_memory_indices: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub(crate) vertex_requirements_indices: gfx_hal::memory::Requirements,
+    pub(crate) posbuffer: Vec<[f32; 8]>,   // 8 per quad
+    pub(crate) colbuffer: Vec<[u8; 16]>,   // 16 per quad
+    pub(crate) uvbuffer: Vec<[f32; 8]>,    // 8 per quad
+    pub(crate) tranbuffer: Vec<[f32; 8]>,  // 8 per quad
+    pub(crate) rotbuffer: Vec<[f32; 4]>,   // 4 per quad
+    pub(crate) scalebuffer: Vec<[f32; 4]>, // 4 per quad
+
+    pub(crate) posbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) colbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) uvbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) tranbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) rotbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) scalebuf: Vec<super::utils::ResizBuf>,
+
+    pub(crate) indices: Vec<super::utils::ResizBufIdx4>,
 
     pub(crate) image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
     pub(crate) image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
@@ -386,16 +402,27 @@ impl Drop for VxDraw {
             }
 
             for mut strtex in self.strtexs.drain(..) {
-                self.device.destroy_buffer(ManuallyDrop::into_inner(read(
-                    &strtex.vertex_buffer_indices,
-                )));
-                self.device.free_memory(ManuallyDrop::into_inner(read(
-                    &strtex.vertex_memory_indices,
-                )));
-                self.device
-                    .destroy_buffer(ManuallyDrop::into_inner(read(&strtex.vertex_buffer)));
-                self.device
-                    .free_memory(ManuallyDrop::into_inner(read(&strtex.vertex_memory)));
+                for mut indices in strtex.indices.drain(..) {
+                    indices.destroy(&self.device);
+                }
+                for mut posbuf in strtex.posbuf.drain(..) {
+                    posbuf.destroy(&self.device);
+                }
+                for mut colbuf in strtex.colbuf.drain(..) {
+                    colbuf.destroy(&self.device);
+                }
+                for mut uvbuf in strtex.uvbuf.drain(..) {
+                    uvbuf.destroy(&self.device);
+                }
+                for mut tranbuf in strtex.tranbuf.drain(..) {
+                    tranbuf.destroy(&self.device);
+                }
+                for mut rotbuf in strtex.rotbuf.drain(..) {
+                    rotbuf.destroy(&self.device);
+                }
+                for mut scalebuf in strtex.scalebuf.drain(..) {
+                    scalebuf.destroy(&self.device);
+                }
                 self.device
                     .destroy_image(ManuallyDrop::into_inner(read(&strtex.image_buffer)));
                 self.device

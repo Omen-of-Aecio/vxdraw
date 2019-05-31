@@ -52,6 +52,7 @@ use super::utils::*;
 use crate::data::{DrawType, StreamingTexture, VxDraw};
 use arrayvec::ArrayVec;
 use cgmath::Matrix4;
+use cgmath::Rad;
 use core::ptr;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -70,14 +71,14 @@ use gfx_hal::{
 };
 use logger::debug;
 use std::iter::once;
-use std::mem::{size_of, ManuallyDrop};
+use std::mem::ManuallyDrop;
 
 // ---
 
-/// A view into a texture
+/// A view into a sprite
 pub struct Handle(usize, usize);
 
-/// Handle to a texture
+/// Handle to a texture (layer)
 pub struct Layer(usize);
 
 impl Layerable for Layer {
@@ -156,7 +157,6 @@ impl Default for LayerOptions {
 /// call [Strtex::add] with.
 pub struct Sprite {
     colors: [(u8, u8, u8, u8); 4],
-    depth: f32,
     height: f32,
     origin: (f32, f32),
     rotation: f32,
@@ -235,7 +235,6 @@ impl Default for Sprite {
         Sprite {
             width: 2.0,
             height: 2.0,
-            depth: 0.0,
             colors: [(0, 0, 0, 255); 4],
             uv_begin: (0.0, 0.0),
             uv_end: (1.0, 1.0),
@@ -292,8 +291,6 @@ impl<'a> Strtex<'a> {
     /// objects and ensure that the foreground texture is allocated last.
     pub fn add_layer(&mut self, options: LayerOptions) -> Layer {
         let s = &mut *self.vx;
-        let (texture_vertex_buffer, texture_vertex_memory, vertex_requirements) =
-            make_vertex_buffer_with_data(s, &[0f32; 9 * 4 * 1000]);
 
         let device = &s.device;
 
@@ -385,11 +382,38 @@ impl<'a> Strtex<'a> {
         };
         let input_assembler = pso::InputAssemblerDesc::new(Primitive::TriangleList);
 
-        let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![pso::VertexBufferDesc {
-            binding: 0,
-            stride: (size_of::<f32>() * (3 + 2 + 2 + 2 + 1)) as u32,
-            rate: pso::VertexInputRate::Vertex,
-        }];
+        let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![
+            pso::VertexBufferDesc {
+                binding: 0,
+                stride: 8,
+                rate: pso::VertexInputRate::Vertex,
+            },
+            pso::VertexBufferDesc {
+                binding: 1,
+                stride: 8,
+                rate: pso::VertexInputRate::Vertex,
+            },
+            pso::VertexBufferDesc {
+                binding: 2,
+                stride: 8,
+                rate: pso::VertexInputRate::Vertex,
+            },
+            pso::VertexBufferDesc {
+                binding: 3,
+                stride: 4,
+                rate: pso::VertexInputRate::Vertex,
+            },
+            pso::VertexBufferDesc {
+                binding: 4,
+                stride: 4,
+                rate: pso::VertexInputRate::Vertex,
+            },
+            pso::VertexBufferDesc {
+                binding: 5,
+                stride: 4,
+                rate: pso::VertexInputRate::Vertex,
+            },
+        ];
         let attributes: Vec<pso::AttributeDesc> = vec![
             pso::AttributeDesc {
                 location: 0,
@@ -401,42 +425,42 @@ impl<'a> Strtex<'a> {
             },
             pso::AttributeDesc {
                 location: 1,
-                binding: 0,
+                binding: 1,
                 element: pso::Element {
                     format: format::Format::Rg32Sfloat,
-                    offset: 12,
+                    offset: 0,
                 },
             },
             pso::AttributeDesc {
                 location: 2,
-                binding: 0,
+                binding: 2,
                 element: pso::Element {
                     format: format::Format::Rg32Sfloat,
-                    offset: 20,
+                    offset: 0,
                 },
             },
             pso::AttributeDesc {
                 location: 3,
-                binding: 0,
+                binding: 3,
                 element: pso::Element {
                     format: format::Format::R32Sfloat,
-                    offset: 28,
+                    offset: 0,
                 },
             },
             pso::AttributeDesc {
                 location: 4,
-                binding: 0,
+                binding: 4,
                 element: pso::Element {
                     format: format::Format::R32Sfloat,
-                    offset: 32,
+                    offset: 0,
                 },
             },
             pso::AttributeDesc {
                 location: 5,
-                binding: 0,
+                binding: 5,
                 element: pso::Element {
                     format: format::Format::Rgba8Unorm,
-                    offset: 36,
+                    offset: 0,
                 },
             },
         ];
@@ -624,9 +648,6 @@ impl<'a> Strtex<'a> {
             s.device.destroy_shader_module(fs_module);
         }
 
-        let (vertex_buffer_indices, vertex_memory_indices, vertex_requirements_indices) =
-            make_index_buffer_with_data(s, &[0f32; 4 * 1000]);
-
         unsafe {
             let barrier_fence = s.device.create_fence(false).expect("unable to make fence");
             // TODO Use a proper command buffer here
@@ -663,20 +684,59 @@ impl<'a> Strtex<'a> {
             s.device.destroy_fence(barrier_fence);
         }
 
+        let image_count = s.swapconfig.image_count;
+        let posbuf = (0..image_count)
+            .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+        let colbuf = (0..image_count)
+            .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+        let uvbuf = (0..image_count)
+            .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+        let tranbuf = (0..image_count)
+            .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+        let rotbuf = (0..image_count)
+            .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+        let scalebuf = (0..image_count)
+            .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+
+        let indices = (0..image_count)
+            .map(|_| super::utils::ResizBufIdx4::new(&s.device, &s.adapter))
+            .collect::<Vec<_>>();
+
         s.strtexs.push(StreamingTexture {
             hidden: false,
             count: 0,
+            removed: vec![],
 
             width: options.width as u32,
             height: options.height as u32,
 
-            vertex_buffer: ManuallyDrop::new(texture_vertex_buffer),
-            vertex_memory: ManuallyDrop::new(texture_vertex_memory),
-            vertex_requirements,
+            posbuf_touch: 0,
+            colbuf_touch: 0,
+            uvbuf_touch: 0,
+            tranbuf_touch: 0,
+            rotbuf_touch: 0,
+            scalebuf_touch: 0,
 
-            vertex_buffer_indices: ManuallyDrop::new(vertex_buffer_indices),
-            vertex_memory_indices: ManuallyDrop::new(vertex_memory_indices),
-            vertex_requirements_indices,
+            posbuffer: vec![],
+            colbuffer: vec![],
+            uvbuffer: vec![],
+            tranbuffer: vec![],
+            rotbuffer: vec![],
+            scalebuffer: vec![],
+
+            posbuf,
+            colbuf,
+            uvbuf,
+            tranbuf,
+            rotbuf,
+            scalebuf,
+            indices,
 
             image_buffer: ManuallyDrop::new(the_image),
             image_memory: ManuallyDrop::new(image_memory),
@@ -716,7 +776,7 @@ impl<'a> Strtex<'a> {
         }
         if let Some(idx) = index {
             s.draw_order.remove(idx);
-            // Can't delete here always because other textures may still be referring to later dyntexs,
+            // Can't delete here always because other textures may still be referring to later strtexs,
             // only when this is the last texture.
             if s.strtexs.len() == texture.0 + 1 {
                 let strtex = s.strtexs.pop().unwrap();
@@ -728,16 +788,27 @@ impl<'a> Strtex<'a> {
     fn destroy_texture(&mut self, mut strtex: StreamingTexture) {
         let s = &mut *self.vx;
         unsafe {
-            s.device.destroy_buffer(ManuallyDrop::into_inner(ptr::read(
-                &strtex.vertex_buffer_indices,
-            )));
-            s.device.free_memory(ManuallyDrop::into_inner(ptr::read(
-                &strtex.vertex_memory_indices,
-            )));
-            s.device
-                .destroy_buffer(ManuallyDrop::into_inner(ptr::read(&strtex.vertex_buffer)));
-            s.device
-                .free_memory(ManuallyDrop::into_inner(ptr::read(&strtex.vertex_memory)));
+            for mut indices in strtex.indices.drain(..) {
+                indices.destroy(&s.device);
+            }
+            for mut posbuf in strtex.posbuf.drain(..) {
+                posbuf.destroy(&s.device);
+            }
+            for mut colbuf in strtex.colbuf.drain(..) {
+                colbuf.destroy(&s.device);
+            }
+            for mut uvbuf in strtex.uvbuf.drain(..) {
+                uvbuf.destroy(&s.device);
+            }
+            for mut tranbuf in strtex.tranbuf.drain(..) {
+                tranbuf.destroy(&s.device);
+            }
+            for mut rotbuf in strtex.rotbuf.drain(..) {
+                rotbuf.destroy(&s.device);
+            }
+            for mut scalebuf in strtex.scalebuf.drain(..) {
+                scalebuf.destroy(&s.device);
+            }
             s.device
                 .destroy_image(ManuallyDrop::into_inner(ptr::read(&strtex.image_buffer)));
             s.device
@@ -765,11 +836,7 @@ impl<'a> Strtex<'a> {
     }
 
     /// Add a sprite (a rectangular view of a texture) to the system
-    pub fn add(&mut self, handle: &Layer, sprite: Sprite) -> Handle {
-        let s = &mut *self.vx;
-        let tex = &mut s.strtexs[handle.0];
-        let device = &s.device;
-
+    pub fn add(&mut self, layer: &Layer, sprite: Sprite) -> Handle {
         // Derive xy from the sprite's initial UV
         let uv_a = sprite.uv_begin;
         let uv_b = sprite.uv_end;
@@ -801,58 +868,119 @@ impl<'a> Strtex<'a> {
         );
         let bottomright_uv = (uv_b.0, uv_b.1);
 
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer(
-                    &tex.vertex_memory_indices,
-                    0..tex.vertex_requirements_indices.size,
-                )
-                .expect("Failed to acquire a memory writer!");
-            let ver = (tex.count * 6) as u16;
-            let ind = (tex.count * 4) as u16;
-            data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
-                ind,
-                ind + 1,
-                ind + 2,
-                ind + 2,
-                ind + 3,
-                ind,
-            ]);
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
+        let replace = self.vx.strtexs.get(layer.0).map(|x| !x.removed.is_empty());
+        if replace.is_none() {
+            panic!["Layer does not exist"];
         }
-        unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer(&tex.vertex_memory, 0..tex.vertex_requirements.size)
-                .expect("Failed to acquire a memory writer!");
-            let idx = (tex.count * 4 * 10) as usize;
 
-            for (i, (point, uv)) in [
-                (topleft, topleft_uv),
-                (bottomleft, bottomleft_uv),
-                (bottomright, bottomright_uv),
-                (topright, topright_uv),
-            ]
-            .iter()
-            .enumerate()
-            {
-                let idx = idx + i * 10;
-                data_target[idx..idx + 3].copy_from_slice(&[point.0, point.1, sprite.depth]);
-                data_target[idx + 3..idx + 5].copy_from_slice(&[uv.0, uv.1]);
-                data_target[idx + 5..idx + 7]
-                    .copy_from_slice(&[sprite.translation.0, sprite.translation.1]);
-                data_target[idx + 7..idx + 8].copy_from_slice(&[sprite.rotation]);
-                data_target[idx + 8..idx + 9].copy_from_slice(&[sprite.scale]);
-                data_target[idx + 9..idx + 10]
-                    .copy_from_slice(&[std::mem::transmute::<_, f32>(sprite.colors[i])]);
-            }
-            tex.count += 1;
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
-        }
-        Handle(handle.0, (tex.count - 1) as usize)
+        let handle = if replace.unwrap() {
+            let hole = self.vx.strtexs[layer.0].removed.pop().unwrap();
+            let handle = Handle(layer.0, hole);
+            self.set_deform(
+                &handle,
+                [
+                    (topleft.0, topleft.1),
+                    (bottomleft.0, bottomleft.1),
+                    (bottomright.0, bottomright.1),
+                    (topright.0, topright.1),
+                ],
+            );
+            self.set_color(
+                &handle,
+                [
+                    sprite.colors[0].0,
+                    sprite.colors[0].1,
+                    sprite.colors[0].2,
+                    sprite.colors[0].3,
+                    sprite.colors[1].0,
+                    sprite.colors[1].1,
+                    sprite.colors[1].2,
+                    sprite.colors[1].3,
+                    sprite.colors[2].0,
+                    sprite.colors[2].1,
+                    sprite.colors[2].2,
+                    sprite.colors[2].3,
+                    sprite.colors[3].0,
+                    sprite.colors[3].1,
+                    sprite.colors[3].2,
+                    sprite.colors[3].3,
+                ],
+            );
+            self.set_translation(&handle, (sprite.translation.0, sprite.translation.1));
+            self.set_rotation(&handle, Rad(sprite.rotation));
+            self.set_scale(&handle, sprite.scale);
+            self.set_uv(&handle, sprite.uv_begin, sprite.uv_end);
+            hole
+        } else {
+            let tex = &mut self.vx.strtexs[layer.0];
+            tex.posbuffer.push([
+                topleft.0,
+                topleft.1,
+                bottomleft.0,
+                bottomleft.1,
+                bottomright.0,
+                bottomright.1,
+                topright.0,
+                topright.1,
+            ]);
+            tex.colbuffer.push([
+                sprite.colors[0].0,
+                sprite.colors[0].1,
+                sprite.colors[0].2,
+                sprite.colors[0].3,
+                sprite.colors[1].0,
+                sprite.colors[1].1,
+                sprite.colors[1].2,
+                sprite.colors[1].3,
+                sprite.colors[2].0,
+                sprite.colors[2].1,
+                sprite.colors[2].2,
+                sprite.colors[2].3,
+                sprite.colors[3].0,
+                sprite.colors[3].1,
+                sprite.colors[3].2,
+                sprite.colors[3].3,
+            ]);
+            tex.tranbuffer.push([
+                sprite.translation.0,
+                sprite.translation.1,
+                sprite.translation.0,
+                sprite.translation.1,
+                sprite.translation.0,
+                sprite.translation.1,
+                sprite.translation.0,
+                sprite.translation.1,
+            ]);
+            tex.rotbuffer.push([
+                sprite.rotation,
+                sprite.rotation,
+                sprite.rotation,
+                sprite.rotation,
+            ]);
+            tex.scalebuffer
+                .push([sprite.scale, sprite.scale, sprite.scale, sprite.scale]);
+            tex.uvbuffer.push([
+                topleft_uv.0,
+                topleft_uv.1,
+                bottomleft_uv.0,
+                bottomleft_uv.1,
+                bottomright_uv.0,
+                bottomright_uv.1,
+                topright_uv.0,
+                topright_uv.1,
+            ]);
+            tex.posbuffer.len() - 1
+        };
+
+        let tex = &mut self.vx.strtexs[layer.0];
+        tex.posbuf_touch = self.vx.swapconfig.image_count;
+        tex.colbuf_touch = self.vx.swapconfig.image_count;
+        tex.uvbuf_touch = self.vx.swapconfig.image_count;
+        tex.tranbuf_touch = self.vx.swapconfig.image_count;
+        tex.rotbuf_touch = self.vx.swapconfig.image_count;
+        tex.scalebuf_touch = self.vx.swapconfig.image_count;
+
+        Handle(layer.0, handle)
     }
 
     // ---
@@ -1028,6 +1156,74 @@ impl<'a> Strtex<'a> {
             }
         }
     }
+
+    /// Change the vertices of the model-space
+    ///
+    /// The name `set_deform` is used to keep consistent [Dyntex::deform].
+    /// What this function does is just setting absolute vertex positions for each vertex in the
+    /// triangle.
+    pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
+        self.vx.strtexs[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
+        let vertex = &mut self.vx.strtexs[handle.0].posbuffer[handle.1];
+        for (idx, point) in points.iter().enumerate() {
+            vertex[idx * 2] = point.0;
+            vertex[idx * 2 + 1] = point.1;
+        }
+    }
+
+    /// Set a solid color each vertex of a sprite
+    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 16]) {
+        self.vx.strtexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.strtexs[handle.0].colbuffer[handle.1].copy_from_slice(&rgba);
+    }
+
+    /// Set the position of a sprite
+    pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
+        self.vx.strtexs[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.strtexs[handle.0].tranbuffer[handle.1][idx * 2] = position.0;
+            self.vx.strtexs[handle.0].tranbuffer[handle.1][idx * 2 + 1] = position.1;
+        }
+    }
+
+    /// Set the rotation of a sprite
+    ///
+    /// Positive rotation goes counter-clockwise. The value of the rotation is in radians.
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, rotation: T) {
+        let angle = rotation.into().0;
+        self.vx.strtexs[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.strtexs[handle.0].rotbuffer[handle.1]
+            .copy_from_slice(&[angle, angle, angle, angle]);
+    }
+
+    /// Set the scale of a sprite
+    pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.strtexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for sc in &mut self.vx.strtexs[handle.0].scalebuffer[handle.1] {
+            *sc = scale;
+        }
+    }
+
+    /// Set the UV values of a single sprite
+    pub fn set_uv(&mut self, handle: &Handle, uv_begin: (f32, f32), uv_end: (f32, f32)) {
+        self.vx.strtexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.strtexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
+            uv_begin.0, uv_begin.1, uv_begin.0, uv_end.1, uv_end.0, uv_end.1, uv_end.0, uv_begin.1,
+        ]);
+    }
+
+    /// Set the raw UV values of each vertex in a sprite
+    ///
+    /// This may be used to repeat a texture multiple times over the same sprite, or to do
+    /// something exotic with uv coordinates.
+    pub fn set_uv_raw(&mut self, handle: &Handle, uvs: [(f32, f32); 4]) {
+        self.vx.strtexs[handle.0].uvbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.strtexs[handle.0].uvbuffer[handle.1].copy_from_slice(&[
+            uvs[0].0, uvs[0].1, uvs[1].0, uvs[1].1, uvs[2].0, uvs[2].1, uvs[3].0, uvs[3].1,
+        ]);
+    }
+
+    // ---
 
     /// Read pixels from arbitrary coordinates
     pub fn read(&mut self, id: &Layer, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
@@ -1604,35 +1800,35 @@ mod tests {
         }
     }
 
-    #[test]
-    fn streaming_texture_respects_z_ordering() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
+    // #[test]
+    // fn streaming_texture_respects_z_ordering() {
+    //     let logger = Logger::<Generic>::spawn_void().to_logpass();
+    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+    //     let prspect = gen_perspective(&vx);
 
-        let mut strtex = vx.strtex();
-        let strtex1 = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        strtex.set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
-        strtex.add(&strtex1, strtex::Sprite::default());
+    //     let mut strtex = vx.strtex();
+    //     let strtex1 = strtex.add_layer(LayerOptions::new().width(10).height(10));
+    //     strtex.set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
+    //     strtex.add(&strtex1, strtex::Sprite::default());
 
-        let strtex2 = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        strtex.set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
-        strtex.add(
-            &strtex2,
-            strtex::Sprite {
-                depth: 0.1,
-                ..strtex::Sprite::default()
-            },
-        );
+    //     let strtex2 = strtex.add_layer(LayerOptions::new().width(10).height(10));
+    //     strtex.set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
+    //     strtex.add(
+    //         &strtex2,
+    //         strtex::Sprite {
+    //             depth: 0.1,
+    //             ..strtex::Sprite::default()
+    //         },
+    //     );
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering", img);
+    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
+    //     utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering", img);
 
-        vx.strtex().remove_layer(strtex1);
+    //     vx.strtex().remove_layer(strtex1);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
-        utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering_removed", img);
-    }
+    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
+    //     utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering_removed", img);
+    // }
 
     // ---
 

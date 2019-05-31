@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) in vec3 v_pos;
+layout(location = 0) in vec2 v_pos;
 layout(location = 1) in vec2 v_uv;
 layout(location = 2) in vec2 v_dxdy;
 layout(location = 3) in float rotation;
@@ -21,8 +21,8 @@ out gl_PerVertex {
 
 void main() {
     mat2 rotmatrix = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
-    vec2 pos = rotmatrix * scale * v_pos.xy;
+    vec2 pos = rotmatrix * scale * v_pos;
     f_uv = v_uv;
     f_color = color;
-    gl_Position = push_constant.view * vec4(pos + v_dxdy, v_pos.z, 1.0);
+    gl_Position = push_constant.view * vec4(pos + v_dxdy, 0.0, 1.0);
 }

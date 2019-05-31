@@ -933,9 +933,78 @@ impl VxDraw {
                     for draw_cmd in self.draw_order.iter() {
                         match draw_cmd {
                             DrawType::StreamingTexture { id } => {
-                                let strtex = &self.strtexs[*id];
+                                let strtex = &mut self.strtexs[*id];
                                 if !strtex.hidden {
                                     enc.bind_graphics_pipeline(&strtex.pipeline);
+                                    if strtex.posbuf_touch != 0 {
+                                        strtex.posbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &strtex.posbuffer[..],
+                                            );
+                                        strtex.posbuf_touch -= 1;
+                                    }
+                                    if strtex.colbuf_touch != 0 {
+                                        strtex.colbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &strtex.colbuffer[..],
+                                            );
+                                        strtex.colbuf_touch -= 1;
+                                    }
+                                    if strtex.uvbuf_touch != 0 {
+                                        strtex.uvbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &strtex.uvbuffer[..],
+                                            );
+                                        strtex.uvbuf_touch -= 1;
+                                    }
+                                    if strtex.tranbuf_touch != 0 {
+                                        strtex.tranbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &strtex.tranbuffer[..],
+                                            );
+                                        strtex.tranbuf_touch -= 1;
+                                    }
+                                    if strtex.rotbuf_touch != 0 {
+                                        strtex.rotbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &strtex.rotbuffer[..],
+                                            );
+                                        strtex.rotbuf_touch -= 1;
+                                    }
+                                    if strtex.scalebuf_touch != 0 {
+                                        strtex.scalebuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &strtex.scalebuffer[..],
+                                            );
+                                        strtex.scalebuf_touch -= 1;
+                                    }
+                                    let count = strtex.posbuffer.len();
+                                    strtex.indices[self.current_frame].ensure_capacity(
+                                        &self.device,
+                                        &self.adapter,
+                                        count,
+                                    );
+                                    let buffers: ArrayVec<[_; 6]> = [
+                                        (strtex.posbuf[self.current_frame].buffer(), 0),
+                                        (strtex.uvbuf[self.current_frame].buffer(), 0),
+                                        (strtex.tranbuf[self.current_frame].buffer(), 0),
+                                        (strtex.rotbuf[self.current_frame].buffer(), 0),
+                                        (strtex.scalebuf[self.current_frame].buffer(), 0),
+                                        (strtex.colbuf[self.current_frame].buffer(), 0),
+                                    ]
+                                    .into();
                                     enc.push_graphics_constants(
                                         &strtex.pipeline_layout,
                                         pso::ShaderStageFlags::VERTEX,
@@ -948,15 +1017,13 @@ impl VxDraw {
                                         Some(&*strtex.descriptor_set),
                                         &[],
                                     );
-                                    let buffers: ArrayVec<[_; 1]> =
-                                        [(&*strtex.vertex_buffer, 0)].into();
                                     enc.bind_vertex_buffers(0, buffers);
                                     enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                        buffer: &strtex.vertex_buffer_indices,
+                                        buffer: strtex.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U16,
                                     });
-                                    enc.draw_indexed(0..strtex.count * 6, 0, 0..1);
+                                    enc.draw_indexed(0..strtex.posbuffer.len() as u32 * 6, 0, 0..1);
                                 }
                             }
                             DrawType::DynamicTexture { id } => {
