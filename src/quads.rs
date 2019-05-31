@@ -240,8 +240,8 @@ impl Quad {
     }
 
     /// Set the rotation. Rotation is counter-clockwise
-    pub fn rotation(mut self, rot: f32) -> Self {
-        self.rotation = rot;
+    pub fn rotation<T: Copy + Into<Rad<f32>>>(mut self, angle: T) -> Self {
+        self.rotation = angle.into().0;
         self
     }
 
@@ -860,8 +860,8 @@ impl<'a> Quads<'a> {
     /// Set the rotation of a quad
     ///
     /// The rotation is about the model space origin.
-    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
-        let angle = deg.into().0;
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, angle: T) {
+        let angle = angle.into().0;
         self.vx.quads[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
         self.vx.quads[handle.0].rotbuffer[handle.1].copy_from_slice(&[angle, angle, angle, angle]);
     }

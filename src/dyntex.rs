@@ -173,8 +173,8 @@ impl Sprite {
     }
 
     /// Set the rotation. Rotation is counter-clockwise
-    pub fn rotation(mut self, rot: f32) -> Self {
-        self.rotation = rot;
+    pub fn rotation<T: Copy + Into<Rad<f32>>>(mut self, angle: T) -> Self {
+        self.rotation = angle.into().0;
         self
     }
 
@@ -1022,8 +1022,8 @@ impl<'a> Dyntex<'a> {
     /// Set the rotation of a sprite
     ///
     /// Positive rotation goes counter-clockwise. The value of the rotation is in radians.
-    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, rotation: T) {
-        let angle = rotation.into().0;
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, angle: T) {
+        let angle = angle.into().0;
         self.vx.dyntexs[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
         self.vx.dyntexs[handle.0].rotbuffer[handle.1]
             .copy_from_slice(&[angle, angle, angle, angle]);
@@ -1088,10 +1088,10 @@ impl<'a> Dyntex<'a> {
     /// Rotate a sprite
     ///
     /// Rotation does not mutate the model-space of a sprite.
-    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
+    pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, angle: T) {
         self.vx.dyntexs[handle.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for rot in &mut self.vx.dyntexs[handle.0].rotbuffer[handle.1] {
-            *rot += deg.into().0;
+            *rot += angle.into().0;
         }
     }
 
@@ -1110,7 +1110,7 @@ impl<'a> Dyntex<'a> {
     /// Translate all sprites that depend on a given
     ///
     /// Convenience method that translates all sprites associated with the given .
-    pub fn sprite_translate_all(&mut self, layer: &Layer, dxdy: (f32, f32)) {
+    pub fn translate_all(&mut self, layer: &Layer, dxdy: (f32, f32)) {
         let count = self.vx.dyntexs[layer.0].posbuffer.len();
         for idx in 0..count {
             self.translate(&Handle(layer.0, idx), dxdy);
@@ -1120,12 +1120,14 @@ impl<'a> Dyntex<'a> {
     /// Rotate all sprites that depend on a given
     ///
     /// Convenience method that rotates all sprites associated with the given .
-    pub fn sprite_rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, layer: &Layer, deg: T) {
         let count = self.vx.dyntexs[layer.0].posbuffer.len();
         for idx in 0..count {
             self.rotate(&Handle(layer.0, idx), deg);
         }
     }
+
+    // ---
 
     /// Set the UV values of multiple sprites
     pub fn set_uvs<'b>(
@@ -1376,7 +1378,7 @@ mod tests {
                 ..base
             },
         );
-        dyntex.sprite_translate_all(&tex, (0.25, 0.35));
+        dyntex.translate_all(&tex, (0.25, 0.35));
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1434,7 +1436,7 @@ mod tests {
                 ..base
             },
         );
-        dyntex.sprite_rotate_all(&tex, Deg(90.0));
+        dyntex.rotate_all(&tex, Deg(90.0));
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);

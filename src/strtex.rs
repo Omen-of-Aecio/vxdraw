@@ -212,8 +212,8 @@ impl Sprite {
     }
 
     /// Set the rotation. Rotation is counter-clockwise
-    pub fn rotation(mut self, rot: f32) -> Self {
-        self.rotation = rot;
+    pub fn rotation<T: Copy + Into<Rad<f32>>>(mut self, angle: T) -> Self {
+        self.rotation = angle.into().0;
         self
     }
 

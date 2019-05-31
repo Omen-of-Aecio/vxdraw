@@ -1331,7 +1331,7 @@ impl VxDraw {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cgmath::{Deg, Vector3};
+    use cgmath::{Deg, Rad, Vector3};
     use logger::{Generic, GenericLogger, Logger};
     use test::Bencher;
 
@@ -1470,8 +1470,9 @@ mod tests {
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new());
         vx.strtex()
-            .add(&tex2, strtex::Sprite::default().rotation(0.5));
-        vx.dyntex().add(&tex3, dyntex::Sprite::new().rotation(1.0));
+            .add(&tex2, strtex::Sprite::default().rotation(Rad(0.5)));
+        vx.dyntex()
+            .add(&tex3, dyntex::Sprite::new().rotation(Rad(1.0)));
         vx.strtex().add(&tex4, strtex::Sprite::new().scale(0.5));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1493,7 +1494,8 @@ mod tests {
         vx.strtex().set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new().scale(0.5));
-        vx.strtex().add(&tex2, strtex::Sprite::new().rotation(0.5));
+        vx.strtex()
+            .add(&tex2, strtex::Sprite::new().rotation(Rad(0.5)));
 
         vx.swap_layers(&tex1, &tex2);
         let img = vx.draw_frame_copy_framebuffer(&prspect);

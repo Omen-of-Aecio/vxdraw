@@ -1,6 +1,6 @@
 //! Various utilities and helpers for vxdraw
 use crate::data::VxDraw;
-use cgmath::Matrix4;
+use cgmath::{Matrix4, Rad};
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -831,7 +831,7 @@ pub(crate) fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::deb
         );
         let scale = rng.gen_range(0.03f32, 0.1f32);
         let tri = if rand_rotat {
-            tri.rotation(rng.gen_range(-PI, PI))
+            tri.rotation(Rad(rng.gen_range(-PI, PI)))
         } else {
             tri
         };
