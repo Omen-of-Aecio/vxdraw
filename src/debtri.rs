@@ -160,10 +160,10 @@ impl<'a> Debtri<'a> {
         debug_assert![self.vx.debtris.holes.len() <= self.vx.debtris.triangles_count];
 
         debug_assert![self.vx.debtris.posbuffer.len() == self.vx.debtris.triangles_count];
-        debug_assert![self.vx.debtris.colbuffer.len() == self.vx.debtris.triangles_count * 12];
-        debug_assert![self.vx.debtris.tranbuffer.len() == self.vx.debtris.triangles_count * 6];
-        debug_assert![self.vx.debtris.rotbuffer.len() == self.vx.debtris.triangles_count * 3];
-        debug_assert![self.vx.debtris.scalebuffer.len() == self.vx.debtris.triangles_count * 3];
+        debug_assert![self.vx.debtris.colbuffer.len() == self.vx.debtris.triangles_count];
+        debug_assert![self.vx.debtris.tranbuffer.len() == self.vx.debtris.triangles_count];
+        debug_assert![self.vx.debtris.rotbuffer.len() == self.vx.debtris.triangles_count];
+        debug_assert![self.vx.debtris.scalebuffer.len() == self.vx.debtris.triangles_count];
 
         let imgcnt = self.vx.swapconfig.image_count as usize;
         debug_assert![self.vx.debtris.posbuf.len() == imgcnt];
@@ -216,18 +216,10 @@ impl<'a> Debtri<'a> {
         let debtris = &mut self.vx.debtris;
 
         debtris.posbuffer.swap(left.0, right.0);
-        for i in 0..12 {
-            debtris.colbuffer.swap(left.0 * 12 + i, right.0 * 12 + i);
-        }
-        for i in 0..6 {
-            debtris.tranbuffer.swap(left.0 * 6 + i, right.0 * 6 + i);
-        }
-        for i in 0..3 {
-            debtris.rotbuffer.swap(left.0 * 3 + i, right.0 * 3 + i);
-        }
-        for i in 0..3 {
-            debtris.scalebuffer.swap(left.0 * 3 + i, right.0 * 3 + i);
-        }
+        debtris.colbuffer.swap(left.0, right.0);
+        debtris.tranbuffer.swap(left.0, right.0);
+        debtris.rotbuffer.swap(left.0, right.0);
+        debtris.scalebuffer.swap(left.0, right.0);
 
         debtris.posbuf_touch = self.vx.swapconfig.image_count;
         debtris.colbuf_touch = self.vx.swapconfig.image_count;
@@ -250,30 +242,48 @@ impl<'a> Debtri<'a> {
         let debtris = &mut self.vx.debtris;
 
         let handle = if let Some(hole) = debtris.holes.pop() {
-            for (idx, origin) in triangle.origin.iter().enumerate() {
-                debtris.posbuffer[hole][idx * 2] = origin.0;
-                debtris.posbuffer[hole][idx * 2 + 1] = origin.1;
-            }
+            debtris.posbuffer[hole].copy_from_slice(&[
+                triangle.origin[0].0,
+                triangle.origin[0].1,
+                triangle.origin[1].0,
+                triangle.origin[1].1,
+                triangle.origin[2].0,
+                triangle.origin[2].1,
+            ]);
 
-            for (idx, col) in triangle.colors_rgba.iter().enumerate() {
-                debtris.colbuffer[hole * 12 + idx * 4] = col.0;
-                debtris.colbuffer[hole * 12 + idx * 4 + 1] = col.1;
-                debtris.colbuffer[hole * 12 + idx * 4 + 2] = col.2;
-                debtris.colbuffer[hole * 12 + idx * 4 + 3] = col.3;
-            }
+            debtris.colbuffer[hole].copy_from_slice(&[
+                triangle.colors_rgba[0].0,
+                triangle.colors_rgba[0].1,
+                triangle.colors_rgba[0].2,
+                triangle.colors_rgba[0].3,
+                triangle.colors_rgba[1].0,
+                triangle.colors_rgba[1].1,
+                triangle.colors_rgba[1].2,
+                triangle.colors_rgba[1].3,
+                triangle.colors_rgba[2].0,
+                triangle.colors_rgba[2].1,
+                triangle.colors_rgba[2].2,
+                triangle.colors_rgba[2].3,
+            ]);
 
-            for idx in 0..3 {
-                debtris.tranbuffer[hole * 6 + idx * 2] = triangle.translation.0;
-                debtris.tranbuffer[hole * 6 + idx * 2 + 1] = triangle.translation.1;
-            }
-
-            for idx in 0..3 {
-                debtris.rotbuffer[hole * 3 + idx] = triangle.rotation;
-            }
-
-            for idx in 0..3 {
-                debtris.scalebuffer[hole * 3 + idx] = triangle.scale;
-            }
+            debtris.tranbuffer[hole].copy_from_slice(&[
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+            ]);
+            debtris.rotbuffer[hole].copy_from_slice(&[
+                triangle.rotation,
+                triangle.rotation,
+                triangle.rotation,
+            ]);
+            debtris.scalebuffer[hole].copy_from_slice(&[
+                triangle.scale,
+                triangle.scale,
+                triangle.scale,
+            ]);
             Handle(hole)
         } else {
             debtris.posbuffer.push([
@@ -285,25 +295,34 @@ impl<'a> Debtri<'a> {
                 triangle.origin[2].1,
             ]);
 
-            for col in &triangle.colors_rgba {
-                debtris.colbuffer.push(col.0);
-                debtris.colbuffer.push(col.1);
-                debtris.colbuffer.push(col.2);
-                debtris.colbuffer.push(col.3);
-            }
-
-            for _ in 0..3 {
-                debtris.tranbuffer.push(triangle.translation.0);
-                debtris.tranbuffer.push(triangle.translation.1);
-            }
-
-            for _ in 0..3 {
-                debtris.rotbuffer.push(triangle.rotation);
-            }
-
-            for _ in 0..3 {
-                debtris.scalebuffer.push(triangle.scale);
-            }
+            debtris.colbuffer.push([
+                triangle.colors_rgba[0].0,
+                triangle.colors_rgba[0].1,
+                triangle.colors_rgba[0].2,
+                triangle.colors_rgba[0].3,
+                triangle.colors_rgba[1].0,
+                triangle.colors_rgba[1].1,
+                triangle.colors_rgba[1].2,
+                triangle.colors_rgba[1].3,
+                triangle.colors_rgba[2].0,
+                triangle.colors_rgba[2].1,
+                triangle.colors_rgba[2].2,
+                triangle.colors_rgba[2].3,
+            ]);
+            debtris.tranbuffer.push([
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+            ]);
+            debtris
+                .rotbuffer
+                .push([triangle.rotation, triangle.rotation, triangle.rotation]);
+            debtris
+                .scalebuffer
+                .push([triangle.scale, triangle.scale, triangle.scale]);
             debtris.triangles_count += 1;
             Handle(debtris.triangles_count - 1)
         };
@@ -330,22 +349,10 @@ impl<'a> Debtri<'a> {
         debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
 
         debtris.posbuffer.pop();
-
-        for _ in 0..12 {
-            debtris.colbuffer.pop();
-        }
-
-        for _ in 0..6 {
-            debtris.tranbuffer.pop();
-        }
-
-        for _ in 0..3 {
-            debtris.rotbuffer.pop();
-        }
-
-        for _ in 0..3 {
-            debtris.scalebuffer.pop();
-        }
+        debtris.colbuffer.pop();
+        debtris.tranbuffer.pop();
+        debtris.rotbuffer.pop();
+        debtris.scalebuffer.pop();
     }
 
     /// Remove the last N added debug triangle from rendering
@@ -358,10 +365,10 @@ impl<'a> Debtri<'a> {
 
         let debtris = &mut self.vx.debtris;
         debtris.posbuffer.drain(begin..end);
-        debtris.colbuffer.drain(begin * 12..end * 12);
-        debtris.tranbuffer.drain(begin * 6..end * 6);
-        debtris.rotbuffer.drain(begin * 3..end * 3);
-        debtris.scalebuffer.drain(begin * 3..end * 3);
+        debtris.colbuffer.drain(begin..end);
+        debtris.tranbuffer.drain(begin..end);
+        debtris.rotbuffer.drain(begin..end);
+        debtris.scalebuffer.drain(begin..end);
 
         debtris.triangles_count = begin;
     }
@@ -399,7 +406,7 @@ impl<'a> Debtri<'a> {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for vtx in 0..3 {
             for (coli, cmpnt) in rgba.iter().enumerate() {
-                self.vx.debtris.colbuffer[handle.0 * 12 + vtx * 4 + coli] = *cmpnt;
+                self.vx.debtris.colbuffer[handle.0][vtx * 4 + coli] = *cmpnt;
             }
         }
     }
@@ -411,10 +418,9 @@ impl<'a> Debtri<'a> {
     /// of the triangle with respect to the model-space's origin.
     pub fn set_translation(&mut self, handle: &Handle, pos: (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        let idx = handle.0 * 3 * 2;
         for vtx in 0..3 {
-            self.vx.debtris.tranbuffer[idx + vtx * 2] = pos.0;
-            self.vx.debtris.tranbuffer[idx + vtx * 2 + 1] = pos.1;
+            self.vx.debtris.tranbuffer[handle.0][vtx * 2] = pos.0;
+            self.vx.debtris.tranbuffer[handle.0][vtx * 2 + 1] = pos.1;
         }
     }
 
@@ -424,14 +430,13 @@ impl<'a> Debtri<'a> {
     pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         let angle = deg.into().0;
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        self.vx.debtris.rotbuffer[handle.0 * 3..(handle.0 + 1) * 3]
-            .copy_from_slice(&[angle, angle, angle]);
+        self.vx.debtris.rotbuffer[handle.0].copy_from_slice(&[angle, angle, angle]);
     }
 
     /// Set the scale of a debug triangle
     pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for sc in &mut self.vx.debtris.scalebuffer[handle.0 * 3..(handle.0 + 1) * 3] {
+        for sc in self.vx.debtris.scalebuffer[handle.0].iter_mut() {
             *sc = scale;
         }
     }
@@ -459,9 +464,7 @@ impl<'a> Debtri<'a> {
     /// values are converted to [i16] and then cast back to [u8] using clamping.
     pub fn color(&mut self, handle: &Handle, color: [i16; 4]) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        for cols in
-            self.vx.debtris.colbuffer[handle.0 * 12..(handle.0 + 1) * 12].chunks_exact_mut(4)
-        {
+        for cols in self.vx.debtris.colbuffer[handle.0].chunks_exact_mut(4) {
             for (idx, color) in color.iter().enumerate() {
                 let excol = i16::from(cols[idx]);
                 cols[idx] = (excol + *color).min(255).max(0) as u8;
@@ -475,8 +478,8 @@ impl<'a> Debtri<'a> {
     pub fn translate(&mut self, handle: &Handle, delta: (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
         for stride in 0..3 {
-            self.vx.debtris.tranbuffer[handle.0 * 6 + stride * 2] += delta.0;
-            self.vx.debtris.tranbuffer[handle.0 * 6 + stride * 2 + 1] += delta.1;
+            self.vx.debtris.tranbuffer[handle.0][stride * 2] += delta.0;
+            self.vx.debtris.tranbuffer[handle.0][stride * 2 + 1] += delta.1;
         }
     }
 
@@ -485,7 +488,7 @@ impl<'a> Debtri<'a> {
     /// Rotation does not mutate the model-space of a triangle.
     pub fn rotate<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, deg: T) {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        for rot in &mut self.vx.debtris.rotbuffer[handle.0 * 3..(handle.0 + 1) * 3] {
+        for rot in &mut self.vx.debtris.rotbuffer[handle.0] {
             *rot += deg.into().0;
         }
     }
@@ -495,7 +498,7 @@ impl<'a> Debtri<'a> {
     /// Scale does not mutate the model-space of a triangle.
     pub fn scale(&mut self, handle: &Handle, scale: f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for sc in &mut self.vx.debtris.scalebuffer[handle.0 * 3..(handle.0 + 1) * 3] {
+        for sc in self.vx.debtris.scalebuffer[handle.0].iter_mut() {
             *sc *= scale;
         }
     }
@@ -525,11 +528,13 @@ impl<'a> Debtri<'a> {
     /// See [Debtri::color] for more information.
     pub fn color_all(&mut self, mut delta: impl FnMut(usize) -> [i16; 4]) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, cols) in self.vx.debtris.colbuffer.chunks_exact_mut(4).enumerate() {
+        for (idx, cols) in self.vx.debtris.colbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for (idx, color) in delta.iter().enumerate() {
-                let excol = i16::from(cols[idx]);
-                cols[idx] = (excol + *color).min(255).max(0) as u8;
+                for idy in 0..3 {
+                    let excol = i16::from(cols[idx + idy * 4]);
+                    cols[idx + idy * 4] = (excol + *color).min(255).max(0) as u8;
+                }
             }
         }
     }
@@ -540,10 +545,12 @@ impl<'a> Debtri<'a> {
     /// See [Debtri::translate] for more information.
     pub fn translate_all(&mut self, mut delta: impl FnMut(usize) -> (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, trn) in self.vx.debtris.tranbuffer.chunks_exact_mut(2).enumerate() {
+        for (idx, trns) in self.vx.debtris.tranbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            trn[0] += delta.0;
-            trn[1] += delta.1;
+            for trn in trns.chunks_exact_mut(2) {
+                trn[0] += delta.0;
+                trn[1] += delta.1;
+            }
         }
     }
 
@@ -553,9 +560,11 @@ impl<'a> Debtri<'a> {
     /// See [Debtri::rotate] for more information.
     pub fn rotate_all<T: Copy + Into<Rad<f32>>>(&mut self, mut delta: impl FnMut(usize) -> T) {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, rot) in &mut self.vx.debtris.rotbuffer.iter_mut().enumerate() {
+        for (idx, rots) in &mut self.vx.debtris.rotbuffer.iter_mut().enumerate() {
             let delta = delta(idx).into().0;
-            *rot += delta;
+            for rot in rots.iter_mut() {
+                *rot += delta;
+            }
         }
     }
 
@@ -565,9 +574,11 @@ impl<'a> Debtri<'a> {
     /// See [Debtri::scale] for more information.
     pub fn scale_all(&mut self, mut delta: impl FnMut(usize) -> f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for (idx, sc) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {
+        for (idx, scs) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            *sc *= delta;
+            for sc in scs.iter_mut() {
+                *sc *= delta;
+            }
         }
     }
 
@@ -594,9 +605,11 @@ impl<'a> Debtri<'a> {
     /// Applies [Debtri::set_color] to all triangles.
     pub fn set_color_all(&mut self, mut delta: impl FnMut(usize) -> [u8; 4]) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, cols) in self.vx.debtris.colbuffer.chunks_exact_mut(4).enumerate() {
+        for (idx, cols) in self.vx.debtris.colbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            cols.copy_from_slice(&delta);
+            for col in cols.chunks_exact_mut(4) {
+                col.copy_from_slice(&delta);
+            }
         }
     }
 
@@ -605,10 +618,9 @@ impl<'a> Debtri<'a> {
     /// Applies [Debtri::set_translation] to all triangles.
     pub fn set_translation_all(&mut self, mut delta: impl FnMut(usize) -> (f32, f32)) {
         self.vx.debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, trn) in self.vx.debtris.tranbuffer.chunks_exact_mut(2).enumerate() {
+        for (idx, trns) in self.vx.debtris.tranbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            trn[0] = delta.0;
-            trn[1] = delta.1;
+            trns.copy_from_slice(&[delta.0, delta.1, delta.0, delta.1, delta.0, delta.1]);
         }
     }
 
@@ -620,9 +632,11 @@ impl<'a> Debtri<'a> {
         mut delta: impl FnMut(usize) -> T,
     ) {
         self.vx.debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, rot) in &mut self.vx.debtris.rotbuffer.iter_mut().enumerate() {
+        for (idx, rots) in &mut self.vx.debtris.rotbuffer.iter_mut().enumerate() {
             let delta = delta(idx).into().0;
-            *rot = delta;
+            for rot in rots.iter_mut() {
+                *rot = delta;
+            }
         }
     }
 
@@ -631,9 +645,11 @@ impl<'a> Debtri<'a> {
     /// Applies [Debtri::set_scale] to all triangles.
     pub fn set_scale_all(&mut self, mut delta: impl FnMut(usize) -> f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-        for (idx, sc) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {
+        for (idx, scs) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            *sc = delta;
+            for sc in scs.iter_mut() {
+                *sc = delta;
+            }
         }
     }
 }

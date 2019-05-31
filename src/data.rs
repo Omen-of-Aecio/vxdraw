@@ -119,11 +119,11 @@ pub(crate) struct DebugTriangleData {
     pub(crate) rotbuf_touch: u32,
     pub(crate) scalebuf_touch: u32,
 
-    pub(crate) posbuffer: Vec<[f32; 6]>, // 6 per triangle
-    pub(crate) colbuffer: Vec<u8>,       // 12 per triangle
-    pub(crate) tranbuffer: Vec<f32>,     // 6 per triangle
-    pub(crate) rotbuffer: Vec<f32>,      // 3 per triangle
-    pub(crate) scalebuffer: Vec<f32>,    // 3 per triangle
+    pub(crate) posbuffer: Vec<[f32; 6]>,   // 6 per triangle
+    pub(crate) colbuffer: Vec<[u8; 12]>,   // 12 per triangle
+    pub(crate) tranbuffer: Vec<[f32; 6]>,  // 6 per triangle
+    pub(crate) rotbuffer: Vec<[f32; 3]>,   // 3 per triangle
+    pub(crate) scalebuffer: Vec<[f32; 3]>, // 3 per triangle
 
     pub(crate) posbuf: Vec<super::utils::ResizBuf>,
     pub(crate) colbuf: Vec<super::utils::ResizBuf>,
