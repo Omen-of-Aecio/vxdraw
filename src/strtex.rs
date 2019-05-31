@@ -12,11 +12,9 @@
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{strtex::{LayerOptions, Sprite}, ShowWindow, VxDraw};
+//! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
 //!     let clock = vx.strtex().add_layer(LayerOptions::new().width(8));

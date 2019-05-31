@@ -10,11 +10,9 @@
 //! A showcase of basic operations on a quad.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{ShowWindow, VxDraw};
+//! use vxdraw::{void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
 //!     let quad = vx.quads().add_layer(vxdraw::quads::LayerOptions::default());
@@ -44,12 +42,10 @@
 //! This example moves 4 quads from the sides to "close" the scene as curtains would do.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{quads::*, ShowWindow, VxDraw};
+//! use vxdraw::{quads::*, void_logger, ShowWindow, VxDraw};
 //!
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
 //!     let layer = vx.quads().add_layer(LayerOptions::default());

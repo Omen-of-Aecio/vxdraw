@@ -4,11 +4,9 @@
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
 //! use cgmath::{prelude::*, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     vx.debtri().add(DebugTriangle::default());
 //!     vx.draw_frame(&Matrix4::identity());
@@ -22,11 +20,9 @@
 //! Here's a more interesting example:
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
 //!     let handle = vx.debtri().add(DebugTriangle::default());
@@ -55,7 +51,18 @@
 //! use vxdraw::*;
 //!
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let log = Box::new(|lvl, ctx, msg| {
+//!         struct Adapter {
+//!             pub msg: Box<Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
+//!         }
+//!         impl std::fmt::Display for Adapter {
+//!             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//!                 (self.msg)(f)
+//!             }
+//!         }
+//!         println!["{} @ {} => {}", lvl, ctx, Adapter { msg }];
+//!     });
+//!     let mut vx = VxDraw::new(log, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     vx.debtri().add(debtri::DebugTriangle::default());
 //!
@@ -1514,6 +1521,23 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "strtex_and_dyntex_respect_draw_order", img);
+    }
+
+    #[test]
+    fn log_adapter_works() {
+        let log = Box::new(|lvl, ctx, msg| {
+            struct LogAdapter {
+                pub msg: Box<Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>,
+            }
+            impl std::fmt::Display for LogAdapter {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    (self.msg)(f)
+                }
+            }
+            println!["{} @ {} => {}", lvl, ctx, LogAdapter { msg }];
+        });
+
+        VxDraw::new(log, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
     }
 
     #[test]

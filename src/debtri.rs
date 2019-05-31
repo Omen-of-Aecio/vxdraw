@@ -10,11 +10,9 @@
 //! See [debtri::Debtri] for all operations supported on debug triangles.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{ShowWindow, VxDraw};
+//! use vxdraw::{void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
-//!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!

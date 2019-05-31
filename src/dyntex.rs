@@ -7,12 +7,11 @@
 //! # Example - Drawing a sprite #
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use fast_logger::{Generic, GenericLogger, Logger};
-//! use vxdraw::{dyntex::{LayerOptions, Sprite}, utils::gen_perspective, ShowWindow, VxDraw};
+//! use vxdraw::{dyntex::{LayerOptions, Sprite}, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
 //! fn main() {
 //!     static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
-//!     let logger = Logger::<Generic>::spawn_void().to_compatibility();
-//!     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to spawn a window
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!
 //!
 //!     let mut dyntex = vx.dyntex();
 //!     let tex = dyntex.add_layer(TESTURE, LayerOptions::default());
