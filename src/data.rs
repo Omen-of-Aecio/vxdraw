@@ -1,5 +1,6 @@
 use cgmath::Matrix4;
 use core::ptr::read;
+use fast_logger::Logpass;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -9,7 +10,6 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, Adapter, Backend};
-use logger::Logpass;
 use std::mem::ManuallyDrop;
 
 /// A texture that host can read/write into directly, functions similarly to a sprite

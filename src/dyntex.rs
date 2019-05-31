@@ -7,7 +7,7 @@
 //! # Example - Drawing a sprite #
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{dyntex::{LayerOptions, Sprite}, utils::gen_perspective, ShowWindow, VxDraw};
 //! fn main() {
 //!     static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
@@ -1199,7 +1199,7 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, GenericLogger, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use std::f32::consts::PI;

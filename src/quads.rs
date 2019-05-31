@@ -10,7 +10,7 @@
 //! A showcase of basic operations on a quad.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
@@ -44,7 +44,7 @@
 //! This example moves 4 quads from the sides to "close" the scene as curtains would do.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{quads::*, ShowWindow, VxDraw};
 //!
 //! fn main() {
@@ -983,7 +983,7 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, GenericLogger, Logger};
 
     #[test]
     fn simple_quad() {

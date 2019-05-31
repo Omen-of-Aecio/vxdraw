@@ -10,7 +10,7 @@
 //! See [debtri::Debtri] for all operations supported on debug triangles.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
@@ -852,7 +852,7 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, GenericLogger, Logger};
     use test::{black_box, Bencher};
 
     // ---

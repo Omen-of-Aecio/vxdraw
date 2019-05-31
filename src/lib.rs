@@ -4,7 +4,7 @@
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
 //! use cgmath::{prelude::*, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
@@ -22,7 +22,7 @@
 //! Here's a more interesting example:
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
@@ -75,6 +75,7 @@ pub use crate::data::VxDraw;
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
+use fast_logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -93,7 +94,6 @@ use gfx_hal::{
     window::{Extent2D, PresentMode::*, Surface, Swapchain},
     Backend, Instance, SwapchainConfig,
 };
-use logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
 use std::fmt;
 use std::iter::once;
 use std::mem::ManuallyDrop;
@@ -1369,7 +1369,7 @@ impl VxDraw {
 mod tests {
     use super::*;
     use cgmath::{Deg, Rad, Vector3};
-    use logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, GenericLogger, Logger};
     use test::Bencher;
 
     // ---

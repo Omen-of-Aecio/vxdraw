@@ -22,7 +22,7 @@ rand = "0.6.1"
 rand_pcg = "0.1.2"
 winit = "0.19"
 
-logger = { path = "../logger" }
+fast-logger = { path = "../fast-logger" }
 
 [build-dependencies]
 glsl-to-spirv = "0.1.4"

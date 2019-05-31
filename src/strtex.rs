@@ -12,7 +12,7 @@
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use logger::{Generic, GenericLogger, Logger};
+//! use fast_logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{strtex::{LayerOptions, Sprite}, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
@@ -55,6 +55,7 @@ use arrayvec::ArrayVec;
 use cgmath::Matrix4;
 use cgmath::Rad;
 use core::ptr;
+use fast_logger::debug;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -70,7 +71,6 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use logger::debug;
 use std::iter::once;
 use std::mem::ManuallyDrop;
 
@@ -1693,7 +1693,7 @@ impl<'a> Strtex<'a> {
 mod tests {
     use super::*;
     use crate::*;
-    use logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, GenericLogger, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use test::{black_box, Bencher};
