@@ -15,7 +15,7 @@
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{strtex::{LayerOptions, Sprite}, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
@@ -1650,7 +1650,7 @@ mod tests {
 
     #[test]
     fn generate_map_randomly() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1665,7 +1665,7 @@ mod tests {
 
     #[test]
     fn with_origin_11() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1680,7 +1680,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_blocks() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1700,7 +1700,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_blocks_off_by_one() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1730,7 +1730,7 @@ mod tests {
 
     #[test]
     fn use_read() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
@@ -1745,7 +1745,7 @@ mod tests {
 
     #[test]
     fn use_write() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
@@ -1764,7 +1764,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_pixel_accesses() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
@@ -1785,7 +1785,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_block_accesses() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
@@ -1804,7 +1804,7 @@ mod tests {
 
     // #[test]
     // fn streaming_texture_respects_z_ordering() {
-    //     let logger = Logger::<Generic>::spawn_void().to_logpass();
+    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
     //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
     //     let prspect = gen_perspective(&vx);
 
@@ -1836,7 +1836,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel_while_drawing(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1854,7 +1854,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_500x500_area(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = vx
@@ -1871,7 +1871,7 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_500x500_area_using_iterator(b: &mut Bencher) {
         use itertools::Itertools;
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = vx
@@ -1891,7 +1891,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let id = vx

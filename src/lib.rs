@@ -6,7 +6,7 @@
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     vx.debtri().add(DebugTriangle::default());
@@ -23,7 +23,7 @@
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{debtri::DebugTriangle, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
@@ -69,6 +69,7 @@ use gfx_hal::{
     Backend, Instance, SwapchainConfig,
 };
 use logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
+use std::fmt;
 use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowBuilder};
@@ -175,7 +176,14 @@ impl VxDraw {
     /// Spawn a new VxDraw context with a window
     ///
     /// This method sets up all that is necessary for drawing.
-    pub fn new(mut log: Logpass, show: ShowWindow) -> VxDraw {
+    pub fn new(
+        log: Box<
+            FnMut(u8, &'static str, Box<Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>),
+        >,
+        show: ShowWindow,
+    ) -> VxDraw {
+        let mut log = Logpass::from_compatibility(log);
+
         #[cfg(feature = "gl")]
         static BACKEND: &str = "OpenGL";
         #[cfg(feature = "vulkan")]
@@ -1335,13 +1343,13 @@ mod tests {
 
     #[test]
     fn setup_and_teardown() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let _ = VxDraw::new(logger, ShowWindow::Headless1k);
     }
 
     #[test]
     fn setup_and_teardown_draw_clear() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
 
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
@@ -1353,7 +1361,7 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_draw_resize() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1376,7 +1384,7 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let (buffer, memory, _) =
@@ -1390,14 +1398,14 @@ mod tests {
 
     #[test]
     fn init_window_and_get_input() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         vx.collect_input();
     }
 
     #[test]
     fn tearing_test() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1419,12 +1427,12 @@ mod tests {
     #[test]
     fn correct_perspective() {
         {
-            let logger = Logger::<Generic>::spawn_void().to_logpass();
+            let logger = Logger::<Generic>::spawn_void().to_compatibility();
             let vx = VxDraw::new(logger, ShowWindow::Headless1k);
             assert_eq![Matrix4::identity(), gen_perspective(&vx)];
         }
         {
-            let logger = Logger::<Generic>::spawn_void().to_logpass();
+            let logger = Logger::<Generic>::spawn_void().to_compatibility();
             let vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
@@ -1432,7 +1440,7 @@ mod tests {
             ];
         }
         {
-            let logger = Logger::<Generic>::spawn_void().to_logpass();
+            let logger = Logger::<Generic>::spawn_void().to_compatibility();
             let vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
@@ -1443,7 +1451,7 @@ mod tests {
 
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1472,7 +1480,7 @@ mod tests {
 
     #[test]
     fn swap_layers() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1495,7 +1503,7 @@ mod tests {
     #[test]
     fn swap_layers_quad() {
         use quads::{LayerOptions, Quad};
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1516,7 +1524,7 @@ mod tests {
 
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 

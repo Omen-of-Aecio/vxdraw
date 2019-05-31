@@ -11,7 +11,7 @@
 //! use vxdraw::{dyntex::{LayerOptions, Sprite}, utils::gen_perspective, ShowWindow, VxDraw};
 //! fn main() {
 //!     static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
-//!     let logger = Logger::<Generic>::spawn_void().to_logpass();
+//!     let logger = Logger::<Generic>::spawn_void().to_compatibility();
 //!     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to spawn a window
 //!
 //!     let mut dyntex = vx.dyntex();
@@ -1215,7 +1215,7 @@ mod tests {
     // DISABLED because we might disable depth buffering altogether
     // #[test]
     // fn overlapping_dyntex_respect_z_order() {
-    //     let logger = Logger::<Generic>::spawn_void().to_logpass();
+    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
     //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
     //     let prspect = gen_perspective(&vx);
 
@@ -1251,7 +1251,7 @@ mod tests {
 
     #[test]
     fn simple_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
@@ -1265,7 +1265,7 @@ mod tests {
 
     #[test]
     fn simple_texture_adheres_to_view() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         vx.dyntex().add(&tex, Sprite::default());
@@ -1277,7 +1277,7 @@ mod tests {
 
     #[test]
     fn colored_simple_texture1() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         vx.dyntex().add(
@@ -1300,7 +1300,7 @@ mod tests {
 
     #[test]
     fn colored_simple_texture_set_position() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
@@ -1326,7 +1326,7 @@ mod tests {
 
     #[test]
     fn translated_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(
             LOGO,
@@ -1385,7 +1385,7 @@ mod tests {
 
     #[test]
     fn rotated_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let mut dyntex = vx.dyntex();
         let tex = dyntex.add_layer(
@@ -1443,7 +1443,7 @@ mod tests {
 
     #[test]
     fn many_sprites() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(
             LOGO,
@@ -1470,7 +1470,7 @@ mod tests {
 
     #[test]
     fn three_layer_scene() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1506,7 +1506,7 @@ mod tests {
 
     #[test]
     fn three_layer_scene_remove_middle() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1544,7 +1544,7 @@ mod tests {
 
     #[test]
     fn three_layer_scene_remove_middle_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1586,7 +1586,7 @@ mod tests {
 
     #[test]
     fn three_layer_scene_remove_last_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1629,7 +1629,7 @@ mod tests {
 
     #[test]
     fn fixed_perspective() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = Matrix4::from_scale(0.0) * gen_perspective(&vx);
 
@@ -1648,7 +1648,7 @@ mod tests {
 
     #[test]
     fn change_of_uv_works_for_first() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1676,7 +1676,7 @@ mod tests {
 
     #[test]
     fn set_single_sprite_rotation() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1692,7 +1692,7 @@ mod tests {
 
     #[test]
     fn raw_uvs() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1708,7 +1708,7 @@ mod tests {
 
     #[test]
     fn push_and_pop_often_avoid_allocating_out_of_bounds() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1726,7 +1726,7 @@ mod tests {
 
     #[bench]
     fn bench_many_sprites(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         for i in 0..1000 {
@@ -1748,7 +1748,7 @@ mod tests {
 
     #[bench]
     fn bench_many_particles(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
         let mut rng = random::new(0);
@@ -1776,7 +1776,7 @@ mod tests {
 
     #[bench]
     fn animated_fireballs_20x20_uvs2(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1833,7 +1833,7 @@ mod tests {
 
     #[bench]
     fn bench_push_and_pop_sprite(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let options = LayerOptions::default();
@@ -1848,7 +1848,7 @@ mod tests {
 
     #[bench]
     fn bench_push_and_pop_texture(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let mut dyntex = vx.dyntex();
 

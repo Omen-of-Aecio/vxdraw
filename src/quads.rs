@@ -13,7 +13,7 @@
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
@@ -47,7 +47,7 @@
 //! use vxdraw::{quads::*, ShowWindow, VxDraw};
 //!
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
@@ -985,7 +985,7 @@ mod tests {
 
     #[test]
     fn simple_quad() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1002,7 +1002,7 @@ mod tests {
 
     #[test]
     fn simple_quad_hide() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1018,7 +1018,7 @@ mod tests {
 
     #[test]
     fn simple_quad_translated() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1037,7 +1037,7 @@ mod tests {
 
     #[test]
     fn swapping_quad_draw_order() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1065,7 +1065,7 @@ mod tests {
 
     #[test]
     fn swapping_quad_draw_order_different_layers() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1094,7 +1094,7 @@ mod tests {
 
     #[test]
     fn three_quads_add_remove() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1120,7 +1120,7 @@ mod tests {
 
     #[test]
     fn three_quads_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1148,7 +1148,7 @@ mod tests {
 
     #[test]
     fn simple_quad_set_position() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1167,7 +1167,7 @@ mod tests {
 
     #[test]
     fn simple_quad_scale() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1186,7 +1186,7 @@ mod tests {
 
     #[test]
     fn simple_quad_deform() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1206,7 +1206,7 @@ mod tests {
 
     #[test]
     fn simple_quad_set_position_after_initial() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1230,7 +1230,7 @@ mod tests {
 
     #[test]
     fn simple_quad_rotated_with_exotic_origin() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1262,7 +1262,7 @@ mod tests {
     // DISABLED because we might disable depth buffering altogether
     // #[test]
     // fn overlapping_quads_respect_z_order() {
-    //     let logger = Logger::<Generic>::spawn_void().to_logpass();
+    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
     //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
     //     let prspect = gen_perspective(&vx);
     //     let mut quad = quads::Quad {
@@ -1318,7 +1318,7 @@ mod tests {
 
     #[test]
     fn quad_layering() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let mut quad = quads::Quad {

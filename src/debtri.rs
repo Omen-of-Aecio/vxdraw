@@ -13,7 +13,7 @@
 //! use logger::{Generic, GenericLogger, Logger};
 //! use vxdraw::{ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_logpass(),
+//!     let mut vx = VxDraw::new(Logger::<Generic>::spawn_test().to_compatibility(),
 //!         ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn simple_triangle() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -873,7 +873,7 @@ mod tests {
 
     #[test]
     fn simple_triangle_pop() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -891,7 +891,7 @@ mod tests {
 
     #[test]
     fn simple_triangle_color() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -910,7 +910,7 @@ mod tests {
 
     #[test]
     fn test_single_triangle_api() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -930,7 +930,7 @@ mod tests {
 
     #[test]
     fn remove_middle_triangle() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -956,7 +956,7 @@ mod tests {
 
     #[test]
     fn fill_remove_hole() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -984,7 +984,7 @@ mod tests {
 
     #[test]
     fn swap_triangles() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -1015,7 +1015,7 @@ mod tests {
 
     #[test]
     fn deform_triangles() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -1042,7 +1042,7 @@ mod tests {
 
     #[test]
     fn simple_triangle_change_color() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
@@ -1058,7 +1058,7 @@ mod tests {
 
     #[test]
     fn debug_triangle_corners_widescreen() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&vx);
 
@@ -1077,7 +1077,7 @@ mod tests {
 
     #[test]
     fn debug_triangle_corners_tallscreen() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
         let prspect = gen_perspective(&vx);
 
@@ -1096,7 +1096,7 @@ mod tests {
 
     #[test]
     fn circle_of_triangles() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&vx);
 
@@ -1114,7 +1114,7 @@ mod tests {
 
     #[test]
     fn triangle_in_corner() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1136,7 +1136,7 @@ mod tests {
 
     #[test]
     fn a_bunch_of_quads() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1164,7 +1164,7 @@ mod tests {
 
     #[test]
     fn windmills() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1176,7 +1176,7 @@ mod tests {
 
     #[test]
     fn windmills_mass_edits() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1194,7 +1194,7 @@ mod tests {
 
     #[test]
     fn windmills_hidden() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1213,7 +1213,7 @@ mod tests {
 
     #[test]
     fn windmills_ignore_perspective() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = gen_perspective(&vx);
 
@@ -1225,7 +1225,7 @@ mod tests {
 
     #[test]
     fn windmills_change_color() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1243,7 +1243,7 @@ mod tests {
 
     #[test]
     fn rotating_windmills_drawing_invariant() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1267,7 +1267,7 @@ mod tests {
 
     #[test]
     fn windmills_given_initial_rotation() {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1280,7 +1280,7 @@ mod tests {
 
     #[bench]
     fn bench_simple_triangle(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1294,7 +1294,7 @@ mod tests {
 
     #[bench]
     fn bench_still_windmills(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1307,7 +1307,7 @@ mod tests {
 
     #[bench]
     fn bench_windmills_set_color(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let handles = utils::add_windmills(&mut vx, false);
@@ -1320,7 +1320,7 @@ mod tests {
 
     #[bench]
     fn bench_rotating_windmills(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1334,7 +1334,7 @@ mod tests {
 
     #[bench]
     fn bench_rotating_windmills_set_color(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
@@ -1349,7 +1349,7 @@ mod tests {
 
     #[bench]
     fn bench_rotating_windmills_no_render(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_logpass();
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         utils::add_windmills(&mut vx, false);
