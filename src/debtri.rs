@@ -28,6 +28,7 @@
 //!     vx.draw_frame(&Matrix4::identity());
 //!
 //!     // Sleep here so the window does not instantly disappear
+//!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 use super::utils::*;
@@ -1319,7 +1320,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_rotating_windmills(b: &mut Bencher) {
+    fn bench_rotating_windmills_only(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);

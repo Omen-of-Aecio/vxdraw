@@ -35,6 +35,7 @@
 //!     vx.draw_frame(&Matrix4::identity());
 //!
 //!     // Sleep here so the window does not instantly disappear
+//!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -114,6 +115,7 @@
 //!         vx.draw_frame(&Matrix4::identity());
 //!
 //!         // Sleep so we can see some animation
+//!         #[cfg(not(test))]
 //!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
 //!     }
 //! }

@@ -1,5 +1,6 @@
 //! VxDraw: Simple vulkan renderer
 //!
+//! # Example - Hello Triangle #
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
 //! use cgmath::{prelude::*, Matrix4};
@@ -13,6 +14,7 @@
 //!     vx.draw_frame(&Matrix4::identity());
 //!
 //!     // Sleep here so the window does not instantly disappear
+//!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -37,8 +39,31 @@
 //!         vx.draw_frame(&Matrix4::identity());
 //!
 //!         // Wait 10 milliseconds
+//!         #[cfg(not(test))]
 //!         std::thread::sleep(std::time::Duration::new(0, 10_000_000));
 //!     }
+//! }
+//! ```
+//!
+//! # Logging #
+//! [VxDraw] is quite a lot of machinery, so it is useful for [VxDraw] to be able to log. To avoid
+//! hardcoding a logging dependency in the interface the library provides [Logger] which is a type
+//! that only depends on the standard library. You can build your own "logger bridge" using this.
+//!
+//! ```
+//! use cgmath::{prelude::*, Matrix4};
+//! use vxdraw::*;
+//!
+//! fn main() {
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!
+//!     vx.debtri().add(debtri::DebugTriangle::default());
+//!
+//!     vx.draw_frame(&Matrix4::identity());
+//!
+//!     // Sleep here so the window does not instantly disappear
+//!     #[cfg(not(test))]
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
 #![feature(test)]
@@ -84,6 +109,23 @@ pub mod utils;
 use utils::*;
 
 // ---
+
+/// Logger bridge type used when initializing [VxDraw]
+///
+/// The first argument is the log level, with 0 being severe and 255 being trace.
+/// The second argument is the context label.
+/// The final argument is an arbitrary formatter that outputs text, this text may be on multiple
+/// lines.
+///
+/// In most tests we use the logger from another crate because it has `spawn_test`, which is useful
+/// for quickly debugging a failing test.
+pub type Logger =
+    Box<FnMut(u8, &'static str, Box<Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>)>;
+
+/// Create an empty logger bridge
+pub fn void_logger() -> Logger {
+    Box::new(|_, _, _| {})
+}
 
 /// Information regarding window visibility
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -176,12 +218,7 @@ impl VxDraw {
     /// Spawn a new VxDraw context with a window
     ///
     /// This method sets up all that is necessary for drawing.
-    pub fn new(
-        log: Box<
-            FnMut(u8, &'static str, Box<Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>),
-        >,
-        show: ShowWindow,
-    ) -> VxDraw {
+    pub fn new(log: Logger, show: ShowWindow) -> VxDraw {
         let mut log = Logpass::from_compatibility(log);
 
         #[cfg(feature = "gl")]

@@ -44,6 +44,7 @@
 //!         vx.draw_frame(&Matrix4::identity());
 //!
 //!         // Sleep here so we can see some animation
+//!         #[cfg(not(test))]
 //!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
 //!     }
 //! }

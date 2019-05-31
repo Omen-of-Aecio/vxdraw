@@ -20,6 +20,7 @@
 //!
 //!     let prspect = gen_perspective(&vx);
 //!     vx.draw_frame(&prspect);
+//!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
