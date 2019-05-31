@@ -24,7 +24,7 @@
 //! }
 //! ```
 use super::utils::*;
-use crate::data::{DrawType, SingleTexture, VxDraw};
+use crate::data::{DrawType, DynamicTexture, VxDraw};
 use ::image as load_image;
 use cgmath::Matrix4;
 use cgmath::Rad;
@@ -752,7 +752,7 @@ impl<'a> Dyntex<'a> {
             .map(|_| super::utils::ResizBufIdx4::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
 
-        s.dyntexs.push(SingleTexture {
+        s.dyntexs.push(DynamicTexture {
             hidden: false,
             count: 0,
 
@@ -1144,7 +1144,7 @@ impl<'a> Dyntex<'a> {
 
 // ---
 
-fn destroy_texture(s: &mut VxDraw, mut dyntex: SingleTexture) {
+fn destroy_texture(s: &mut VxDraw, mut dyntex: DynamicTexture) {
     unsafe {
         for mut indices in dyntex.indices.drain(..) {
             indices.destroy(&s.device);

@@ -46,7 +46,7 @@ pub(crate) struct StreamingTexture {
 
 /// Contains a single texture and associated sprites
 #[derive(Debug)]
-pub(crate) struct SingleTexture {
+pub(crate) struct DynamicTexture {
     pub(crate) hidden: bool,
     pub(crate) count: u32,
     pub(crate) removed: Vec<usize>,
@@ -169,7 +169,7 @@ pub(crate) enum DrawType {
 pub struct VxDraw {
     pub(crate) draw_order: Vec<DrawType>,
     pub(crate) strtexs: Vec<StreamingTexture>,
-    pub(crate) dyntexs: Vec<SingleTexture>,
+    pub(crate) dyntexs: Vec<DynamicTexture>,
     pub(crate) quads: Vec<QuadsData>,
     pub(crate) debtris: DebugTriangleData,
     //
