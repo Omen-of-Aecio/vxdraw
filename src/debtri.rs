@@ -74,8 +74,10 @@ impl DebugTriangle {
     }
 
     /// Set the colors of this debug triangle
-    pub fn colors(mut self, col: [(u8, u8, u8, u8); 3]) -> Self {
-        self.colors_rgba = col;
+    pub fn colors(mut self, colors: [Color; 3]) -> Self {
+        for (idx, color) in colors.iter().enumerate() {
+            self.colors_rgba[idx] = color.into();
+        }
         self
     }
 

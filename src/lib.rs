@@ -123,6 +123,20 @@ pub enum Color {
     Rgba(u8, u8, u8, u8),
 }
 
+impl From<Color> for (u8, u8, u8, u8) {
+    fn from(color: Color) -> Self {
+        let Color::Rgba(r, g, b, a) = color;
+        (r, g, b, a)
+    }
+}
+
+impl From<&Color> for (u8, u8, u8, u8) {
+    fn from(color: &Color) -> Self {
+        let Color::Rgba(r, g, b, a) = color;
+        (*r, *g, *b, *a)
+    }
+}
+
 // ---
 
 /// Logger bridge type used when initializing [VxDraw]
@@ -1001,65 +1015,56 @@ impl VxDraw {
                         match draw_cmd {
                             DrawType::StreamingTexture { id } => {
                                 let strtex = &mut self.strtexs[*id];
-                                unsafe {
-                                    let foot = self.device.get_image_subresource_footprint(
-                                        &strtex.image_buffer[self.current_frame],
-                                        image::Subresource {
-                                            aspects: format::Aspects::COLOR,
-                                            level: 0,
-                                            layer: 0,
-                                        },
-                                    );
+                                let foot = self.device.get_image_subresource_footprint(
+                                    &strtex.image_buffer[self.current_frame],
+                                    image::Subresource {
+                                        aspects: format::Aspects::COLOR,
+                                        level: 0,
+                                        layer: 0,
+                                    },
+                                );
 
-                                    let mut target = self
-                                        .device
-                                        .acquire_mapping_writer(
-                                            &strtex.image_memory[self.current_frame],
-                                            0..strtex.image_requirements[self.current_frame].size,
-                                        )
-                                        .expect("unable to acquire mapping writer");
+                                let mut target = self
+                                    .device
+                                    .acquire_mapping_writer(
+                                        &strtex.image_memory[self.current_frame],
+                                        0..strtex.image_requirements[self.current_frame].size,
+                                    )
+                                    .expect("unable to acquire mapping writer");
 
-                                    for items in &strtex.circular_writes {
-                                        for item in items {
-                                            match item {
-                                                StreamingTextureWrite::Single((x, y), color) => {
-                                                    if !(*x < strtex.width && *y < strtex.height) {
-                                                        continue;
-                                                    }
-                                                    let access = foot.row_pitch * u64::from(*y)
-                                                        + u64::from(*x * 4);
-                                                    target[access as usize..(access + 4) as usize]
-                                                        .copy_from_slice(&[
+                                for items in &strtex.circular_writes {
+                                    for item in items {
+                                        match item {
+                                            StreamingTextureWrite::Single((x, y), color) => {
+                                                if !(*x < strtex.width && *y < strtex.height) {
+                                                    continue;
+                                                }
+                                                let access = foot.row_pitch * u64::from(*y)
+                                                    + u64::from(*x * 4);
+                                                target[access as usize..(access + 4) as usize]
+                                                    .copy_from_slice(&[
+                                                        color.0, color.1, color.2, color.3,
+                                                    ]);
+                                            }
+                                            StreamingTextureWrite::Block((x, y), (w, h), color) => {
+                                                for idx in *y..*y + h {
+                                                    let pitch = foot.row_pitch as usize;
+                                                    for x in *x..*x + w {
+                                                        let idx = (idx as usize * pitch
+                                                            + x as usize * 4)
+                                                            as usize;
+                                                        target[idx..idx + 4].copy_from_slice(&[
                                                             color.0, color.1, color.2, color.3,
                                                         ]);
-                                                }
-                                                StreamingTextureWrite::Block(
-                                                    (x, y),
-                                                    (w, h),
-                                                    color,
-                                                ) => {
-                                                    for idx in *y..*y + h {
-                                                        let pitch = foot.row_pitch as usize;
-                                                        for x in *x..*x + w {
-                                                            let idx = (idx as usize * pitch
-                                                                + x as usize * 4)
-                                                                as usize;
-                                                            target[idx..idx + 4].copy_from_slice(
-                                                                &[
-                                                                    color.0, color.1, color.2,
-                                                                    color.3,
-                                                                ],
-                                                            );
-                                                        }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                    self.device
-                                        .release_mapping_writer(target)
-                                        .expect("Unable to release mapping writer");
                                 }
+                                self.device
+                                    .release_mapping_writer(target)
+                                    .expect("Unable to release mapping writer");
                                 if !strtex.hidden {
                                     enc.bind_graphics_pipeline(&strtex.pipeline);
                                     if strtex.posbuf_touch != 0 {
