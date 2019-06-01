@@ -142,7 +142,7 @@ impl LayerOptions {
 impl Default for LayerOptions {
     fn default() -> Self {
         Self {
-            depth_test: true,
+            depth_test: false,
             fixed_perspective: None,
             width: 1,
             height: 1,
@@ -154,6 +154,7 @@ impl Default for LayerOptions {
 ///
 /// A sprite is a rectangular view into a texture. This structure sets up the necessary data to
 /// call [Strtex::add] with.
+#[derive(Clone, Copy)]
 pub struct Sprite {
     colors: [(u8, u8, u8, u8); 4],
     height: f32,
@@ -1297,6 +1298,185 @@ impl<'a> Strtex<'a> {
 
     // ---
 
+    /// Deform all strtexs by adding delta vertices
+    ///
+    /// Applies [Strtex::deform] to each dynamic texture.
+    pub fn deform_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [(f32, f32); 4]) {
+        self.vx.strtexs[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad[0] += delta[0].0;
+            quad[1] += delta[0].1;
+            quad[2] += delta[1].0;
+            quad[3] += delta[1].1;
+            quad[4] += delta[2].0;
+            quad[5] += delta[2].1;
+            quad[6] += delta[3].0;
+            quad[7] += delta[3].1;
+        }
+    }
+
+    /// Translate all strtexs by adding delta vertices
+    ///
+    /// Applies [Strtex::translate] to each dynamic texture.
+    pub fn translate_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> (f32, f32)) {
+        self.vx.strtexs[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].tranbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 2] += delta.0;
+                quad[idx * 2 + 1] += delta.1;
+            }
+        }
+    }
+
+    /// Rotate all strtexs by adding delta rotations
+    ///
+    /// Applies [Strtex::rotate] to each dynamic texture.
+    pub fn rotate_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
+        self.vx.strtexs[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            for idx in 0..4 {
+                quad[idx] += delta;
+            }
+        }
+    }
+
+    /// Scale all strtexs by multiplying a delta scale
+    ///
+    /// Applies [Strtex::scale] to each dynamic texture.
+    pub fn scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
+        self.vx.strtexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx] *= delta;
+            }
+        }
+    }
+
+    // ---
+
+    /// Deform all strtexs by setting delta vertices
+    ///
+    /// Applies [Strtex::set_deform] to each dynamic texture.
+    pub fn set_deform_all(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> [(f32, f32); 4],
+    ) {
+        self.vx.strtexs[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].posbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad[0] = delta[0].0;
+            quad[1] = delta[0].1;
+            quad[2] = delta[1].0;
+            quad[3] = delta[1].1;
+            quad[4] = delta[2].0;
+            quad[5] = delta[2].1;
+            quad[6] = delta[3].0;
+            quad[7] = delta[3].1;
+        }
+    }
+
+    /// Set the color on all strtexs
+    ///
+    /// Applies [Strtex::set_solid_color] to each dynamic texture.
+    pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> Color) {
+        self.vx.strtexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, dyntex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                let Color::Rgba(r, g, b, a) = delta;
+                dyntex[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
+            }
+        }
+    }
+
+    /// Set the color on all strtexs
+    ///
+    /// Applies [Strtex::set_color] to each dynamic texture.
+    pub fn set_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [Color; 4]) {
+        self.vx.strtexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, dyntex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for (idx, dt) in delta.iter().enumerate() {
+                let Color::Rgba(r, g, b, a) = dt;
+                dyntex[idx * 4..(idx + 1) * 4].copy_from_slice(&[*r, *g, *b, *a]);
+            }
+        }
+    }
+
+    /// Set the translation on all strtexs
+    ///
+    /// Applies [Strtex::set_translation] to each dynamic texture.
+    pub fn set_translation_all(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> (f32, f32),
+    ) {
+        self.vx.strtexs[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].tranbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx * 2] = delta.0;
+                quad[idx * 2 + 1] = delta.1;
+            }
+        }
+    }
+
+    /// Set the uv on all strtexs
+    ///
+    /// Applies [Strtex::set_uv] to each dynamic texture.
+    pub fn set_uv_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [(f32, f32); 2]) {
+        self.vx.strtexs[layer.0].uvbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].uvbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            let uv_begin = delta[0];
+            let uv_end = delta[1];
+            quad.copy_from_slice(&[
+                uv_begin.0, uv_begin.1, uv_begin.0, uv_end.1, uv_end.0, uv_end.1, uv_end.0,
+                uv_begin.1,
+            ]);
+        }
+    }
+
+    /// Set the rotation on all strtexs
+    ///
+    /// Applies [Strtex::set_rotation] to each dynamic texture.
+    pub fn set_rotation_all<T: Copy + Into<Rad<f32>>>(
+        &mut self,
+        layer: &Layer,
+        mut delta: impl FnMut(usize) -> T,
+    ) {
+        self.vx.strtexs[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].rotbuffer.iter_mut().enumerate() {
+            let delta = delta(idx).into().0;
+            for idx in 0..4 {
+                quad[idx] = delta;
+            }
+        }
+    }
+
+    /// Set the scale on all strtexs
+    ///
+    /// Applies [Strtex::set_scale] to each dynamic texture.
+    pub fn set_scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
+        self.vx.strtexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].scalebuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                quad[idx] = delta;
+            }
+        }
+    }
+    // ---
+
     /// Read pixels from arbitrary coordinates
     pub fn read(&mut self, id: &Layer, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
@@ -1713,6 +1893,7 @@ impl<'a> Strtex<'a> {
 mod tests {
     use super::*;
     use crate::*;
+    use cgmath::Deg;
     use fast_logger::{Generic, GenericLogger, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
@@ -1870,6 +2051,83 @@ mod tests {
 
             strtex.set_pixels_block(&id, start, wh, (0, 255, 0, 255));
         }
+    }
+
+    #[test]
+    fn strtex_mass_manip() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let layer = vx
+            .strtex()
+            .add_layer(LayerOptions::new().width(10).height(5));
+        vx.strtex().write(&layer, |color, pitch| {
+            color[5 + 0 * pitch].2 = 255;
+            color[5 + 0 * pitch].3 = 255;
+
+            color[5 + 1 * pitch].2 = 255;
+            color[5 + 1 * pitch].3 = 255;
+
+            color[4 + 1 * pitch].1 = 255;
+            color[4 + 1 * pitch].3 = 255;
+            color[6 + 1 * pitch].1 = 255;
+            color[6 + 1 * pitch].3 = 255;
+
+            color[0 + 4 * pitch].0 = 255;
+            color[0 + 4 * pitch].3 = 255;
+            color[9 + 4 * pitch].0 = 255;
+            color[9 + 4 * pitch].3 = 255;
+        });
+
+        use rand::Rng;
+        use rand_pcg::Pcg64Mcg as random;
+        let mut rng = random::new(0);
+
+        let quad = strtex::Sprite::new();
+
+        for _ in 0..1000 {
+            vx.strtex().add(&layer, quad);
+        }
+
+        for _ in 0..vx.buffer_count() {
+            vx.draw_frame(&prspect);
+        }
+
+        vx.strtex().set_translation_all(&layer, |idx| {
+            if idx < 500 {
+                (
+                    rng.gen_range(-1.0f32, 0.0f32),
+                    rng.gen_range(-1.0f32, 1.0f32),
+                )
+            } else {
+                (
+                    rng.gen_range(0.0f32, 1.0f32),
+                    rng.gen_range(-1.0f32, 1.0f32),
+                )
+            }
+        });
+
+        vx.strtex()
+            .set_scale_all(&layer, |idx| if idx < 500 { 0.1 } else { 0.2 });
+
+        vx.strtex().set_solid_color_all(&layer, |idx| {
+            if idx < 250 {
+                Color::Rgba(0, 255, 255, 128)
+            } else if idx < 500 {
+                Color::Rgba(0, 255, 0, 128)
+            } else if idx < 750 {
+                Color::Rgba(0, 0, 255, 128)
+            } else {
+                Color::Rgba(255, 255, 255, 128)
+            }
+        });
+
+        vx.strtex()
+            .set_rotation_all(&layer, |idx| if idx < 500 { Deg(0.0) } else { Deg(30.0) });
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "strtex_mass_manip", img);
     }
 
     // #[test]
