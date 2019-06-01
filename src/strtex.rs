@@ -47,7 +47,7 @@
 //!     }
 //! }
 //! ```
-use super::utils::*;
+use super::{utils::*, Color};
 use crate::data::{DrawType, StreamingTexture, VxDraw};
 use arrayvec::ArrayVec;
 use cgmath::Matrix4;
@@ -887,22 +887,30 @@ impl<'a> Strtex<'a> {
             self.set_color(
                 &handle,
                 [
-                    sprite.colors[0].0,
-                    sprite.colors[0].1,
-                    sprite.colors[0].2,
-                    sprite.colors[0].3,
-                    sprite.colors[1].0,
-                    sprite.colors[1].1,
-                    sprite.colors[1].2,
-                    sprite.colors[1].3,
-                    sprite.colors[2].0,
-                    sprite.colors[2].1,
-                    sprite.colors[2].2,
-                    sprite.colors[2].3,
-                    sprite.colors[3].0,
-                    sprite.colors[3].1,
-                    sprite.colors[3].2,
-                    sprite.colors[3].3,
+                    Color::Rgba(
+                        sprite.colors[0].0,
+                        sprite.colors[0].1,
+                        sprite.colors[0].2,
+                        sprite.colors[0].3,
+                    ),
+                    Color::Rgba(
+                        sprite.colors[1].0,
+                        sprite.colors[1].1,
+                        sprite.colors[1].2,
+                        sprite.colors[1].3,
+                    ),
+                    Color::Rgba(
+                        sprite.colors[2].0,
+                        sprite.colors[2].1,
+                        sprite.colors[2].2,
+                        sprite.colors[2].3,
+                    ),
+                    Color::Rgba(
+                        sprite.colors[3].0,
+                        sprite.colors[3].1,
+                        sprite.colors[3].2,
+                        sprite.colors[3].3,
+                    ),
                 ],
             );
             self.set_translation(&handle, (sprite.translation.0, sprite.translation.1));
@@ -1173,9 +1181,13 @@ impl<'a> Strtex<'a> {
     }
 
     /// Set a solid color each vertex of a sprite
-    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 16]) {
+    pub fn set_color(&mut self, handle: &Handle, rgba: [Color; 4]) {
         self.vx.strtexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
-        self.vx.strtexs[handle.0].colbuffer[handle.1].copy_from_slice(&rgba);
+        for (idx, dt) in rgba.iter().enumerate() {
+            let Color::Rgba(r, g, b, a) = dt;
+            self.vx.strtexs[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
+                .copy_from_slice(&[*r, *g, *b, *a]);
+        }
     }
 
     /// Set the position of a sprite
