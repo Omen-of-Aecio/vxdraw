@@ -1404,63 +1404,6 @@ mod tests {
         utils::assert_swapchain_eq(&mut vx, "simple_quad_rotated_with_exotic_origin", img);
     }
 
-    // DISABLED because we might disable depth buffering altogether
-    // #[test]
-    // fn overlapping_quads_respect_z_order() {
-    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
-    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-    //     let prspect = gen_perspective(&vx);
-    //     let mut quad = quads::Quad {
-    //         scale: 0.5,
-    //         ..quads::Quad::default()
-    //     };
-
-    //     for i in 0..4 {
-    //         quad.colors[i] = (0, 255, 0, 255);
-    //     }
-    //     quad.depth = 0.0;
-    //     quad.translation = (0.25, 0.25);
-
-    //     let layer = vx.quads().add_layer(LayerOptions {
-    //         depth_test: true,
-    //         ..LayerOptions::default()
-    //     });
-    //     vx.quads().add(&layer, quad);
-
-    //     for i in 0..4 {
-    //         quad.colors[i] = (255, 0, 0, 255);
-    //     }
-    //     quad.depth = 0.5;
-    //     quad.translation = (0.0, 0.0);
-    //     vx.quads().add(&layer, quad);
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
-
-    //     // ---
-
-    //     vx.quads().pop_n_quads(&layer, 2);
-
-    //     // ---
-
-    //     for i in 0..4 {
-    //         quad.colors[i] = (255, 0, 0, 255);
-    //     }
-    //     quad.depth = 0.5;
-    //     quad.translation = (0.0, 0.0);
-    //     vx.quads().add(&layer, quad);
-
-    //     for i in 0..4 {
-    //         quad.colors[i] = (0, 255, 0, 255);
-    //     }
-    //     quad.depth = 0.0;
-    //     quad.translation = (0.25, 0.25);
-    //     vx.quads().add(&layer, quad);
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "overlapping_quads_respect_z_order", img);
-    // }
-
     #[test]
     fn quad_layering() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();

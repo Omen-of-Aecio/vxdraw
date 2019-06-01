@@ -2130,36 +2130,6 @@ mod tests {
         utils::assert_swapchain_eq(&mut vx, "strtex_mass_manip", img);
     }
 
-    // #[test]
-    // fn streaming_texture_respects_z_ordering() {
-    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
-    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-    //     let prspect = gen_perspective(&vx);
-
-    //     let mut strtex = vx.strtex();
-    //     let strtex1 = strtex.add_layer(LayerOptions::new().width(10).height(10));
-    //     strtex.set_pixels_block(&strtex1, (0, 0), (9, 9), (255, 255, 0, 255));
-    //     strtex.add(&strtex1, strtex::Sprite::default());
-
-    //     let strtex2 = strtex.add_layer(LayerOptions::new().width(10).height(10));
-    //     strtex.set_pixels_block(&strtex2, (1, 1), (9, 9), (0, 255, 255, 255));
-    //     strtex.add(
-    //         &strtex2,
-    //         strtex::Sprite {
-    //             depth: 0.1,
-    //             ..strtex::Sprite::default()
-    //         },
-    //     );
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering", img);
-
-    //     vx.strtex().remove_layer(strtex1);
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "streaming_texture_z_ordering_removed", img);
-    // }
-
     // ---
 
     #[bench]

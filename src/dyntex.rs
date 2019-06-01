@@ -1384,43 +1384,6 @@ mod tests {
 
     // ---
 
-    // DISABLED because we might disable depth buffering altogether
-    // #[test]
-    // fn overlapping_dyntex_respect_z_order() {
-    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
-    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-    //     let prspect = gen_perspective(&vx);
-
-    //     let mut dyntex = vx.dyntex();
-
-    //     let tree = dyntex.add_layer(TREE, LayerOptions::default());
-    //     let logo = dyntex.add_layer(LOGO, LayerOptions::default());
-
-    //     let sprite = Sprite {
-    //         scale: 0.5,
-    //         ..Sprite::default()
-    //     };
-
-    //     vx.dyntex().add(
-    //         &tree,
-    //         Sprite {
-    //             depth: 0.5,
-    //             ..sprite
-    //         },
-    //     );
-    //     vx.dyntex().add(
-    //         &logo,
-    //         Sprite {
-    //             depth: 0.6,
-    //             translation: (0.25, 0.25),
-    //             ..sprite
-    //         },
-    //     );
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "overlapping_dyntex_respect_z_order", img);
-    // }
-
     #[test]
     fn simple_texture() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
