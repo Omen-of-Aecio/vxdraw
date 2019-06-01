@@ -1559,10 +1559,14 @@ impl<'a> Strtex<'a> {
     /// Read pixels from arbitrary coordinates
     pub fn read(&mut self, id: &Layer, mut map: impl FnMut(&[(u8, u8, u8, u8)], usize)) {
         let s = &mut *self.vx;
+        let frame_number = s
+            .current_frame
+            .checked_sub(1)
+            .map_or(s.swapconfig.image_count as usize - 1, |x| x);
         if let Some(ref strtex) = s.strtexs.get(id.0) {
             unsafe {
                 let subres = s.device.get_image_subresource_footprint(
-                    &strtex.image_buffer[s.current_frame],
+                    &strtex.image_buffer[frame_number],
                     gfx_hal::image::Subresource {
                         aspects: gfx_hal::format::Aspects::COLOR,
                         level: 0,
@@ -1573,8 +1577,8 @@ impl<'a> Strtex<'a> {
                 let target = s
                     .device
                     .acquire_mapping_reader::<(u8, u8, u8, u8)>(
-                        &strtex.image_memory[s.current_frame],
-                        0..strtex.image_requirements[s.current_frame].size,
+                        &strtex.image_memory[frame_number],
+                        0..strtex.image_requirements[frame_number].size,
                     )
                     .expect("unable to acquire mapping writer");
 
@@ -2067,18 +2071,23 @@ mod tests {
     }
 
     #[test]
-    fn use_read() {
-        // let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        // let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+    fn use_read_only_works_after_frame_drawn() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        // let mut strtex = vx.strtex();
-        // let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        // strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
-        // let mut green_value = 0;
-        // strtex.read(&id, |arr, pitch| {
-        //     green_value = arr[3 + 2 * pitch].1;
-        // });
-        // assert_eq![123, green_value];
+        let mut strtex = vx.strtex();
+        let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
+        strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
+        let mut green_value = 0;
+        strtex.read(&id, |arr, pitch| {
+            green_value = arr[3 + 2 * pitch].1;
+        });
+        assert_ne![123, green_value];
+        vx.draw_frame(&gen_perspective(&vx));
+        vx.strtex().read(&id, |arr, pitch| {
+            green_value = arr[3 + 2 * pitch].1;
+        });
+        assert_eq![123, green_value];
     }
 
     #[test]
