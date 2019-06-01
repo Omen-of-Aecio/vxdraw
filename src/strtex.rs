@@ -991,6 +991,37 @@ impl<'a> Strtex<'a> {
         Handle(layer.0, handle)
     }
 
+    /// Removes a single sprite, making it not be drawn
+    pub fn remove(&mut self, handle: Handle) {
+        self.vx.strtexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        if let Some(strtex) = self.vx.strtexs.get_mut(handle.0) {
+            strtex.removed.push(handle.1);
+            strtex.scalebuffer[handle.1].copy_from_slice(&[0.0, 0.0, 0.0, 0.0]);
+        }
+    }
+
+    /// Removes all sprites, clearing the layer
+    pub fn remove_all(&mut self, layer: &Layer) {
+        self.vx.strtexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        if let Some(strtex) = self.vx.strtexs.get_mut(layer.0) {
+            strtex.removed.clear();
+            strtex.colbuffer.clear();
+            strtex.posbuffer.clear();
+            strtex.rotbuffer.clear();
+            strtex.scalebuffer.clear();
+            strtex.tranbuffer.clear();
+            strtex.uvbuffer.clear();
+        }
+    }
+
+    pub fn layer_count(&mut self) -> usize {
+        self.vx.strtexs.len()
+    }
+
+    pub fn sprite_count(&mut self, layer: &Layer) -> usize {
+        self.vx.strtexs[layer.0].posbuffer.len()
+    }
+
     // ---
 
     /// Set the color of a specific pixel
@@ -2200,6 +2231,22 @@ mod tests {
         b.iter(|| {
             vx.strtex()
                 .set_pixel(&id, black_box(1), black_box(2), (255, 0, 0, 255));
+        });
+    }
+
+    #[bench]
+    fn adding_sprites(b: &mut Bencher) {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let layer = vx
+            .strtex()
+            .add_layer(LayerOptions::new().width(1000).height(1000));
+
+        b.iter(|| {
+            vx.strtex().add(&layer, strtex::Sprite::new());
+            if vx.strtex().sprite_count(&layer) > 1000 {
+                vx.strtex().remove_all(&layer);
+            }
         });
     }
 }
