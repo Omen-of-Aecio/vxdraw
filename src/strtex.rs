@@ -1180,6 +1180,16 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Set a solid color of a sprite
+    pub fn set_solid_color(&mut self, handle: &Handle, rgba: Color) {
+        self.vx.strtexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
+        let Color::Rgba(r, g, b, a) = rgba;
+        for idx in 0..4 {
+            self.vx.strtexs[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
+                .copy_from_slice(&[r, g, b, a]);
+        }
+    }
+
     /// Set a solid color each vertex of a sprite
     pub fn set_color(&mut self, handle: &Handle, rgba: [Color; 4]) {
         self.vx.strtexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
