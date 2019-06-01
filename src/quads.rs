@@ -289,16 +289,6 @@ impl<'a> Quads<'a> {
         Self { vx }
     }
 
-    /// Disable drawing of the quads at this layer
-    pub fn hide(&mut self, layer: &Layer) {
-        self.vx.quads[layer.0].hidden = true;
-    }
-
-    /// Enable drawing of the quads at this layer
-    pub fn show(&mut self, layer: &Layer) {
-        self.vx.quads[layer.0].hidden = false;
-    }
-
     /// Compare quad draw order
     ///
     /// All quads are drawn in a specific order. This method figures out which order is used
@@ -655,6 +645,16 @@ impl<'a> Quads<'a> {
             id: s.quads.len() - 1,
         });
         Layer(s.quads.len() - 1)
+    }
+
+    /// Disable drawing of the quads at this layer
+    pub fn hide(&mut self, layer: &Layer) {
+        self.vx.quads[layer.0].hidden = true;
+    }
+
+    /// Enable drawing of the quads at this layer
+    pub fn show(&mut self, layer: &Layer) {
+        self.vx.quads[layer.0].hidden = false;
     }
 
     /// Add a new quad to the given layer

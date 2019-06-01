@@ -189,16 +189,6 @@ impl<'a> Debtri<'a> {
         debtris
     }
 
-    /// Enable drawing of the debug triangles
-    pub fn show(&mut self) {
-        self.vx.debtris.hidden = false;
-    }
-
-    /// Disable drawing of the debug triangles
-    pub fn hide(&mut self) {
-        self.vx.debtris.hidden = true;
-    }
-
     /// Compare triangle draw order
     ///
     /// All triangles are drawn in a specific order. This method figures out which order is used
@@ -228,6 +218,16 @@ impl<'a> Debtri<'a> {
         debtris.scalebuf_touch = self.vx.swapconfig.image_count;
 
         std::mem::swap(&mut left.0, &mut right.0);
+    }
+
+    /// Enable drawing of the debug triangles
+    pub fn show(&mut self) {
+        self.vx.debtris.hidden = false;
+    }
+
+    /// Disable drawing of the debug triangles
+    pub fn hide(&mut self) {
+        self.vx.debtris.hidden = true;
     }
 
     // ---

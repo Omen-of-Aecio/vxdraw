@@ -226,16 +226,6 @@ impl<'a> Dyntex<'a> {
         Self { vx: s }
     }
 
-    /// Disable drawing of the sprites at this layer
-    pub fn hide(&mut self, layer: &Layer) {
-        self.vx.dyntexs[layer.0].hidden = true;
-    }
-
-    /// Enable drawing of the sprites at this layer
-    pub fn show(&mut self, layer: &Layer) {
-        self.vx.dyntexs[layer.0].hidden = false;
-    }
-
     /// Add a texture (layer) to the system
     ///
     /// You use a texture to create sprites. Sprites are rectangular views into a texture. Sprites
@@ -798,6 +788,16 @@ impl<'a> Dyntex<'a> {
             id: s.dyntexs.len() - 1,
         });
         Layer(s.dyntexs.len() - 1)
+    }
+
+    /// Disable drawing of the sprites at this layer
+    pub fn hide(&mut self, layer: &Layer) {
+        self.vx.dyntexs[layer.0].hidden = true;
+    }
+
+    /// Enable drawing of the sprites at this layer
+    pub fn show(&mut self, layer: &Layer) {
+        self.vx.dyntexs[layer.0].hidden = false;
     }
 
     /// Remove a layer

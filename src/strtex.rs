@@ -266,16 +266,6 @@ impl<'a> Strtex<'a> {
         Self { vx }
     }
 
-    /// Disable drawing of the sprites at this layer
-    pub fn hide(&mut self, layer: &Layer) {
-        self.vx.strtexs[layer.0].hidden = true;
-    }
-
-    /// Enable drawing of the sprites at this layer
-    pub fn show(&mut self, layer: &Layer) {
-        self.vx.strtexs[layer.0].hidden = false;
-    }
-
     /// Add a streaming texture layer to the system
     ///
     /// You use a texture to create sprites. Sprites are rectangular views into a texture. Sprites
@@ -782,6 +772,16 @@ impl<'a> Strtex<'a> {
             id: s.strtexs.len() - 1,
         });
         Layer(s.strtexs.len() - 1)
+    }
+
+    /// Disable drawing of the sprites at this layer
+    pub fn hide(&mut self, layer: &Layer) {
+        self.vx.strtexs[layer.0].hidden = true;
+    }
+
+    /// Enable drawing of the sprites at this layer
+    pub fn show(&mut self, layer: &Layer) {
+        self.vx.strtexs[layer.0].hidden = false;
     }
 
     /// Remove a texture (layer)
