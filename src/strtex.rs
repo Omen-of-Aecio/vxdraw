@@ -1014,12 +1014,14 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Get the current number of layers of strtex
     pub fn layer_count(&mut self) -> usize {
         self.vx.strtexs.len()
     }
 
+    /// Get the current number of sprites
     pub fn sprite_count(&mut self, layer: &Layer) -> usize {
-        self.vx.strtexs[layer.0].posbuffer.len()
+        self.vx.strtexs[layer.0].posbuffer.len() - self.vx.strtexs[layer.0].removed.len()
     }
 
     // ---
