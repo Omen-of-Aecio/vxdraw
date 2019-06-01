@@ -12,6 +12,12 @@ use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, Adapter, Backend};
 use std::mem::ManuallyDrop;
 
+#[derive(Clone, Debug)]
+pub(crate) enum StreamingTextureWrite {
+    Single((u32, u32), (u8, u8, u8, u8)),
+    Block((u32, u32), (u32, u32), (u8, u8, u8, u8)),
+}
+
 /// A texture that host can read/write into directly, functions similarly to a sprite
 #[derive(Debug)]
 pub(crate) struct StreamingTexture {
@@ -45,19 +51,21 @@ pub(crate) struct StreamingTexture {
 
     pub(crate) indices: Vec<super::utils::ResizBufIdx4>,
 
-    pub(crate) image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
-    pub(crate) image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
-    pub(crate) image_requirements: gfx_hal::memory::Requirements,
+    pub(crate) image_buffer: Vec<<back::Backend as Backend>::Image>,
+    pub(crate) image_memory: Vec<<back::Backend as Backend>::Memory>,
+    pub(crate) image_requirements: Vec<gfx_hal::memory::Requirements>,
+    pub(crate) image_view: Vec<<back::Backend as Backend>::ImageView>,
+    pub(crate) descriptor_sets: Vec<<back::Backend as Backend>::DescriptorSet>,
+
+    pub(crate) circular_writes: Vec<Vec<StreamingTextureWrite>>,
 
     pub(crate) sampler: ManuallyDrop<<back::Backend as Backend>::Sampler>,
-    pub(crate) image_view: ManuallyDrop<<back::Backend as Backend>::ImageView>,
     pub(crate) descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
 
     pub(crate) descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
     pub(crate) pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
     pub(crate) pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
     pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
-    pub(crate) descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
 }
 
 /// Contains a single texture and associated sprites
@@ -423,10 +431,12 @@ impl Drop for VxDraw {
                 for mut scalebuf in strtex.scalebuf.drain(..) {
                     scalebuf.destroy(&self.device);
                 }
-                self.device
-                    .destroy_image(ManuallyDrop::into_inner(read(&strtex.image_buffer)));
-                self.device
-                    .free_memory(ManuallyDrop::into_inner(read(&strtex.image_memory)));
+                for image_buffer in strtex.image_buffer.drain(..) {
+                    self.device.destroy_image(image_buffer);
+                }
+                for image_memory in strtex.image_memory.drain(..) {
+                    self.device.free_memory(image_memory);
+                }
                 self.device
                     .destroy_render_pass(ManuallyDrop::into_inner(read(&strtex.render_pass)));
                 self.device
@@ -444,8 +454,9 @@ impl Drop for VxDraw {
                     )));
                 self.device
                     .destroy_sampler(ManuallyDrop::into_inner(read(&strtex.sampler)));
-                self.device
-                    .destroy_image_view(ManuallyDrop::into_inner(read(&strtex.image_view)));
+                for image_view in strtex.image_view.drain(..) {
+                    self.device.destroy_image_view(image_view);
+                }
             }
         }
     }

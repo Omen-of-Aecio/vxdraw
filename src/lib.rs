@@ -77,8 +77,8 @@
 #![deny(missing_docs)]
 extern crate test;
 
-use crate::data::DrawType;
 pub use crate::data::VxDraw;
+use crate::data::{DrawType, StreamingTextureWrite};
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -959,7 +959,7 @@ impl VxDraw {
                                 image::Access::SHADER_READ,
                                 image::Layout::ShaderReadOnlyOptimal,
                             ),
-                        target: &*strtex.image_buffer,
+                        target: &strtex.image_buffer[self.current_frame],
                         families: None,
                         range: image::SubresourceRange {
                             aspects: format::Aspects::COLOR,
@@ -976,7 +976,7 @@ impl VxDraw {
                     let image_barrier = memory::Barrier::Image {
                         states: (image::Access::empty(), image::Layout::ShaderReadOnlyOptimal)
                             ..(image::Access::empty(), image::Layout::General),
-                        target: &*strtex.image_buffer,
+                        target: &strtex.image_buffer[self.current_frame],
                         families: None,
                         range: image::SubresourceRange {
                             aspects: format::Aspects::COLOR,
@@ -1001,6 +1001,65 @@ impl VxDraw {
                         match draw_cmd {
                             DrawType::StreamingTexture { id } => {
                                 let strtex = &mut self.strtexs[*id];
+                                unsafe {
+                                    let foot = self.device.get_image_subresource_footprint(
+                                        &strtex.image_buffer[self.current_frame],
+                                        image::Subresource {
+                                            aspects: format::Aspects::COLOR,
+                                            level: 0,
+                                            layer: 0,
+                                        },
+                                    );
+
+                                    let mut target = self
+                                        .device
+                                        .acquire_mapping_writer(
+                                            &strtex.image_memory[self.current_frame],
+                                            0..strtex.image_requirements[self.current_frame].size,
+                                        )
+                                        .expect("unable to acquire mapping writer");
+
+                                    for items in &strtex.circular_writes {
+                                        for item in items {
+                                            match item {
+                                                StreamingTextureWrite::Single((x, y), color) => {
+                                                    if !(*x < strtex.width && *y < strtex.height) {
+                                                        continue;
+                                                    }
+                                                    let access = foot.row_pitch * u64::from(*y)
+                                                        + u64::from(*x * 4);
+                                                    target[access as usize..(access + 4) as usize]
+                                                        .copy_from_slice(&[
+                                                            color.0, color.1, color.2, color.3,
+                                                        ]);
+                                                }
+                                                StreamingTextureWrite::Block(
+                                                    (x, y),
+                                                    (w, h),
+                                                    color,
+                                                ) => {
+                                                    for idx in *y..*y + h {
+                                                        let pitch = foot.row_pitch as usize;
+                                                        for x in *x..*x + w {
+                                                            let idx = (idx as usize * pitch
+                                                                + x as usize * 4)
+                                                                as usize;
+                                                            target[idx..idx + 4].copy_from_slice(
+                                                                &[
+                                                                    color.0, color.1, color.2,
+                                                                    color.3,
+                                                                ],
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    self.device
+                                        .release_mapping_writer(target)
+                                        .expect("Unable to release mapping writer");
+                                }
                                 if !strtex.hidden {
                                     enc.bind_graphics_pipeline(&strtex.pipeline);
                                     if strtex.posbuf_touch != 0 {
@@ -1081,7 +1140,7 @@ impl VxDraw {
                                     enc.bind_graphics_descriptor_sets(
                                         &strtex.pipeline_layout,
                                         0,
-                                        Some(&*strtex.descriptor_set),
+                                        Some(&strtex.descriptor_sets[self.current_frame]),
                                         &[],
                                     );
                                     enc.bind_vertex_buffers(0, buffers);
@@ -1381,6 +1440,9 @@ impl VxDraw {
             postproc_res
         };
         self.current_frame = (self.current_frame + 1) % self.max_frames_in_flight;
+        for strtex in self.strtexs.iter_mut() {
+            strtex.circular_writes[self.current_frame].clear();
+        }
         postproc_res
     }
 }
