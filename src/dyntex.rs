@@ -1210,11 +1210,11 @@ impl<'a> Dyntex<'a> {
     /// Applies [Dyntex::set_solid_color] to each dynamic texture.
     pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> Color) {
         self.vx.dyntexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, quad) in self.vx.dyntexs[layer.0].colbuffer.iter_mut().enumerate() {
+        for (idx, dyntex) in self.vx.dyntexs[layer.0].colbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for idx in 0..4 {
                 let Color::Rgba(r, g, b, a) = delta;
-                quad[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
+                dyntex[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
             }
         }
     }

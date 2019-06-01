@@ -10,7 +10,7 @@
 //! A showcase of basic operations on a quad.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
@@ -21,7 +21,7 @@
 //!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::default());
 //!
 //!     // Turn the quad white
-//!     vx.quads().set_solid_color(&handle, [255, 255, 255, 255]);
+//!     vx.quads().set_solid_color(&handle, Color::Rgba(255, 255, 255, 255));
 //!
 //!     // Rotate the quad 45 degrees (counter clockwise)
 //!     vx.quads().set_rotation(&handle, Deg(45.0));
@@ -119,7 +119,7 @@
 //!
 //! Note how the above has two overlapping, faded quads. This can be an undesired animation
 //! artifact. The intent of the example is to show how to work with the library.
-use super::utils::*;
+use super::{utils::*, Color};
 use crate::data::{DrawType, QuadsData, VxDraw};
 use cgmath::Rad;
 use core::ptr::read;
@@ -690,22 +690,30 @@ impl<'a> Quads<'a> {
             self.set_color(
                 &handle,
                 [
-                    quad.colors[0].0,
-                    quad.colors[0].1,
-                    quad.colors[0].2,
-                    quad.colors[0].3,
-                    quad.colors[1].0,
-                    quad.colors[1].1,
-                    quad.colors[1].2,
-                    quad.colors[1].3,
-                    quad.colors[2].0,
-                    quad.colors[2].1,
-                    quad.colors[2].2,
-                    quad.colors[2].3,
-                    quad.colors[3].0,
-                    quad.colors[3].1,
-                    quad.colors[3].2,
-                    quad.colors[3].3,
+                    Color::Rgba(
+                        quad.colors[0].0,
+                        quad.colors[0].1,
+                        quad.colors[0].2,
+                        quad.colors[0].3,
+                    ),
+                    Color::Rgba(
+                        quad.colors[1].0,
+                        quad.colors[1].1,
+                        quad.colors[1].2,
+                        quad.colors[1].3,
+                    ),
+                    Color::Rgba(
+                        quad.colors[2].0,
+                        quad.colors[2].1,
+                        quad.colors[2].2,
+                        quad.colors[2].3,
+                    ),
+                    Color::Rgba(
+                        quad.colors[3].0,
+                        quad.colors[3].1,
+                        quad.colors[3].2,
+                        quad.colors[3].3,
+                    ),
                 ],
             );
             self.set_translation(&handle, (quad.translation.0, quad.translation.1));
@@ -828,18 +836,23 @@ impl<'a> Quads<'a> {
     }
 
     /// Set a solid color of a quad
-    pub fn set_solid_color(&mut self, handle: &Handle, rgba: [u8; 4]) {
+    pub fn set_solid_color(&mut self, handle: &Handle, rgba: Color) {
         self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
+            let Color::Rgba(r, g, b, a) = rgba;
             self.vx.quads[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
-                .copy_from_slice(&rgba);
+                .copy_from_slice(&[r, g, b, a]);
         }
     }
 
     /// Set a solid color each vertex of a quad
-    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 16]) {
+    pub fn set_color(&mut self, handle: &Handle, rgba: [Color; 4]) {
         self.vx.quads[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
-        self.vx.quads[handle.0].colbuffer[handle.1].copy_from_slice(&rgba);
+        for (idx, dt) in rgba.iter().enumerate() {
+            let Color::Rgba(r, g, b, a) = dt;
+            self.vx.quads[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
+                .copy_from_slice(&[*r, *g, *b, *a]);
+        }
     }
 
     /// Set the position (translation) of a quad triangle
@@ -1012,12 +1025,13 @@ impl<'a> Quads<'a> {
     /// Set the color on all quads
     ///
     /// Applies [Quads::set_solid_color] to each quad.
-    pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [u8; 4]) {
+    pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> Color) {
         self.vx.quads[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.quads[layer.0].colbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for idx in 0..4 {
-                quad[idx * 4..(idx + 1) * 4].copy_from_slice(&delta);
+                let Color::Rgba(r, g, b, a) = delta;
+                quad[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
             }
         }
     }
@@ -1179,9 +1193,9 @@ mod tests {
 
         let mut quads = vx.quads();
         quads.translate(&q1, (-0.5, -0.5));
-        quads.set_solid_color(&q1, [255, 0, 255, 255]);
+        quads.set_solid_color(&q1, Color::Rgba(255, 0, 255, 255));
         quads.translate(&q2, (0.5, 0.5));
-        quads.set_solid_color(&q2, [0, 255, 255, 128]);
+        quads.set_solid_color(&q2, Color::Rgba(0, 255, 255, 128));
 
         assert_eq![std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2)];
         quads.swap_draw_order(&mut q1, &mut q2);
@@ -1208,9 +1222,9 @@ mod tests {
 
         let mut quads = vx.quads();
         quads.translate(&q1, (-0.5, -0.5));
-        quads.set_solid_color(&q1, [255, 0, 255, 255]);
+        quads.set_solid_color(&q1, Color::Rgba(255, 0, 255, 255));
         quads.translate(&q2, (0.5, 0.5));
-        quads.set_solid_color(&q2, [0, 255, 255, 128]);
+        quads.set_solid_color(&q2, Color::Rgba(0, 255, 255, 128));
 
         assert_eq![std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2)];
         quads.swap_draw_order(&mut q1, &mut q2);
@@ -1240,7 +1254,7 @@ mod tests {
         let q3 = quads.add(&layer, quad);
 
         quads.translate(&q2, (0.25, 0.4));
-        quads.set_solid_color(&q2, [0, 0, 255, 128]);
+        quads.set_solid_color(&q2, Color::Rgba(0, 0, 255, 128));
 
         quads.translate(&q3, (0.35, 0.8));
         quads.remove(q2);
@@ -1268,7 +1282,7 @@ mod tests {
         let q3 = quads.add(&layer3, quad);
 
         quads.translate(&q2, (0.25, 0.4));
-        quads.set_solid_color(&q2, [0, 0, 255, 128]);
+        quads.set_solid_color(&q2, Color::Rgba(0, 0, 255, 128));
 
         quads.translate(&q3, (0.35, 0.8));
         quads.remove_layer(layer2);
@@ -1519,13 +1533,13 @@ mod tests {
 
         vx.quads().set_solid_color_all(&layer, |idx| {
             if idx < 250 {
-                [0, 255, 255, 128]
+                Color::Rgba(0, 255, 255, 128)
             } else if idx < 500 {
-                [0, 255, 0, 128]
+                Color::Rgba(0, 255, 0, 128)
             } else if idx < 750 {
-                [0, 0, 255, 128]
+                Color::Rgba(0, 0, 255, 128)
             } else {
-                [255, 255, 255, 128]
+                Color::Rgba(255, 255, 255, 128)
             }
         });
 

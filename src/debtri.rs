@@ -10,14 +10,14 @@
 //! See [debtri::Debtri] for all operations supported on debug triangles.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!
 //!     // Turn the triangle white
-//!     vx.debtri().set_color(&tri, [255, 255, 255, 255]);
+//!     vx.debtri().set_color(&tri, Color::Rgba(255, 255, 255, 255));
 //!
 //!     // Rotate the triangle 90 degrees (counter clockwise)
 //!     vx.debtri().set_rotation(&tri, Deg(90.0));
@@ -29,7 +29,7 @@
 //!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
-use super::utils::*;
+use super::{utils::*, Color};
 use crate::data::{DebugTriangleData, VxDraw};
 use cgmath::Rad;
 #[cfg(feature = "dx12")]
@@ -402,12 +402,14 @@ impl<'a> Debtri<'a> {
     }
 
     /// Set a solid color of a debug triangle
-    pub fn set_color(&mut self, handle: &Handle, rgba: [u8; 4]) {
+    pub fn set_color(&mut self, handle: &Handle, rgba: Color) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for vtx in 0..3 {
-            for (coli, cmpnt) in rgba.iter().enumerate() {
-                self.vx.debtris.colbuffer[handle.0][vtx * 4 + coli] = *cmpnt;
-            }
+            let Color::Rgba(r, g, b, a) = rgba;
+            self.vx.debtris.colbuffer[handle.0][vtx * 4 + 0] = r;
+            self.vx.debtris.colbuffer[handle.0][vtx * 4 + 1] = g;
+            self.vx.debtris.colbuffer[handle.0][vtx * 4 + 2] = b;
+            self.vx.debtris.colbuffer[handle.0][vtx * 4 + 3] = a;
         }
     }
 
@@ -603,12 +605,12 @@ impl<'a> Debtri<'a> {
     /// Set the color on all debug triangles
     ///
     /// Applies [Debtri::set_color] to all triangles.
-    pub fn set_color_all(&mut self, mut delta: impl FnMut(usize) -> [u8; 4]) {
+    pub fn set_color_all(&mut self, mut delta: impl FnMut(usize) -> Color) {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for (idx, cols) in self.vx.debtris.colbuffer.iter_mut().enumerate() {
-            let delta = delta(idx);
+            let Color::Rgba(r, g, b, a) = delta(idx);
             for col in cols.chunks_exact_mut(4) {
-                col.copy_from_slice(&delta);
+                col.copy_from_slice(&[r, g, b, a]);
             }
         }
     }
@@ -1025,14 +1027,14 @@ mod tests {
 
         let left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
-        debtri.set_color(&left, [255, 0, 0, 255]);
+        debtri.set_color(&left, Color::Rgba(255, 0, 0, 255));
 
         let middle = debtri.add(tri);
-        debtri.set_color(&middle, [0, 255, 0, 255]);
+        debtri.set_color(&middle, Color::Rgba(0, 255, 0, 255));
 
         let right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
-        debtri.set_color(&right, [0, 0, 255, 255]);
+        debtri.set_color(&right, Color::Rgba(0, 0, 255, 255));
 
         debtri.remove(middle);
 
@@ -1051,14 +1053,14 @@ mod tests {
 
         let left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
-        debtri.set_color(&left, [255, 0, 0, 255]);
+        debtri.set_color(&left, Color::Rgba(255, 0, 0, 255));
 
         let middle = debtri.add(tri);
-        debtri.set_color(&middle, [0, 255, 0, 255]);
+        debtri.set_color(&middle, Color::Rgba(0, 255, 0, 255));
 
         let right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
-        debtri.set_color(&right, [0, 0, 255, 255]);
+        debtri.set_color(&right, Color::Rgba(0, 0, 255, 255));
 
         debtri.remove(middle);
         let middle = debtri.add(tri);
@@ -1079,11 +1081,11 @@ mod tests {
 
         let mut left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
-        debtri.set_color(&left, [255, 0, 0, 255]);
+        debtri.set_color(&left, Color::Rgba(255, 0, 0, 255));
 
         let mut right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
-        debtri.set_color(&right, [0, 0, 255, 255]);
+        debtri.set_color(&right, Color::Rgba(0, 0, 255, 255));
 
         assert_eq![
             std::cmp::Ordering::Less,
@@ -1110,11 +1112,11 @@ mod tests {
 
         let left = debtri.add(tri);
         debtri.set_translation(&left, (-0.25, 0.0));
-        debtri.set_color(&left, [255, 0, 0, 255]);
+        debtri.set_color(&left, Color::Rgba(255, 0, 0, 255));
 
         let right = debtri.add(tri);
         debtri.set_translation(&right, (0.25, 0.0));
-        debtri.set_color(&right, [0, 0, 255, 255]);
+        debtri.set_color(&right, Color::Rgba(0, 0, 255, 255));
 
         debtri.set_deform(&right, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]);
         debtri.deform(&left, [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]);
@@ -1135,7 +1137,7 @@ mod tests {
 
         let mut debtri = vx.debtri();
         let idx = debtri.add(tri);
-        debtri.set_color(&idx, [255, 0, 255, 255]);
+        debtri.set_color(&idx, Color::Rgba(255, 0, 255, 255));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -1317,10 +1319,10 @@ mod tests {
 
         let handles = utils::add_windmills(&mut vx, false);
         let mut debtri = vx.debtri();
-        debtri.set_color(&handles[0], [255, 0, 0, 255]);
-        debtri.set_color(&handles[249], [0, 255, 0, 255]);
-        debtri.set_color(&handles[499], [0, 0, 255, 255]);
-        debtri.set_color(&handles[999], [0, 0, 0, 255]);
+        debtri.set_color(&handles[0], Color::Rgba(255, 0, 0, 255));
+        debtri.set_color(&handles[249], Color::Rgba(0, 255, 0, 255));
+        debtri.set_color(&handles[499], Color::Rgba(0, 0, 255, 255));
+        debtri.set_color(&handles[999], Color::Rgba(0, 0, 0, 255));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
@@ -1400,7 +1402,7 @@ mod tests {
 
         b.iter(|| {
             vx.debtri()
-                .set_color(&handles[0], black_box([0, 0, 0, 255]));
+                .set_color(&handles[0], black_box(Color::Rgba(0, 0, 0, 255)));
         });
     }
 
@@ -1428,7 +1430,7 @@ mod tests {
 
         b.iter(|| {
             vx.debtri().rotate_all(|_| Deg(1.0f32));
-            vx.debtri().set_color(&last, [255, 0, 255, 255]);
+            vx.debtri().set_color(&last, Color::Rgba(255, 0, 255, 255));
             vx.draw_frame(&prspect);
         });
     }
