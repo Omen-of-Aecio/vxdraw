@@ -117,6 +117,14 @@ use utils::*;
 
 // ---
 
+/// A description of a color
+pub enum Color {
+    /// Red green blue alpha color, represented by u8
+    Rgba(u8, u8, u8, u8),
+}
+
+// ---
+
 /// Logger bridge type used when initializing [VxDraw]
 ///
 /// The first argument is the log level, with 0 being severe and 255 being trace.
