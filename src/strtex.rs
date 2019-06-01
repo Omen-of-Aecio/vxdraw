@@ -384,7 +384,7 @@ impl<'a> Strtex<'a> {
                 specialization: pso::Specialization::default(),
             },
         );
-        debug![s.log, "vxdraw", "After making"];
+
         let shader_entries = pso::GraphicsShaderSet {
             vertex: vs_entry,
             hull: None,
