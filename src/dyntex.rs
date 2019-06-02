@@ -260,8 +260,11 @@ impl<'a> Dyntex<'a> {
         }
         .unwrap();
         let image_mem_reqs = unsafe { device.get_buffer_requirements(&image_upload_buffer) };
-        let memory_type_id =
-            find_memory_type_id(&s.adapter, image_mem_reqs, Properties::CPU_VISIBLE);
+        let memory_type_id = find_memory_type_id(
+            &s.adapter,
+            image_mem_reqs,
+            Properties::CPU_VISIBLE | Properties::COHERENT,
+        );
         let image_upload_memory =
             unsafe { device.allocate_memory(memory_type_id, image_mem_reqs.size) }.unwrap();
         unsafe { device.bind_buffer_memory(&image_upload_memory, 0, &mut image_upload_buffer) }

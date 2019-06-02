@@ -63,7 +63,11 @@ pub(crate) fn make_vertex_buffer_with_data(
             .create_buffer(buffer_size, gfx_hal::buffer::Usage::VERTEX)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
-        let memory_type_id = find_memory_type_id(&s.adapter, requirements, Properties::CPU_VISIBLE);
+        let memory_type_id = find_memory_type_id(
+            &s.adapter,
+            requirements,
+            Properties::CPU_VISIBLE | Properties::COHERENT,
+        );
         let memory = device
             .allocate_memory(memory_type_id, requirements.size)
             .expect("Couldn't allocate vertex buffer memory");
@@ -108,8 +112,11 @@ impl ResizBufIdx4 {
                 .create_buffer(buffer_size, gfx_hal::buffer::Usage::INDEX)
                 .expect("cant make bf");
             let requirements = device.get_buffer_requirements(&buffer);
-            let memory_type_id =
-                find_memory_type_id(adapter, requirements, Properties::CPU_VISIBLE);
+            let memory_type_id = find_memory_type_id(
+                adapter,
+                requirements,
+                Properties::CPU_VISIBLE | Properties::COHERENT,
+            );
             let memory = device
                 .allocate_memory(memory_type_id, requirements.size)
                 .expect("Couldn't allocate vertex buffer memory");
@@ -208,8 +215,11 @@ impl ResizBuf {
                 .create_buffer(buffer_size, gfx_hal::buffer::Usage::VERTEX)
                 .expect("cant make bf");
             let requirements = device.get_buffer_requirements(&buffer);
-            let memory_type_id =
-                find_memory_type_id(adapter, requirements, Properties::CPU_VISIBLE);
+            let memory_type_id = find_memory_type_id(
+                adapter,
+                requirements,
+                Properties::CPU_VISIBLE | Properties::COHERENT,
+            );
             let memory = device
                 .allocate_memory(memory_type_id, requirements.size)
                 .expect("Couldn't allocate vertex buffer memory");
@@ -301,7 +311,11 @@ pub(crate) fn make_transfer_buffer_of_size(
             .create_buffer(size, gfx_hal::buffer::Usage::TRANSFER_DST)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
-        let memory_type_id = find_memory_type_id(&s.adapter, requirements, Properties::CPU_VISIBLE);
+        let memory_type_id = find_memory_type_id(
+            &s.adapter,
+            requirements,
+            Properties::CPU_VISIBLE | Properties::COHERENT,
+        );
         let memory = device
             .allocate_memory(memory_type_id, requirements.size)
             .expect("Couldn't allocate vertex buffer memory");
@@ -335,7 +349,11 @@ pub(crate) fn make_transfer_img_of_size(
             )
             .expect("cant make bf");
         let requirements = device.get_image_requirements(&buffer);
-        let memory_type_id = find_memory_type_id(&s.adapter, requirements, Properties::CPU_VISIBLE);
+        let memory_type_id = find_memory_type_id(
+            &s.adapter,
+            requirements,
+            Properties::CPU_VISIBLE | Properties::COHERENT,
+        );
         let memory = device
             .allocate_memory(memory_type_id, requirements.size)
             .expect("Couldn't allocate image buffer memory");
@@ -363,7 +381,11 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
             .create_buffer(buffer_size, gfx_hal::buffer::Usage::TRANSFER_SRC)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
-        let memory_type_id = find_memory_type_id(&s.adapter, requirements, Properties::CPU_VISIBLE);
+        let memory_type_id = find_memory_type_id(
+            &s.adapter,
+            requirements,
+            Properties::CPU_VISIBLE | Properties::COHERENT,
+        );
         let memory = device
             .allocate_memory(memory_type_id, requirements.size)
             .expect("Couldn't allocate vertex buffer memory");
