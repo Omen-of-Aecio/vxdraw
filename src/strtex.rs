@@ -2226,4 +2226,17 @@ mod tests {
             }
         });
     }
+
+    #[bench]
+    fn generate_perlin_noise(b: &mut Bencher) {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let layer = vx
+            .strtex()
+            .add_layer(LayerOptions::new().width(1000).height(1000));
+
+        b.iter(|| {
+            vx.strtex().fill_with_perlin_noise(&layer, [1.0, 2.0, 3.0]);
+        });
+    }
 }
