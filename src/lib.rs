@@ -1591,8 +1591,10 @@ mod tests {
             .strtex()
             .add_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
 
-        vx.strtex().set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
-        vx.strtex().set_pixel(&tex4, 0, 0, (255, 255, 255, 255));
+        vx.strtex()
+            .set_pixel(&tex2, 0, 0, Color::Rgba(255, 0, 255, 255));
+        vx.strtex()
+            .set_pixel(&tex4, 0, 0, Color::Rgba(255, 255, 255, 255));
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new());
         vx.strtex()
@@ -1634,7 +1636,8 @@ mod tests {
             .strtex()
             .add_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
 
-        vx.strtex().set_pixel(&tex2, 0, 0, (255, 0, 255, 255));
+        vx.strtex()
+            .set_pixel(&tex2, 0, 0, Color::Rgba(255, 0, 255, 255));
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new().scale(0.5));
         vx.strtex()

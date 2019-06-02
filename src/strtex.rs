@@ -12,7 +12,7 @@
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
@@ -31,9 +31,9 @@
 //!                 idx,
 //!                 0,
 //!                 if bit_set {
-//!                     (0, (256 / 8 * idx) as u8, 0, 255)
+//!                     Color::Rgba(0, (256 / 8 * idx) as u8, 0, 255)
 //!                 } else {
-//!                     (0, 0, 0, 128)
+//!                     Color::Rgba(0, 0, 0, 128)
 //!                 }
 //!             );
 //!         }
@@ -1056,63 +1056,19 @@ impl<'a> Strtex<'a> {
     // ---
 
     /// Set the color of a specific pixel
-    pub fn set_pixel(&mut self, id: &Layer, w: u32, h: u32, color: (u8, u8, u8, u8)) {
+    pub fn set_pixel(&mut self, id: &Layer, w: u32, h: u32, color: Color) {
         let s = &mut *self.vx;
         if let Some(strtex) = s.strtexs.get_mut(id.0) {
             if !(w < strtex.width && h < strtex.height) {
                 return;
             }
             strtex.circular_writes[s.current_frame]
-                .push(StreamingTextureWrite::Single((w, h), color));
-            // unsafe {
-            //     let foot = s.device.get_image_subresource_footprint(
-            //         &strtex.image_buffer[s.current_frame],
-            //         image::Subresource {
-            //             aspects: format::Aspects::COLOR,
-            //             level: 0,
-            //             layer: 0,
-            //         },
-            //     );
-            //     let access = foot.row_pitch * u64::from(h) + u64::from(w * 4);
-
-            //     let aligned = perfect_mapping_alignment(Align {
-            //         access_offset: access,
-            //         how_many_bytes_you_need: 4,
-            //         non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
-            //     });
-
-            //     s.device
-            //         .wait_for_fences(
-            //             &s.frames_in_flight_fences,
-            //             gfx_hal::device::WaitFor::All,
-            //             u64::max_value(),
-            //         )
-            //         .expect("Unable to wait for fences");
-
-            //     let mut target = s
-            //         .device
-            //         .acquire_mapping_writer(
-            //             &strtex.image_memory[s.current_frame],
-            //             aligned.begin..aligned.end,
-            //         )
-            //         .expect("unable to acquire mapping writer");
-
-            //     target[aligned.index_offset as usize..(aligned.index_offset + 4) as usize]
-            //         .copy_from_slice(&[color.0, color.1, color.2, color.3]);
-
-            //     s.device
-            //         .release_mapping_writer(target)
-            //         .expect("Unable to release mapping writer");
-            // }
+                .push(StreamingTextureWrite::Single((w, h), color.into()));
         }
     }
 
     /// Set multiple pixels in the texture
-    pub fn set_pixels(
-        &mut self,
-        id: &Layer,
-        modifier: impl Iterator<Item = (u32, u32, (u8, u8, u8, u8))>,
-    ) {
+    pub fn set_pixels(&mut self, id: &Layer, modifier: impl Iterator<Item = (u32, u32, Color)>) {
         let s = &mut *self.vx;
         if let Some(strtex) = s.strtexs.get_mut(id.0) {
             for item in modifier {
@@ -1120,52 +1076,8 @@ impl<'a> Strtex<'a> {
                 let h = item.1;
                 let color = item.2;
                 strtex.circular_writes[s.current_frame]
-                    .push(StreamingTextureWrite::Single((w, h), color));
+                    .push(StreamingTextureWrite::Single((w, h), color.into()));
             }
-            // unsafe {
-            // let foot = s.device.get_image_subresource_footprint(
-            //     &strtex.image_buffer[s.current_frame],
-            //     image::Subresource {
-            //         aspects: format::Aspects::COLOR,
-            //         level: 0,
-            //         layer: 0,
-            //     },
-            // );
-
-            // s.device
-            //     .wait_for_fences(
-            //         &s.frames_in_flight_fences,
-            //         gfx_hal::device::WaitFor::All,
-            //         u64::max_value(),
-            //     )
-            //     .expect("Unable to wait for fences");
-
-            // let mut target = s
-            //     .device
-            //     .acquire_mapping_writer(
-            //         &strtex.image_memory[s.current_frame],
-            //         0..strtex.image_requirements[s.current_frame].size,
-            //     )
-            //     .expect("unable to acquire mapping writer");
-
-            // for item in modifier {
-            //     let w = item.0;
-            //     let h = item.1;
-            //     let color = item.2;
-
-            //     if !(w < strtex.width && h < strtex.height) {
-            //         continue;
-            //     }
-
-            //     let access = foot.row_pitch * u64::from(h) + u64::from(w * 4);
-
-            //     target[access as usize..(access + 4) as usize]
-            //         .copy_from_slice(&[color.0, color.1, color.2, color.3]);
-            // }
-            // s.device
-            //     .release_mapping_writer(target)
-            //     .expect("Unable to release mapping writer");
-            // }
         }
     }
 
@@ -1175,72 +1087,18 @@ impl<'a> Strtex<'a> {
         id: &Layer,
         start: (u32, u32),
         wh: (u32, u32),
-        color: (u8, u8, u8, u8),
+        color: Color,
     ) {
         let s = &mut *self.vx;
         if let Some(strtex) = s.strtexs.get_mut(id.0) {
             if start.0 + wh.0 > strtex.width || start.1 + wh.1 > strtex.height {
                 return;
             }
-            strtex.circular_writes[s.current_frame]
-                .push(StreamingTextureWrite::Block(start, wh, color));
-            // unsafe {
-            //     let foot = s.device.get_image_subresource_footprint(
-            //         &strtex.image_buffer[s.current_frame],
-            //         image::Subresource {
-            //             aspects: format::Aspects::COLOR,
-            //             level: 0,
-            //             layer: 0,
-            //         },
-            //     );
-
-            //     // Vulkan 01390, Size must be a multiple of DeviceLimits:nonCoherentAtomSize, or offset
-            //     // plus size = size of memory, if it's not VK_WHOLE_SIZE
-            //     let access_begin = foot.row_pitch * u64::from(start.1) + u64::from(start.0 * 4);
-            //     let access_end = foot.row_pitch
-            //         * u64::from(start.1 + if wh.1 == 0 { 0 } else { wh.1 - 1 })
-            //         + u64::from((start.0 + wh.0) * 4);
-
-            //     debug_assert![access_end <= strtex.image_requirements[s.current_frame].size];
-
-            //     let aligned = perfect_mapping_alignment(Align {
-            //         access_offset: access_begin,
-            //         how_many_bytes_you_need: access_end - access_begin,
-            //         non_coherent_atom_size: s.device_limits.non_coherent_atom_size as u64,
-            //     });
-
-            //     s.device
-            //         .wait_for_fences(
-            //             &s.frames_in_flight_fences,
-            //             gfx_hal::device::WaitFor::All,
-            //             u64::max_value(),
-            //         )
-            //         .expect("Unable to wait for fences");
-
-            //     let mut target = s
-            //         .device
-            //         .acquire_mapping_writer::<u8>(
-            //             &strtex.image_memory[s.current_frame],
-            //             aligned.begin..aligned.end,
-            //         )
-            //         .expect("unable to acquire mapping writer");
-
-            //     let mut colbuff = vec![];
-            //     for _ in start.0..start.0 + wh.0 {
-            //         colbuff.extend(&[color.0, color.1, color.2, color.3]);
-            //     }
-
-            //     for idx in start.1..start.1 + wh.1 {
-            //         let idx = (idx - start.1) as usize;
-            //         let pitch = foot.row_pitch as usize;
-            //         target[aligned.index_offset as usize + idx * pitch
-            //             ..aligned.index_offset as usize + idx * pitch + (wh.0) as usize * 4]
-            //             .copy_from_slice(&colbuff);
-            //     }
-            //     s.device
-            //         .release_mapping_writer(target)
-            //         .expect("Unable to release mapping writer");
-            // }
+            strtex.circular_writes[s.current_frame].push(StreamingTextureWrite::Block(
+                start,
+                wh,
+                color.into(),
+            ));
         }
     }
 
@@ -2031,10 +1889,10 @@ mod tests {
         let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, strtex::Sprite::default());
 
-        strtex.set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
-        strtex.set_pixels_block(&id, (500, 0), (500, 500), (0, 255, 0, 255));
-        strtex.set_pixels_block(&id, (0, 500), (500, 500), (0, 0, 255, 255));
-        strtex.set_pixels_block(&id, (500, 500), (500, 500), (0, 0, 0, 0));
+        strtex.set_pixels_block(&id, (0, 0), (500, 500), Color::Rgba(255, 0, 0, 255));
+        strtex.set_pixels_block(&id, (500, 0), (500, 500), Color::Rgba(0, 255, 0, 255));
+        strtex.set_pixels_block(&id, (0, 500), (500, 500), Color::Rgba(0, 0, 255, 255));
+        strtex.set_pixels_block(&id, (500, 500), (500, 500), Color::Rgba(0, 0, 0, 0));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks", img);
@@ -2050,21 +1908,21 @@ mod tests {
         let id = strtex.add_layer(LayerOptions::new().width(10).height(1));
         strtex.add(&id, strtex::Sprite::default());
 
-        strtex.set_pixels_block(&id, (0, 0), (10, 1), (0, 255, 0, 255));
+        strtex.set_pixels_block(&id, (0, 0), (10, 1), Color::Rgba(0, 255, 0, 255));
 
-        strtex.set_pixels_block(&id, (3, 0), (1, 1), (0, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (1, 1), Color::Rgba(0, 0, 255, 255));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks_off_by_one", img);
 
         let mut strtex = vx.strtex();
-        strtex.set_pixels_block(&id, (3, 0), (0, 1), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (0, 1), Color::Rgba(255, 0, 255, 255));
 
-        strtex.set_pixels_block(&id, (3, 0), (0, 0), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (0, 0), Color::Rgba(255, 0, 255, 255));
 
-        strtex.set_pixels_block(&id, (3, 0), (1, 0), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (3, 0), (1, 0), Color::Rgba(255, 0, 255, 255));
 
-        strtex.set_pixels_block(&id, (30, 0), (800, 0), (255, 0, 255, 255));
+        strtex.set_pixels_block(&id, (30, 0), (800, 0), Color::Rgba(255, 0, 255, 255));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks_off_by_one", img);
@@ -2077,7 +1935,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
+        strtex.set_pixel(&id, 3, 2, Color::Rgba(0, 123, 0, 255));
         let mut green_value = 0;
         strtex.read(&id, |arr, pitch| {
             green_value = arr[3 + 2 * pitch].1;
@@ -2097,7 +1955,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
-        strtex.set_pixel(&id, 3, 2, (0, 123, 0, 255));
+        strtex.set_pixel(&id, 3, 2, Color::Rgba(0, 123, 0, 255));
         strtex.write(&id, |arr, pitch| {
             arr[3 + 2 * pitch].1 = 124;
         });
@@ -2125,8 +1983,8 @@ mod tests {
             let x = rng.gen_range(0, 30);
             let y = rng.gen_range(0, 30);
 
-            strtex.set_pixel(&id, x, y, (0, 255, 0, 255));
-            strtex.set_pixels(&id, once((x, y, (0, 255, 0, 255))));
+            strtex.set_pixel(&id, x, y, Color::Rgba(0, 255, 0, 255));
+            strtex.set_pixels(&id, once((x, y, Color::Rgba(0, 255, 0, 255))));
         }
     }
 
@@ -2145,9 +2003,66 @@ mod tests {
             let start = (rng.gen_range(0, 100), rng.gen_range(0, 100));
             let wh = (rng.gen_range(0, 100), rng.gen_range(0, 100));
 
-            strtex.set_pixels_block(&id, start, wh, (0, 255, 0, 255));
+            strtex.set_pixels_block(&id, start, wh, Color::Rgba(0, 255, 0, 255));
         }
     }
+
+    // #[test]
+    // fn overlay_color_pure() {
+    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
+    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+    //     let prspect = gen_perspective(&vx);
+
+    //     let mut strtex = vx.strtex();
+    //     let id = strtex.add_layer(LayerOptions::new().width(1).height(1));
+    //     let sprite = strtex.add(&id, strtex::Sprite::default());
+
+    //     strtex.set_pixel(&id, 0, 0, Color::Rgba(255, 0, 0, 255));
+
+    //     strtex.set_color(
+    //         &sprite,
+    //         [
+    //             Color::Rgba(0, 255, 0, 255),
+    //             Color::Rgba(0, 255, 0, 255),
+    //             Color::Rgba(0, 255, 0, 255),
+    //             Color::Rgba(0, 255, 0, 255),
+    //         ],
+    //     );
+
+    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
+    //     utils::assert_swapchain_eq(&mut vx, "overlay_color_pure", img);
+    // }
+
+    // #[test]
+    // fn overlay_color_4() {
+    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
+    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+    //     let prspect = gen_perspective(&vx);
+
+    //     let mut strtex = vx.strtex();
+    //     let id = strtex.add_layer(LayerOptions::new().width(4).height(4));
+    //     let sprite = strtex.add(&id, strtex::Sprite::default());
+
+    //     strtex.set_pixels_block(&id, (0, 0), (4, 4), Color::Rgba(0, 0, 0, 255));
+
+    //     strtex.set_pixel(&id, 1, 1, Color::Rgba(255, 0, 0, 255));
+    //     strtex.set_pixel(&id, 1, 2, Color::Rgba(0, 255, 0, 255));
+    //     strtex.set_pixel(&id, 2, 2, Color::Rgba(0, 0, 255, 255));
+    //     strtex.set_pixel(&id, 2, 1, Color::Rgba(255, 255, 255, 255));
+
+    //     strtex.set_color(
+    //         &sprite,
+    //         [
+    //             Color::Rgba(0, 255, 0, 128),
+    //             Color::Rgba(0, 255, 0, 128),
+    //             Color::Rgba(0, 255, 0, 128),
+    //             Color::Rgba(0, 255, 0, 128),
+    //         ],
+    //     );
+
+    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
+    //     utils::assert_swapchain_eq(&mut vx, "overlay_color", img);
+    // }
 
     #[test]
     fn strtex_mass_manip() {
@@ -2241,7 +2156,7 @@ mod tests {
 
         b.iter(|| {
             vx.strtex()
-                .set_pixel(&id, black_box(1), black_box(2), (255, 0, 0, 255));
+                .set_pixel(&id, black_box(1), black_box(2), Color::Rgba(255, 0, 0, 255));
             vx.draw_frame(&prspect);
         });
     }
@@ -2258,7 +2173,7 @@ mod tests {
 
         b.iter(|| {
             vx.strtex()
-                .set_pixels_block(&id, (0, 0), (500, 500), (255, 0, 0, 255));
+                .set_pixels_block(&id, (0, 0), (500, 500), Color::Rgba(255, 0, 0, 255));
         });
     }
 
@@ -2278,7 +2193,7 @@ mod tests {
                 &id,
                 (0..500)
                     .cartesian_product(0..500)
-                    .map(|(x, y)| (x, y, (255, 0, 0, 255))),
+                    .map(|(x, y)| (x, y, Color::Rgba(255, 0, 0, 255))),
             );
         });
     }
@@ -2295,7 +2210,7 @@ mod tests {
 
         b.iter(|| {
             vx.strtex()
-                .set_pixel(&id, black_box(1), black_box(2), (255, 0, 0, 255));
+                .set_pixel(&id, black_box(1), black_box(2), Color::Rgba(255, 0, 0, 255));
         });
     }
 
