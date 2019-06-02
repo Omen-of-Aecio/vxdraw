@@ -1665,7 +1665,8 @@ impl<'a> Strtex<'a> {
                     image::Kind::D2(w, h, 1, 1),
                     1,
                     format::Format::Rgba8Srgb,
-                    image::Tiling::Linear,
+                    // image::Tiling::Linear: `usage` only includes VK_IMAGE_USAGE_TRANSFER_SRC_BIT and/or VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                    image::Tiling::Optimal,
                     image::Usage::COLOR_ATTACHMENT
                         | image::Usage::TRANSFER_SRC
                         | image::Usage::SAMPLED,
