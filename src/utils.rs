@@ -750,14 +750,21 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     let dec = load_image::png::PNGDecoder::new(correct)
         .expect("Unable to read PNG file (does it exist?)");
 
-    assert_eq![
-        (
-            u64::from(vx.swapconfig.extent.width),
-            u64::from(vx.swapconfig.extent.height),
-        ),
-        dec.dimensions(),
-        "The swapchain image and the preset correct image MUST be of the exact same size"
-    ];
+    if (
+        u64::from(vx.swapconfig.extent.width),
+        u64::from(vx.swapconfig.extent.height),
+    ) != dec.dimensions()
+    {
+        store_generated_image();
+        assert_eq![
+            (
+                u64::from(vx.swapconfig.extent.width),
+                u64::from(vx.swapconfig.extent.height),
+            ),
+            dec.dimensions(),
+            "The swapchain image and the preset correct image MUST be of the exact same size"
+        ];
+    }
     assert_eq![
         load_image::ColorType::RGB(8),
         dec.colortype(),
