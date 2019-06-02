@@ -895,31 +895,29 @@ impl VxDraw {
         postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
     ) -> T {
         let postproc_res = unsafe {
-            let swap_image: (_, Option<gfx_hal::window::Suboptimal>) =
-                match self.swapchain.acquire_image(
+            let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match self
+                .swapchain
+                .acquire_image(
                     u64::max_value(),
                     Some(&*self.acquire_image_semaphore_free),
                     None,
                 ) {
-                    Ok((index, None)) => (index, None),
-                    Ok((_index, Some(_suboptimal))) => {
-                        info![
-                            self.log,
-                            "vxdraw", "Swapchain in suboptimal state, recreating"
-                        ];
-                        self.window_resized_recreate_swapchain();
-                        return self.draw_frame_internal(view, postproc);
-                    }
-                    Err(gfx_hal::window::AcquireError::OutOfDate) => {
-                        info![self.log, "vxdraw", "Swapchain out of date, recreating"];
-                        self.window_resized_recreate_swapchain();
-                        return self.draw_frame_internal(view, postproc);
-                    }
-                    Err(err) => {
-                        error![self.log, "vxdraw", "Acquire image error"; "error" => err];
-                        unimplemented![]
-                    }
-                };
+                Ok((index, None)) => (index, None),
+                Ok((_index, Some(_suboptimal))) => {
+                    info![self.log, "vxdraw", "Swapchain in suboptimal state, recreating" ; "type" => "acquire_image"];
+                    self.window_resized_recreate_swapchain();
+                    return self.draw_frame_internal(view, postproc);
+                }
+                Err(gfx_hal::window::AcquireError::OutOfDate) => {
+                    info![self.log, "vxdraw", "Swapchain out of date, recreating"; "type" => "acquire_image"];
+                    self.window_resized_recreate_swapchain();
+                    return self.draw_frame_internal(view, postproc);
+                }
+                Err(err) => {
+                    error![self.log, "vxdraw", "Acquire image error"; "error" => err, "type" => "acquire_image"];
+                    unimplemented![]
+                }
+            };
 
             core::mem::swap(
                 &mut *self.acquire_image_semaphore_free,
@@ -1435,13 +1433,30 @@ impl VxDraw {
             let postproc_res = postproc(self, swap_image.0);
             let present_wait_semaphore = &self.present_wait_semaphores[self.current_frame];
             let present_wait_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
-            self.swapchain
-                .present(
-                    &mut self.queue_group.queues[0],
-                    swap_image.0,
-                    present_wait_semaphores,
-                )
-                .unwrap();
+            match self.swapchain.present(
+                &mut self.queue_group.queues[0],
+                swap_image.0,
+                present_wait_semaphores,
+            ) {
+                Ok(None) => {}
+                Ok(Some(_suboptimal)) => {
+                    info![
+                        self.log,
+                        "vxdraw", "Swapchain in suboptimal state, recreating"; "type" => "present"
+                    ];
+                    self.window_resized_recreate_swapchain();
+                    return self.draw_frame_internal(view, postproc);
+                }
+                Err(gfx_hal::window::AcquireError::OutOfDate) => {
+                    info![self.log, "vxdraw", "Swapchain out of date, recreating"; "type" => "present"];
+                    self.window_resized_recreate_swapchain();
+                    return self.draw_frame_internal(view, postproc);
+                }
+                Err(err) => {
+                    error![self.log, "vxdraw", "Acquire image error"; "error" => err, "type" => "present"];
+                    unimplemented![]
+                }
+            }
             postproc_res
         };
         self.current_frame = (self.current_frame + 1) % self.max_frames_in_flight;
