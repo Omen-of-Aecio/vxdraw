@@ -1447,7 +1447,7 @@ impl VxDraw {
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(view, postproc);
                 }
-                Err(gfx_hal::window::AcquireError::OutOfDate) => {
+                Err(gfx_hal::window::PresentError::OutOfDate) => {
                     info![self.log, "vxdraw", "Swapchain out of date, recreating"; "type" => "present"];
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(view, postproc);
