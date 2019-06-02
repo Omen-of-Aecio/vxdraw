@@ -53,7 +53,7 @@
 //! fn main() {
 //!     let log = Box::new(|lvl, ctx, msg| {
 //!         struct Adapter {
-//!             pub msg: Box<Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
+//!             pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
 //!         }
 //!         impl std::fmt::Display for Adapter {
 //!             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -149,7 +149,7 @@ impl From<&Color> for (u8, u8, u8, u8) {
 /// In most tests we use the logger from another crate because it has `spawn_test`, which is useful
 /// for quickly debugging a failing test.
 pub type Logger =
-    Box<FnMut(u8, &'static str, Box<Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>)>;
+    Box<dyn FnMut(u8, &'static str, Box<dyn Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>)>;
 
 /// Create an empty logger bridge
 pub fn void_logger() -> Logger {
@@ -1626,7 +1626,7 @@ mod tests {
     fn log_adapter_works() {
         let log = Box::new(|lvl, ctx, msg| {
             struct LogAdapter {
-                pub msg: Box<Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>,
+                pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>,
             }
             impl std::fmt::Display for LogAdapter {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
