@@ -728,8 +728,7 @@ impl VxDraw {
     fn window_resized_recreate_swapchain(&mut self) {
         self.device.wait_idle().unwrap();
 
-        let (caps, formats, _present_modes) =
-            self.surf.compatibility(&self.adapter.physical_device);
+        let (caps, formats, present_modes) = self.surf.compatibility(&self.adapter.physical_device);
         debug![
             self.log, "vxdraw", "Surface capabilities";
             "capabilities" => InDebugPretty(&caps),
@@ -747,8 +746,54 @@ impl VxDraw {
             height: pixels.1,
         };
 
-        let swap_config = SwapchainConfig::from_caps(&caps, self.swapconfig.format, extent);
+        let mut swap_config = SwapchainConfig::from_caps(&caps, self.swapconfig.format, extent);
         self.swapconfig.extent = swap_config.extent;
+
+        let format = formats.map_or(format::Format::Rgba8Srgb, |formats| {
+            formats
+                .iter()
+                .find(|format| format.base_format().1 == ChannelType::Srgb)
+                .cloned()
+                .unwrap_or(formats[0])
+        });
+
+        debug![self.log, "vxdraw", "Format chosen"; "format" => InDebugPretty(&format); clone format];
+        debug![self.log, "vxdraw", "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
+
+        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
+        // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
+        let present_mode = {
+            [Mailbox, Fifo, Relaxed, Immediate]
+                .iter()
+                .cloned()
+                .find(|pm| present_modes.contains(pm))
+                .ok_or("No PresentMode values specified!")
+                .unwrap()
+        };
+        debug![self.log, "vxdraw", "Using best possible present mode"; "mode" => InDebug(&present_mode)];
+
+        let image_count = if present_mode == Mailbox {
+            (caps.image_count.end - 1)
+                .min(3)
+                .max(caps.image_count.start)
+        } else {
+            (caps.image_count.end - 1)
+                .min(2)
+                .max(caps.image_count.start)
+        };
+        debug![self.log, "vxdraw", "Using swapchain images"; "count" => image_count];
+
+        swap_config.present_mode = present_mode;
+        swap_config.image_count = image_count;
+
+        if caps.usage.contains(image::Usage::TRANSFER_SRC) {
+            swap_config.image_usage |= gfx_hal::image::Usage::TRANSFER_SRC;
+        } else {
+            warn![
+                self.log,
+                "vxdraw", "Surface does not support TRANSFER_SRC, may fail during testing"
+            ];
+        }
 
         info![self.log, "vxdraw", "Recreating swapchain"; "config" => InDebug(&swap_config); clone swap_config];
         let (swapchain, images) = unsafe {
