@@ -716,23 +716,30 @@ impl VxDraw {
     /// Recreate the swapchain, must be called after a window resize
     fn window_resized_recreate_swapchain(&mut self) {
         self.device.wait_idle().unwrap();
-        {
-            let (caps, _formats, _present_modes) =
-                self.surf.compatibility(&self.adapter.physical_device);
-            debug![self.log, "vxdraw", "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
-        }
+
+        let (caps, formats, _present_modes) =
+            self.surf.compatibility(&self.adapter.physical_device);
+        debug![
+            self.log, "vxdraw", "Surface capabilities";
+            "capabilities" => InDebugPretty(&caps),
+            "formats" => InDebugPretty(&formats);
+            clone caps, formats
+        ];
 
         let pixels = self.get_window_size_in_pixels();
         info![self.log, "vxdraw", "New window size"; "size" => InDebug(&pixels)];
 
-        self.swapconfig.extent = Extent2D {
+        let extent = Extent2D {
             width: pixels.0,
             height: pixels.1,
         };
 
+        let swap_config = SwapchainConfig::from_caps(&caps, self.swapconfig.format, extent);
+        self.swapconfig.extent = swap_config.extent;
+
         let (swapchain, images) = unsafe {
             self.device
-                .create_swapchain(&mut self.surf, self.swapconfig.clone(), None)
+                .create_swapchain(&mut self.surf, swap_config, None)
         }
         .expect("Unable to create swapchain");
 
