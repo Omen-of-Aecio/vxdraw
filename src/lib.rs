@@ -1150,7 +1150,7 @@ impl VxDraw {
                                     enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                         buffer: strtex.indices[self.current_frame].buffer(),
                                         offset: 0,
-                                        index_type: gfx_hal::IndexType::U16,
+                                        index_type: gfx_hal::IndexType::U32,
                                     });
                                     enc.draw_indexed(0..strtex.posbuffer.len() as u32 * 6, 0, 0..1);
                                 }
@@ -1253,7 +1253,7 @@ impl VxDraw {
                                     enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                         buffer: dyntex.indices[self.current_frame].buffer(),
                                         offset: 0,
-                                        index_type: gfx_hal::IndexType::U16,
+                                        index_type: gfx_hal::IndexType::U32,
                                     });
                                     enc.draw_indexed(0..dyntex.posbuffer.len() as u32 * 6, 0, 0..1);
                                 }
@@ -1331,7 +1331,7 @@ impl VxDraw {
                                         enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                             buffer: &quad.indices[self.current_frame].buffer(),
                                             offset: 0,
-                                            index_type: gfx_hal::IndexType::U16,
+                                            index_type: gfx_hal::IndexType::U32,
                                         });
                                         enc.draw_indexed(0..quad.count as u32 * 6, 0, 0..1);
                                     }

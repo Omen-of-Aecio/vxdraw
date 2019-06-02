@@ -103,7 +103,7 @@ impl ResizBufIdx4 {
         capacity: usize,
     ) -> Self {
         let (buffer, memory, requirements) = unsafe {
-            let buffer_size: u64 = (capacity * 6 * std::mem::size_of::<u16>()) as u64;
+            let buffer_size: u64 = (capacity * 6 * std::mem::size_of::<u32>()) as u64;
             let mut buffer = device
                 .create_buffer(buffer_size, gfx_hal::buffer::Usage::INDEX)
                 .expect("cant make bf");
@@ -123,8 +123,8 @@ impl ResizBufIdx4 {
                 .acquire_mapping_writer(&memory, 0..requirements.size)
                 .expect("Failed to acquire a memory writer!");
             for index in 0..capacity {
-                let ver = (index * 6) as u16;
-                let ind = (index * 4) as u16;
+                let ver = (index * 6) as u32;
+                let ind = (index * 4) as u32;
                 data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
                     ind,
                     ind + 1,
