@@ -1675,7 +1675,7 @@ impl<'a> Strtex<'a> {
                 .expect("Unable to create image");
             let requirements = s.device.get_image_requirements(&image);
             let memory_type_id =
-                find_memory_type_id(&s.adapter, requirements, memory::Properties::CPU_VISIBLE);
+                find_memory_type_id(&s.adapter, requirements, memory::Properties::DEVICE_LOCAL);
             let memory = s
                 .device
                 .allocate_memory(memory_type_id, requirements.size)
