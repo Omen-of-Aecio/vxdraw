@@ -542,7 +542,7 @@ impl VxDraw {
         let framebuffers_string = format!["{:#?}", framebuffers];
         debug![log, "vxdraw", "Framebuffer information"; "framebuffers" => framebuffers_string];
 
-        let max_frames_in_flight = 3;
+        let max_frames_in_flight = image_count as usize;
         assert![max_frames_in_flight > 0];
 
         let mut frames_in_flight_fences = vec![];
@@ -797,16 +797,21 @@ impl VxDraw {
 
         info![self.log, "vxdraw", "Recreating swapchain"; "config" => InDebug(&swap_config); clone swap_config];
         let (swapchain, images) = unsafe {
-            self.device
-                .create_swapchain(&mut self.surf, swap_config, None)
+            self.device.create_swapchain(
+                &mut self.surf,
+                swap_config,
+                Some(ManuallyDrop::into_inner(core::ptr::read(&self.swapchain))),
+            )
         }
         .expect("Unable to create swapchain");
 
-        unsafe {
-            self.device
-                .destroy_swapchain(std::mem::replace(&mut self.swapchain, swapchain));
-            // self.device .destroy_swapchain(ManuallyDrop::into_inner(core::ptr::read(&self.swapchain)));
-        }
+        self.swapchain = ManuallyDrop::new(swapchain);
+
+        // unsafe {
+        //     self.device
+        //         .destroy_swapchain(std::mem::replace(&mut self.swapchain, swapchain));
+        //     // self.device .destroy_swapchain(ManuallyDrop::into_inner(core::ptr::read(&self.swapchain)));
+        // }
 
         let images_string = format!["{:#?}", images];
         debug![self.log, "vxdraw", "Image information"; "images" => images_string];
