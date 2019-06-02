@@ -694,8 +694,19 @@ impl VxDraw {
     /// Collect all pending input events to this window
     pub fn collect_input(&mut self) -> Vec<Event> {
         let mut inputs = vec![];
+        let log = &mut self.log;
         self.events_loop.poll_events(|evt| {
-            inputs.push(evt);
+            match evt {
+                winit::Event::WindowEvent { ref event, .. } => {
+                    match event {
+                        winit::WindowEvent::Resized(dims) => {
+                            info![log, "vxdraw", "Window resized event"; "dimensions" => InDebug(&dims); clone dims];
+                        }
+                        _ => inputs.push(evt),
+                    }
+                }
+                _ => inputs.push(evt),
+            }
         });
         inputs
     }
@@ -726,6 +737,8 @@ impl VxDraw {
             clone caps, formats
         ];
 
+        assert![formats.iter().any(|f| f.contains(&self.swapconfig.format))];
+
         let pixels = self.get_window_size_in_pixels();
         info![self.log, "vxdraw", "New window size"; "size" => InDebug(&pixels)];
 
@@ -737,6 +750,7 @@ impl VxDraw {
         let swap_config = SwapchainConfig::from_caps(&caps, self.swapconfig.format, extent);
         self.swapconfig.extent = swap_config.extent;
 
+        info![self.log, "vxdraw", "Recreating swapchain"; "config" => InDebug(&swap_config); clone swap_config];
         let (swapchain, images) = unsafe {
             self.device
                 .create_swapchain(&mut self.surf, swap_config, None)
