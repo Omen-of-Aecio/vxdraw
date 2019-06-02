@@ -1782,32 +1782,28 @@ impl<'a> Strtex<'a> {
 
             cmd_buffer.begin();
             for image_buffer in &s.strtexs[blitid.0].image_buffer {
-                cmd_buffer.blit_image(
+                cmd_buffer.copy_image(
                     &image,
                     image::Layout::General,
                     image_buffer,
                     image::Layout::General,
-                    image::Filter::Nearest,
-                    once(command::ImageBlit {
+                    once(command::ImageCopy {
                         src_subresource: image::SubresourceLayers {
                             aspects: format::Aspects::COLOR,
                             level: 0,
                             layers: 0..1,
                         },
-                        src_bounds: image::Offset { x: 0, y: 0, z: 0 }..image::Offset {
-                            x: w as i32,
-                            y: w as i32,
-                            z: 1,
-                        },
+                        src_offset: image::Offset { x: 0, y: 0, z: 0 },
                         dst_subresource: image::SubresourceLayers {
                             aspects: format::Aspects::COLOR,
                             level: 0,
                             layers: 0..1,
                         },
-                        dst_bounds: image::Offset { x: 0, y: 0, z: 0 }..image::Offset {
-                            x: w as i32,
-                            y: h as i32,
-                            z: 1,
+                        dst_offset: image::Offset { x: 0, y: 0, z: 0 },
+                        extent: image::Extent {
+                            width: w,
+                            height: h,
+                            depth: 1,
                         },
                     }),
                 );
