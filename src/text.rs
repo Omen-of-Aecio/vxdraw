@@ -133,7 +133,8 @@ impl<'a> Text<'a> {
         let layer = self.vx.strtex().add_layer(
             strtex::LayerOptions::new()
                 .width(width as usize)
-                .height(height as usize),
+                .height(height as usize)
+                .filter(strtex::Filter::Linear),
         );
 
         // self.vx.strtex().add(&layer, strtex::Sprite::new());

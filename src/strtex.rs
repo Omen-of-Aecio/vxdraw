@@ -94,6 +94,15 @@ impl Layerable for Layer {
     }
 }
 
+/// Specify filter options
+#[derive(Clone, Copy)]
+pub enum Filter {
+    /// Sample single a single texel and use its value
+    Nearest,
+    /// Compose the color of by sampling the surrounding pixels bilinearly
+    Linear,
+}
+
 /// Options for creating a layer of a single streaming texture with sprites
 #[derive(Clone, Copy)]
 pub struct LayerOptions {
@@ -106,12 +115,20 @@ pub struct LayerOptions {
     width: usize,
     /// Height of this texture in pixels
     height: usize,
+    /// Specify filtering mode for sampling the grid texture (default is [Filter::Nearest])
+    filtering: Filter,
 }
 
 impl LayerOptions {
     /// Create a default layer
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the sampling filter mode for the texture
+    pub fn filter(mut self, filter: Filter) -> Self {
+        self.filtering = filter;
+        self
     }
 
     /// Set the width of this layer in addressable pixels
@@ -143,6 +160,7 @@ impl Default for LayerOptions {
     fn default() -> Self {
         Self {
             depth_test: false,
+            filtering: Filter::Nearest,
             fixed_perspective: None,
             width: 1,
             height: 1,
@@ -345,7 +363,10 @@ impl<'a> Strtex<'a> {
         let sampler = unsafe {
             s.device
                 .create_sampler(image::SamplerInfo::new(
-                    image::Filter::Nearest,
+                    match options.filtering {
+                        Filter::Nearest => image::Filter::Nearest,
+                        Filter::Linear => image::Filter::Linear,
+                    },
                     image::WrapMode::Tile,
                 ))
                 .expect("Couldn't create the sampler!")
