@@ -2,6 +2,7 @@
 !.gitignore
 !Cargo.toml
 !build.rs
+!fonts/
 !images/
 !shaders/
 !src/
