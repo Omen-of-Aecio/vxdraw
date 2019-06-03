@@ -81,6 +81,8 @@ pub struct LayerOptions {
     fixed_perspective: Option<Matrix4<f32>>,
     /// Specify filtering mode for sampling the texture (default is [Filter::Nearest])
     filtering: Filter,
+    /// Specify wrap mode for texture sampling
+    wrap_mode: WrapMode,
 }
 
 impl LayerOptions {
@@ -108,6 +110,12 @@ impl LayerOptions {
         self.fixed_perspective = Some(mat);
         self
     }
+
+    /// Set the wrap mode of the texture sampler
+    pub fn wrap_mode(mut self, wrap_mode: WrapMode) -> Self {
+        self.wrap_mode = wrap_mode;
+        self
+    }
 }
 
 impl Default for LayerOptions {
@@ -116,6 +124,7 @@ impl Default for LayerOptions {
             depth_test: true,
             fixed_perspective: None,
             filtering: Filter::Nearest,
+            wrap_mode: WrapMode::Tile,
         }
     }
 }
@@ -127,6 +136,18 @@ pub enum Filter {
     Nearest,
     /// Compose the color of by sampling the surrounding pixels bilinearly
     Linear,
+}
+
+/// Specify texture wrapping mode
+#[derive(Clone, Copy)]
+pub enum WrapMode {
+    /// UV coordinates are modulo 1.0
+    Tile,
+    /// UV coordinates are abs modulo 1.0
+    Mirror,
+    /// Use the edge's value
+    Clamp,
+    // Border, // Not supported, need borders
 }
 
 /// Sprite creation builder
@@ -352,7 +373,11 @@ impl<'a> Dyntex<'a> {
                         Filter::Nearest => image::Filter::Nearest,
                         Filter::Linear => image::Filter::Linear,
                     },
-                    image::WrapMode::Tile,
+                    match options.wrap_mode {
+                        WrapMode::Tile => image::WrapMode::Tile,
+                        WrapMode::Mirror => image::WrapMode::Mirror,
+                        WrapMode::Clamp => image::WrapMode::Clamp,
+                    },
                 ))
                 .expect("Couldn't create the sampler!")
         };
@@ -1890,6 +1915,38 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "raw_uvs", img);
+    }
+
+    #[test]
+    fn wrap_mode_clamp() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut dyntex = vx.dyntex();
+        let options = LayerOptions::new().wrap_mode(WrapMode::Clamp);
+        let testure = dyntex.add_layer(TESTURE, options);
+        let sprite = dyntex.add(&testure, Sprite::default());
+        dyntex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "wrap_mode_clamp", img);
+    }
+
+    #[test]
+    fn wrap_mode_mirror() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut dyntex = vx.dyntex();
+        let options = LayerOptions::new().wrap_mode(WrapMode::Mirror);
+        let testure = dyntex.add_layer(TESTURE, options);
+        let sprite = dyntex.add(&testure, Sprite::default());
+        dyntex.set_uv_raw(&sprite, [(-1.0, 0.0), (-1.0, 1.0), (1.0, 1.0), (1.0, 0.0)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "wrap_mode_mirror", img);
     }
 
     #[test]
