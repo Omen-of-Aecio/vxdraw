@@ -338,6 +338,16 @@ pub(crate) fn make_transfer_img_of_size(
 ) {
     let device = &s.device;
     let (buffer, memory, requirements) = unsafe {
+        s.adapter
+            .physical_device
+            .image_format_properties(
+                format::Format::Rgb8Unorm,
+                2,
+                image::Tiling::Linear,
+                image::Usage::TRANSFER_SRC | image::Usage::TRANSFER_DST,
+                image::ViewCapabilities::empty(),
+            )
+            .expect("Device does not support linear RGB8Unorm transfer image");
         let mut buffer = device
             .create_image(
                 image::Kind::D2(w, h, 1, 1),
