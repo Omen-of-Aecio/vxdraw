@@ -345,6 +345,12 @@ impl VxDraw {
                 .unwrap_or(formats[0])
         });
 
+        assert![adapter
+            .physical_device
+            .format_properties(Some(format))
+            .optimal_tiling
+            .contains(format::ImageFeature::BLIT_SRC)];
+
         debug![log, "vxdraw", "Format chosen"; "format" => InDebugPretty(&format); clone format];
         debug![log, "vxdraw", "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
 

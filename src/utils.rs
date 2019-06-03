@@ -1,6 +1,7 @@
 //! Various utilities and helpers for vxdraw
 use crate::data::VxDraw;
 use cgmath::{Matrix4, Rad};
+use fast_logger::error;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -338,23 +339,36 @@ pub(crate) fn make_transfer_img_of_size(
 ) {
     let device = &s.device;
     let (buffer, memory, requirements) = unsafe {
-        s.adapter
+        if let None = s.adapter.physical_device.image_format_properties(
+            format::Format::Rgba8Unorm,
+            2,
+            image::Tiling::Linear,
+            image::Usage::TRANSFER_SRC | image::Usage::TRANSFER_DST,
+            image::ViewCapabilities::empty(),
+        ) {
+            const msg: &str = "Device does not support VK_FORMAT_R8G8B8A8_UNORM transfer image";
+            error![s.log, "vxdraw", "{}", msg];
+            panic!(msg);
+        }
+        if !s
+            .adapter
             .physical_device
-            .image_format_properties(
-                format::Format::Rgb8Unorm,
-                2,
-                image::Tiling::Linear,
-                image::Usage::TRANSFER_SRC | image::Usage::TRANSFER_DST,
-                image::ViewCapabilities::empty(),
-            )
-            .expect("Device does not support linear RGB8Unorm transfer image");
+            .format_properties(Some(format::Format::Rgba8Unorm))
+            .linear_tiling
+            .contains(format::ImageFeature::BLIT_DST)
+        {
+            const msg: &str =
+                "Device does not support VK_FORMAT_R8G8B8A8_UNORM as blit destination";
+            error![s.log, "vxdraw", "{}", msg];
+            panic!(msg);
+        }
         let mut buffer = device
             .create_image(
                 image::Kind::D2(w, h, 1, 1),
                 1,
-                format::Format::Rgb8Unorm,
+                format::Format::Rgba8Unorm,
                 image::Tiling::Linear,
-                image::Usage::TRANSFER_SRC | image::Usage::TRANSFER_DST,
+                image::Usage::TRANSFER_DST | image::Usage::TRANSFER_SRC,
                 image::ViewCapabilities::empty(),
             )
             .expect("cant make bf");
@@ -521,7 +535,7 @@ pub(crate) fn copy_image_to_rgb(
     let height = s.swapconfig.extent.height;
 
     let (buffer, memory, requirements) =
-        make_transfer_buffer_of_size(s, u64::from(width * height * 3));
+        make_transfer_buffer_of_size(s, u64::from(width * height * 4));
     let (imgbuf, imgmem, _imgreq) = make_transfer_img_of_size(s, width, height);
     let images = &s.images;
     unsafe {
@@ -692,10 +706,10 @@ pub(crate) fn copy_image_to_rgb(
             .device
             .acquire_mapping_reader::<u8>(&memory, 0..requirements.size as u64)
             .expect("Unable to open reader");
-        assert![u64::from(3 * width * height) <= requirements.size];
+        assert![u64::from(4 * width * height) <= requirements.size];
         let result = reader
             .iter()
-            .take((3 * width * height) as usize)
+            .take((4 * width * height) as usize)
             .cloned()
             .collect::<Vec<_>>();
         s.device.release_mapping_reader(reader);
@@ -746,6 +760,14 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
     use load_image::ImageDecoder;
     use std::io::Read;
+
+    let rgb = {
+        let mut tmp = vec![];
+        for rgba in rgb.chunks_exact(4) {
+            tmp.extend(&rgba[0..3]);
+        }
+        tmp
+    };
 
     std::fs::create_dir_all("_build/vxdraw_results").expect("Unable to create directories");
 
