@@ -63,6 +63,7 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{
+    adapter::PhysicalDevice,
     command,
     device::Device,
     format, image, memory, pass,
@@ -307,6 +308,16 @@ impl<'a> Strtex<'a> {
             let mut image_memories = vec![];
             let mut image_views = vec![];
             let mut image_requirements = vec![];
+            s.adapter
+                .physical_device
+                .image_format_properties(
+                    format::Format::Rgba8Srgb,
+                    2,
+                    image::Tiling::Linear,
+                    image::Usage::SAMPLED | image::Usage::TRANSFER_DST,
+                    image::ViewCapabilities::empty(),
+                )
+                .expect("Device does not support linear sampled textures");
             for _ in 0..s.swapconfig.image_count {
                 let mut the_image = unsafe {
                     device
