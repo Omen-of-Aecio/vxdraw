@@ -79,12 +79,20 @@ pub struct LayerOptions {
     /// Fix the perspective, this ignores the perspective sent into draw for this texture and
     /// all its associated sprites
     fixed_perspective: Option<Matrix4<f32>>,
+    /// Specify filtering mode for sampling the texture (default is [Filter::Nearest])
+    filtering: Filter,
 }
 
 impl LayerOptions {
     /// Same as default
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the sampling filter mode for the texture
+    pub fn filter(mut self, filter: Filter) -> Self {
+        self.filtering = filter;
+        self
     }
 
     /// Enable/disable depth testing
@@ -107,8 +115,18 @@ impl Default for LayerOptions {
         Self {
             depth_test: true,
             fixed_perspective: None,
+            filtering: Filter::Nearest,
         }
     }
+}
+
+/// Specify filter options
+#[derive(Clone, Copy)]
+pub enum Filter {
+    /// Sample single a single texel and use its value
+    Nearest,
+    /// Compose the color of by sampling the surrounding pixels bilinearly
+    Linear,
 }
 
 /// Sprite creation builder
@@ -330,7 +348,10 @@ impl<'a> Dyntex<'a> {
         let sampler = unsafe {
             s.device
                 .create_sampler(image::SamplerInfo::new(
-                    image::Filter::Nearest,
+                    match options.filtering {
+                        Filter::Nearest => image::Filter::Nearest,
+                        Filter::Linear => image::Filter::Linear,
+                    },
                     image::WrapMode::Tile,
                 ))
                 .expect("Couldn't create the sampler!")
@@ -1836,6 +1857,23 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "set_single_sprite_rotation", img);
+    }
+
+    #[test]
+    fn linear_filtering_mode() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut dyntex = vx.dyntex();
+        let options = LayerOptions::new().filter(Filter::Linear);
+        let testure = dyntex.add_layer(TESTURE, options);
+        let sprite = dyntex.add(&testure, Sprite::default());
+
+        dyntex.set_rotation(&sprite, Rad(0.3));
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "linear_filtering_mode", img);
     }
 
     #[test]
