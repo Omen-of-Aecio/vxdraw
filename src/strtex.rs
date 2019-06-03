@@ -104,6 +104,18 @@ pub enum Filter {
     Linear,
 }
 
+/// Specify texture wrapping mode
+#[derive(Clone, Copy)]
+pub enum WrapMode {
+    /// UV coordinates are modulo 1.0
+    Tile,
+    /// UV coordinates are abs modulo 1.0
+    Mirror,
+    /// Use the edge's value
+    Clamp,
+    // Border, // Not supported, need borders
+}
+
 /// Options for creating a layer of a single streaming texture with sprites
 #[derive(Clone, Copy)]
 pub struct LayerOptions {
@@ -118,6 +130,8 @@ pub struct LayerOptions {
     height: usize,
     /// Specify filtering mode for sampling the grid texture (default is [Filter::Nearest])
     filtering: Filter,
+    /// Specify wrap mode for texture sampling
+    wrap_mode: WrapMode,
 }
 
 impl LayerOptions {
@@ -155,6 +169,12 @@ impl LayerOptions {
         self.fixed_perspective = Some(mat);
         self
     }
+
+    /// Set the wrap mode of the texture sampler
+    pub fn wrap_mode(mut self, wrap_mode: WrapMode) -> Self {
+        self.wrap_mode = wrap_mode;
+        self
+    }
 }
 
 impl Default for LayerOptions {
@@ -165,6 +185,7 @@ impl Default for LayerOptions {
             fixed_perspective: None,
             width: 1,
             height: 1,
+            wrap_mode: WrapMode::Tile,
         }
     }
 }
@@ -378,7 +399,11 @@ impl<'a> Strtex<'a> {
                         Filter::Nearest => image::Filter::Nearest,
                         Filter::Linear => image::Filter::Linear,
                     },
-                    image::WrapMode::Tile,
+                    match options.wrap_mode {
+                        WrapMode::Tile => image::WrapMode::Tile,
+                        WrapMode::Mirror => image::WrapMode::Mirror,
+                        WrapMode::Clamp => image::WrapMode::Clamp,
+                    },
                 ))
                 .expect("Couldn't create the sampler!")
         };
@@ -1358,11 +1383,11 @@ impl<'a> Strtex<'a> {
     /// Applies [Strtex::set_solid_color] to each dynamic texture.
     pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> Color) {
         self.vx.strtexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, dyntex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
+        for (idx, strtex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for idx in 0..4 {
                 let Color::Rgba(r, g, b, a) = delta;
-                dyntex[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
+                strtex[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
             }
         }
     }
@@ -1372,11 +1397,11 @@ impl<'a> Strtex<'a> {
     /// Applies [Strtex::set_color] to each dynamic texture.
     pub fn set_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [Color; 4]) {
         self.vx.strtexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, dyntex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
+        for (idx, strtex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for (idx, dt) in delta.iter().enumerate() {
                 let Color::Rgba(r, g, b, a) = dt;
-                dyntex[idx * 4..(idx + 1) * 4].copy_from_slice(&[*r, *g, *b, *a]);
+                strtex[idx * 4..(idx + 1) * 4].copy_from_slice(&[*r, *g, *b, *a]);
             }
         }
     }
@@ -2170,6 +2195,45 @@ mod tests {
         utils::assert_swapchain_eq(&mut vx, "strtex_mass_manip", img);
     }
 
+    #[test]
+    fn wrap_mode_clamp() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut strtex = vx.strtex();
+        let options = LayerOptions::new()
+            .width(1000)
+            .height(1000)
+            .wrap_mode(WrapMode::Clamp);
+        let testure = strtex.add_layer(options);
+        strtex.fill_with_perlin_noise(&testure, [1.0, 2.0, 3.0]);
+        let sprite = strtex.add(&testure, Sprite::default());
+        strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "wrap_mode_clamp_strtex", img);
+    }
+
+    #[test]
+    fn wrap_mode_mirror() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut strtex = vx.strtex();
+        let options = LayerOptions::new()
+            .width(1000)
+            .height(1000)
+            .wrap_mode(WrapMode::Mirror);
+        let testure = strtex.add_layer(options);
+        strtex.fill_with_perlin_noise(&testure, [1.0, 2.0, 3.0]);
+        let sprite = strtex.add(&testure, Sprite::default());
+        strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "wrap_mode_mirror_strtex", img);
+    }
     // ---
 
     #[bench]
