@@ -18,6 +18,7 @@ gfx-backend-vulkan = { version = "0.2", optional = true }
 gfx-hal = "0.2"
 glsl-to-spirv = "0.1.4"
 glutin = { version = "0.20", optional = true }
+glyph_brush = "0.5"
 image = "0.21"
 rand = "0.6.1"
 rand_pcg = "0.1.2"

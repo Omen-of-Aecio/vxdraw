@@ -111,6 +111,7 @@ pub mod debtri;
 pub mod dyntex;
 pub mod quads;
 pub mod strtex;
+pub mod text;
 pub mod utils;
 
 use utils::*;
@@ -689,6 +690,11 @@ impl VxDraw {
     /// streaming textures. See [strtex::Strtex] for more details.
     pub fn strtex(&mut self) -> strtex::Strtex {
         strtex::Strtex::new(self)
+    }
+
+    /// Drawing text
+    pub fn text(&mut self) -> text::Text {
+        text::Text::new(self)
     }
 
     /// Collect all pending input events to this window
@@ -1557,6 +1563,29 @@ mod tests {
     fn setup_and_teardown() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let _ = VxDraw::new(logger, ShowWindow::Headless1k);
+    }
+
+    #[test]
+    fn texting() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+        vx.text()
+            .add(&mut layer, text::TextOptions::new("font").font_size(60.0));
+
+        vx.text().add(
+            &mut layer,
+            text::TextOptions::new("my text")
+                .font_size(32.0)
+                .translation((0.0, -0.5)),
+        );
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "some_text", img);
     }
 
     #[test]

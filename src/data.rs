@@ -12,6 +12,9 @@ use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, Adapter, Backend};
 use std::mem::ManuallyDrop;
 
+#[derive(Debug)]
+pub(crate) struct Text {}
+
 #[derive(Clone, Debug)]
 pub(crate) enum StreamingTextureWrite {
     Single((u32, u32), (u8, u8, u8, u8)),
