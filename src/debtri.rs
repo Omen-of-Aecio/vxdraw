@@ -159,12 +159,6 @@ pub struct Debtri<'a> {
 impl<'a> Debtri<'a> {
     /// Check if invariants are held for this object
     fn check_health(&self) {
-        debug_assert![self.vx.debtris.posbuffer.len() == self.vx.debtris.triangles_count];
-        debug_assert![self.vx.debtris.colbuffer.len() == self.vx.debtris.triangles_count];
-        debug_assert![self.vx.debtris.tranbuffer.len() == self.vx.debtris.triangles_count];
-        debug_assert![self.vx.debtris.rotbuffer.len() == self.vx.debtris.triangles_count];
-        debug_assert![self.vx.debtris.scalebuffer.len() == self.vx.debtris.triangles_count];
-
         let imgcnt = self.vx.swapconfig.image_count as usize;
         debug_assert![self.vx.debtris.posbuf.len() == imgcnt];
         debug_assert![self.vx.debtris.colbuf.len() == imgcnt];
@@ -230,6 +224,11 @@ impl<'a> Debtri<'a> {
         self.vx.debtris.hidden = true;
     }
 
+    /// Current amount of triangles that are queued for drawing
+    pub fn count(&mut self) -> usize {
+        self.vx.debtris.posbuffer.len()
+    }
+
     // ---
 
     /// Add a new debug triangle to the renderer
@@ -278,7 +277,6 @@ impl<'a> Debtri<'a> {
         debtris
             .scalebuffer
             .push([triangle.scale, triangle.scale, triangle.scale]);
-        debtris.triangles_count += 1;
 
         debtris.posbuf_touch = self.vx.swapconfig.image_count;
         debtris.colbuf_touch = self.vx.swapconfig.image_count;
@@ -286,7 +284,7 @@ impl<'a> Debtri<'a> {
         debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         debtris.scalebuf_touch = self.vx.swapconfig.image_count;
 
-        Handle(debtris.triangles_count - 1)
+        Handle(debtris.posbuffer.len() - 1)
     }
 
     /// Remove the topmost debug triangle from rendering
@@ -298,8 +296,6 @@ impl<'a> Debtri<'a> {
     /// See [Debtri::add] for more information.
     pub fn pop(&mut self) {
         let debtris = &mut self.vx.debtris;
-
-        debtris.triangles_count = debtris.triangles_count.checked_sub(1).unwrap_or(0);
 
         debtris.posbuffer.pop();
         debtris.colbuffer.pop();
@@ -313,7 +309,7 @@ impl<'a> Debtri<'a> {
     /// If the amount to pop is bigger than the amount of debug triangles, then all debug triangles
     /// wil be removed.
     pub fn pop_many(&mut self, n: usize) {
-        let end = self.vx.debtris.triangles_count;
+        let end = self.vx.debtris.posbuffer.len();
         let begin = end.checked_sub(n).unwrap_or(0);
 
         let debtris = &mut self.vx.debtris;
@@ -322,8 +318,6 @@ impl<'a> Debtri<'a> {
         debtris.tranbuffer.drain(begin..end);
         debtris.rotbuffer.drain(begin..end);
         debtris.scalebuffer.drain(begin..end);
-
-        debtris.triangles_count = begin;
     }
 
     /// Remove a debug triangle
@@ -333,8 +327,6 @@ impl<'a> Debtri<'a> {
     /// with the new triangle.
     pub fn remove(&mut self, handle: Handle) {
         let debtris = &mut self.vx.debtris;
-
-        debtris.triangles_count -= 1;
 
         debtris.posbuf_touch = self.vx.swapconfig.image_count;
         debtris.colbuf_touch = self.vx.swapconfig.image_count;
@@ -871,7 +863,6 @@ pub(crate) fn create_debug_triangle(
 
     DebugTriangleData {
         hidden: false,
-        triangles_count: 0,
 
         posbuf_touch: 0,
         colbuf_touch: 0,
@@ -1043,6 +1034,14 @@ mod tests {
 
         let mut debtri = vx.debtri();
 
+        let mut count = 0;
+        debtri.translate_all(|_| {
+            count += 1;
+            (0.0, 0.0)
+        });
+        assert_eq![0, count];
+        assert_eq![0, debtri.count()];
+
         debtri.add(tri);
         let middle = debtri.add(tri);
         debtri.add(tri);
@@ -1053,15 +1052,17 @@ mod tests {
             Deg(0.0)
         });
         assert_eq![3, count];
+        assert_eq![3, debtri.count()];
 
         debtri.remove(middle);
 
         let mut count = 0;
-        debtri.rotate_all(|_| {
+        debtri.scale_all(|_| {
             count += 1;
-            Deg(0.0)
+            1.0
         });
         assert_eq![2, count];
+        assert_eq![2, debtri.count()];
     }
 
     #[test]

@@ -1021,7 +1021,7 @@ impl VxDraw {
             {
                 let current_frame = self.current_frame;
                 let texture_count = self.dyntexs.len();
-                let debugtris_cnt = self.debtris.triangles_count;
+                let debugtris_cnt = self.debtris.posbuffer.len();
                 let swap_image = swap_image.0;
                 trace![self.log, "vxdraw", "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
             }
@@ -1477,7 +1477,7 @@ impl VxDraw {
                                 );
                             self.debtris.scalebuf_touch -= 1;
                         }
-                        let count = self.debtris.triangles_count;
+                        let count = self.debtris.posbuffer.len();
                         let buffers: ArrayVec<[_; 5]> = [
                             (self.debtris.posbuf[self.current_frame].buffer(), 0),
                             (self.debtris.colbuf[self.current_frame].buffer(), 0),
