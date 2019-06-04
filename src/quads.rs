@@ -1036,6 +1036,20 @@ impl<'a> Quads<'a> {
         }
     }
 
+    /// Set the color on all quads (for each vertex)
+    ///
+    /// Applies [Quads::set_color] to each quad.
+    pub fn set_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [Color; 4]) {
+        self.vx.quads[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.quads[layer.0].colbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            for idx in 0..4 {
+                let Color::Rgba(r, g, b, a) = delta[idx];
+                quad[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
+            }
+        }
+    }
+
     /// Set the translation on all quads
     ///
     /// Applies [Quads::set_translation] to each quad.
@@ -1347,6 +1361,39 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "simple_quad_deform", img);
+    }
+
+    #[test]
+    fn set_color_all() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut quad = quads::Quad::default();
+
+        let mut quads = vx.quads();
+        let layer = quads.add_layer(LayerOptions::default());
+        quads.add(&layer, quad.scale(0.5).translation((-0.5, 0.0)));
+        quads.add(&layer, quad.scale(0.5).translation((0.5, 0.0)));
+
+        quads.set_color_all(&layer, |idx| match idx {
+            0 => [
+                Color::Rgba(0, 0, 0, 255),
+                Color::Rgba(255, 0, 0, 255),
+                Color::Rgba(0, 255, 0, 255),
+                Color::Rgba(0, 0, 255, 255),
+            ],
+            1 => [
+                Color::Rgba(0, 0, 0, 0),
+                Color::Rgba(255, 255, 0, 255),
+                Color::Rgba(255, 0, 255, 255),
+                Color::Rgba(0, 255, 255, 255),
+            ],
+            _ => panic!["There should only be 2 quads"],
+        });
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "set_color_all", img);
     }
 
     #[test]
