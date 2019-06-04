@@ -240,43 +240,90 @@ impl<'a> Debtri<'a> {
     pub fn add(&mut self, triangle: DebugTriangle) -> Handle {
         let debtris = &mut self.vx.debtris;
 
-        debtris.posbuffer.push([
-            triangle.origin[0].0,
-            triangle.origin[0].1,
-            triangle.origin[1].0,
-            triangle.origin[1].1,
-            triangle.origin[2].0,
-            triangle.origin[2].1,
-        ]);
+        let handle = if let Some(hole) = debtris.holes.pop() {
+            debtris.posbuffer[hole].copy_from_slice(&[
+                triangle.origin[0].0,
+                triangle.origin[0].1,
+                triangle.origin[1].0,
+                triangle.origin[1].1,
+                triangle.origin[2].0,
+                triangle.origin[2].1,
+            ]);
 
-        debtris.colbuffer.push([
-            triangle.colors_rgba[0].0,
-            triangle.colors_rgba[0].1,
-            triangle.colors_rgba[0].2,
-            triangle.colors_rgba[0].3,
-            triangle.colors_rgba[1].0,
-            triangle.colors_rgba[1].1,
-            triangle.colors_rgba[1].2,
-            triangle.colors_rgba[1].3,
-            triangle.colors_rgba[2].0,
-            triangle.colors_rgba[2].1,
-            triangle.colors_rgba[2].2,
-            triangle.colors_rgba[2].3,
-        ]);
-        debtris.tranbuffer.push([
-            triangle.translation.0,
-            triangle.translation.1,
-            triangle.translation.0,
-            triangle.translation.1,
-            triangle.translation.0,
-            triangle.translation.1,
-        ]);
-        debtris
-            .rotbuffer
-            .push([triangle.rotation, triangle.rotation, triangle.rotation]);
-        debtris
-            .scalebuffer
-            .push([triangle.scale, triangle.scale, triangle.scale]);
+            debtris.colbuffer[hole].copy_from_slice(&[
+                triangle.colors_rgba[0].0,
+                triangle.colors_rgba[0].1,
+                triangle.colors_rgba[0].2,
+                triangle.colors_rgba[0].3,
+                triangle.colors_rgba[1].0,
+                triangle.colors_rgba[1].1,
+                triangle.colors_rgba[1].2,
+                triangle.colors_rgba[1].3,
+                triangle.colors_rgba[2].0,
+                triangle.colors_rgba[2].1,
+                triangle.colors_rgba[2].2,
+                triangle.colors_rgba[2].3,
+            ]);
+
+            debtris.tranbuffer[hole].copy_from_slice(&[
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+            ]);
+            debtris.rotbuffer[hole].copy_from_slice(&[
+                triangle.rotation,
+                triangle.rotation,
+                triangle.rotation,
+            ]);
+            debtris.scalebuffer[hole].copy_from_slice(&[
+                triangle.scale,
+                triangle.scale,
+                triangle.scale,
+            ]);
+            Handle(hole)
+        } else {
+            debtris.posbuffer.push([
+                triangle.origin[0].0,
+                triangle.origin[0].1,
+                triangle.origin[1].0,
+                triangle.origin[1].1,
+                triangle.origin[2].0,
+                triangle.origin[2].1,
+            ]);
+
+            debtris.colbuffer.push([
+                triangle.colors_rgba[0].0,
+                triangle.colors_rgba[0].1,
+                triangle.colors_rgba[0].2,
+                triangle.colors_rgba[0].3,
+                triangle.colors_rgba[1].0,
+                triangle.colors_rgba[1].1,
+                triangle.colors_rgba[1].2,
+                triangle.colors_rgba[1].3,
+                triangle.colors_rgba[2].0,
+                triangle.colors_rgba[2].1,
+                triangle.colors_rgba[2].2,
+                triangle.colors_rgba[2].3,
+            ]);
+            debtris.tranbuffer.push([
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+                triangle.translation.0,
+                triangle.translation.1,
+            ]);
+            debtris
+                .rotbuffer
+                .push([triangle.rotation, triangle.rotation, triangle.rotation]);
+            debtris
+                .scalebuffer
+                .push([triangle.scale, triangle.scale, triangle.scale]);
+            Handle(debtris.posbuffer.len() - 1)
+        };
 
         debtris.posbuf_touch = self.vx.swapconfig.image_count;
         debtris.colbuf_touch = self.vx.swapconfig.image_count;
@@ -284,7 +331,7 @@ impl<'a> Debtri<'a> {
         debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         debtris.scalebuf_touch = self.vx.swapconfig.image_count;
 
-        Handle(debtris.posbuffer.len() - 1)
+        handle
     }
 
     /// Remove the topmost debug triangle from rendering
@@ -328,17 +375,8 @@ impl<'a> Debtri<'a> {
     pub fn remove(&mut self, handle: Handle) {
         let debtris = &mut self.vx.debtris;
 
-        debtris.posbuf_touch = self.vx.swapconfig.image_count;
-        debtris.colbuf_touch = self.vx.swapconfig.image_count;
-        debtris.tranbuf_touch = self.vx.swapconfig.image_count;
-        debtris.rotbuf_touch = self.vx.swapconfig.image_count;
-        debtris.scalebuf_touch = self.vx.swapconfig.image_count;
-
-        debtris.posbuffer.swap_remove(handle.0);
-        debtris.colbuffer.swap_remove(handle.0);
-        debtris.tranbuffer.swap_remove(handle.0);
-        debtris.rotbuffer.swap_remove(handle.0);
-        debtris.scalebuffer.swap_remove(handle.0);
+        self.vx.debtris.holes.push(handle.0);
+        self.set_scale(&handle, 0.0);
     }
 
     // ---
@@ -864,6 +902,8 @@ pub(crate) fn create_debug_triangle(
     DebugTriangleData {
         hidden: false,
 
+        holes: vec![],
+
         posbuf_touch: 0,
         colbuf_touch: 0,
         tranbuf_touch: 0,
@@ -1061,8 +1101,8 @@ mod tests {
             count += 1;
             1.0
         });
-        assert_eq![2, count];
-        assert_eq![2, debtri.count()];
+        assert_eq![3, count];
+        assert_eq![3, debtri.count()];
     }
 
     #[test]
