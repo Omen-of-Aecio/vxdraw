@@ -845,22 +845,25 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
         // ________________________   < 1.0
         //  255 * width * height * 3
 
-        let mut sum_diff: u64 = 0;
-        for (idx, byte) in correct_bytes.iter().enumerate() {
-            sum_diff += absdiff(*byte, rgb[idx]) as u64;
-        }
+        #[cfg(not(feature = "exact"))]
+        {
+            let mut sum_diff: u64 = 0;
+            for (idx, byte) in correct_bytes.iter().enumerate() {
+                sum_diff += absdiff(*byte, rgb[idx]) as u64;
+            }
 
-        let width = vx.swapconfig.extent.width as f64;
-        let height = vx.swapconfig.extent.height as f64;
-        let diff_coeff = sum_diff as f64 / 255.0 / width / height / 3.0;
+            let width = vx.swapconfig.extent.width as f64;
+            let height = vx.swapconfig.extent.height as f64;
+            let diff_coeff = sum_diff as f64 / 255.0 / width / height / 3.0;
 
-        const DIFF_COEFF: f64 = 0.003;
-        dbg![diff_coeff];
-        if diff_coeff > DIFF_COEFF {
-            // Continue
-        } else {
-            dbg!["WARNING: Images were NOT exact, but difference is below treshold"];
-            return;
+            const DIFF_COEFF: f64 = 0.003;
+            dbg![diff_coeff];
+            if diff_coeff > DIFF_COEFF {
+                // Continue
+            } else {
+                dbg!["WARNING: Images were NOT exact, but difference is below treshold"];
+                return;
+            }
         }
 
         store_generated_image();
