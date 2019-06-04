@@ -159,8 +159,6 @@ pub struct Debtri<'a> {
 impl<'a> Debtri<'a> {
     /// Check if invariants are held for this object
     fn check_health(&self) {
-        debug_assert![self.vx.debtris.holes.len() <= self.vx.debtris.triangles_count];
-
         debug_assert![self.vx.debtris.posbuffer.len() == self.vx.debtris.triangles_count];
         debug_assert![self.vx.debtris.colbuffer.len() == self.vx.debtris.triangles_count];
         debug_assert![self.vx.debtris.tranbuffer.len() == self.vx.debtris.triangles_count];
@@ -243,91 +241,44 @@ impl<'a> Debtri<'a> {
     pub fn add(&mut self, triangle: DebugTriangle) -> Handle {
         let debtris = &mut self.vx.debtris;
 
-        let handle = if let Some(hole) = debtris.holes.pop() {
-            debtris.posbuffer[hole].copy_from_slice(&[
-                triangle.origin[0].0,
-                triangle.origin[0].1,
-                triangle.origin[1].0,
-                triangle.origin[1].1,
-                triangle.origin[2].0,
-                triangle.origin[2].1,
-            ]);
+        debtris.posbuffer.push([
+            triangle.origin[0].0,
+            triangle.origin[0].1,
+            triangle.origin[1].0,
+            triangle.origin[1].1,
+            triangle.origin[2].0,
+            triangle.origin[2].1,
+        ]);
 
-            debtris.colbuffer[hole].copy_from_slice(&[
-                triangle.colors_rgba[0].0,
-                triangle.colors_rgba[0].1,
-                triangle.colors_rgba[0].2,
-                triangle.colors_rgba[0].3,
-                triangle.colors_rgba[1].0,
-                triangle.colors_rgba[1].1,
-                triangle.colors_rgba[1].2,
-                triangle.colors_rgba[1].3,
-                triangle.colors_rgba[2].0,
-                triangle.colors_rgba[2].1,
-                triangle.colors_rgba[2].2,
-                triangle.colors_rgba[2].3,
-            ]);
-
-            debtris.tranbuffer[hole].copy_from_slice(&[
-                triangle.translation.0,
-                triangle.translation.1,
-                triangle.translation.0,
-                triangle.translation.1,
-                triangle.translation.0,
-                triangle.translation.1,
-            ]);
-            debtris.rotbuffer[hole].copy_from_slice(&[
-                triangle.rotation,
-                triangle.rotation,
-                triangle.rotation,
-            ]);
-            debtris.scalebuffer[hole].copy_from_slice(&[
-                triangle.scale,
-                triangle.scale,
-                triangle.scale,
-            ]);
-            Handle(hole)
-        } else {
-            debtris.posbuffer.push([
-                triangle.origin[0].0,
-                triangle.origin[0].1,
-                triangle.origin[1].0,
-                triangle.origin[1].1,
-                triangle.origin[2].0,
-                triangle.origin[2].1,
-            ]);
-
-            debtris.colbuffer.push([
-                triangle.colors_rgba[0].0,
-                triangle.colors_rgba[0].1,
-                triangle.colors_rgba[0].2,
-                triangle.colors_rgba[0].3,
-                triangle.colors_rgba[1].0,
-                triangle.colors_rgba[1].1,
-                triangle.colors_rgba[1].2,
-                triangle.colors_rgba[1].3,
-                triangle.colors_rgba[2].0,
-                triangle.colors_rgba[2].1,
-                triangle.colors_rgba[2].2,
-                triangle.colors_rgba[2].3,
-            ]);
-            debtris.tranbuffer.push([
-                triangle.translation.0,
-                triangle.translation.1,
-                triangle.translation.0,
-                triangle.translation.1,
-                triangle.translation.0,
-                triangle.translation.1,
-            ]);
-            debtris
-                .rotbuffer
-                .push([triangle.rotation, triangle.rotation, triangle.rotation]);
-            debtris
-                .scalebuffer
-                .push([triangle.scale, triangle.scale, triangle.scale]);
-            debtris.triangles_count += 1;
-            Handle(debtris.triangles_count - 1)
-        };
+        debtris.colbuffer.push([
+            triangle.colors_rgba[0].0,
+            triangle.colors_rgba[0].1,
+            triangle.colors_rgba[0].2,
+            triangle.colors_rgba[0].3,
+            triangle.colors_rgba[1].0,
+            triangle.colors_rgba[1].1,
+            triangle.colors_rgba[1].2,
+            triangle.colors_rgba[1].3,
+            triangle.colors_rgba[2].0,
+            triangle.colors_rgba[2].1,
+            triangle.colors_rgba[2].2,
+            triangle.colors_rgba[2].3,
+        ]);
+        debtris.tranbuffer.push([
+            triangle.translation.0,
+            triangle.translation.1,
+            triangle.translation.0,
+            triangle.translation.1,
+            triangle.translation.0,
+            triangle.translation.1,
+        ]);
+        debtris
+            .rotbuffer
+            .push([triangle.rotation, triangle.rotation, triangle.rotation]);
+        debtris
+            .scalebuffer
+            .push([triangle.scale, triangle.scale, triangle.scale]);
+        debtris.triangles_count += 1;
 
         debtris.posbuf_touch = self.vx.swapconfig.image_count;
         debtris.colbuf_touch = self.vx.swapconfig.image_count;
@@ -335,7 +286,7 @@ impl<'a> Debtri<'a> {
         debtris.rotbuf_touch = self.vx.swapconfig.image_count;
         debtris.scalebuf_touch = self.vx.swapconfig.image_count;
 
-        handle
+        Handle(debtris.triangles_count - 1)
     }
 
     /// Remove the topmost debug triangle from rendering
@@ -381,8 +332,21 @@ impl<'a> Debtri<'a> {
     /// `holes`. Calling [Debtri::add] with available holes will fill the first available hole
     /// with the new triangle.
     pub fn remove(&mut self, handle: Handle) {
-        self.vx.debtris.holes.push(handle.0);
-        self.set_scale(&handle, 0.0);
+        let debtris = &mut self.vx.debtris;
+
+        debtris.triangles_count -= 1;
+
+        debtris.posbuf_touch = self.vx.swapconfig.image_count;
+        debtris.colbuf_touch = self.vx.swapconfig.image_count;
+        debtris.tranbuf_touch = self.vx.swapconfig.image_count;
+        debtris.rotbuf_touch = self.vx.swapconfig.image_count;
+        debtris.scalebuf_touch = self.vx.swapconfig.image_count;
+
+        debtris.posbuffer.swap_remove(handle.0);
+        debtris.colbuffer.swap_remove(handle.0);
+        debtris.tranbuffer.swap_remove(handle.0);
+        debtris.rotbuffer.swap_remove(handle.0);
+        debtris.scalebuffer.swap_remove(handle.0);
     }
 
     // ---
@@ -909,8 +873,6 @@ pub(crate) fn create_debug_triangle(
         hidden: false,
         triangles_count: 0,
 
-        holes: vec![],
-
         posbuf_touch: 0,
         colbuf_touch: 0,
         tranbuf_touch: 0,
@@ -1070,6 +1032,36 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "fill_remove_hole", img);
+    }
+
+    #[test]
+    fn removing_iterates_minus_one() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+        let tri = DebugTriangle::default();
+
+        let mut debtri = vx.debtri();
+
+        debtri.add(tri);
+        let middle = debtri.add(tri);
+        debtri.add(tri);
+
+        let mut count = 0;
+        debtri.rotate_all(|_| {
+            count += 1;
+            Deg(0.0)
+        });
+        assert_eq![3, count];
+
+        debtri.remove(middle);
+
+        let mut count = 0;
+        debtri.rotate_all(|_| {
+            count += 1;
+            Deg(0.0)
+        });
+        assert_eq![2, count];
     }
 
     #[test]

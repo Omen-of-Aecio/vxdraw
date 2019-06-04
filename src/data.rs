@@ -122,8 +122,6 @@ pub(crate) struct DebugTriangleData {
     pub(crate) hidden: bool,
     pub(crate) triangles_count: usize,
 
-    pub(crate) holes: Vec<usize>,
-
     pub(crate) posbuf_touch: u32,
     pub(crate) colbuf_touch: u32,
     pub(crate) tranbuf_touch: u32,
