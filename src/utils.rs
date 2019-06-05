@@ -721,40 +721,6 @@ pub(crate) fn copy_image_to_rgb(
     }
 }
 
-pub(crate) struct Align {
-    pub(crate) access_offset: u64,
-    pub(crate) how_many_bytes_you_need: u64,
-    pub(crate) non_coherent_atom_size: u64,
-}
-pub(crate) struct AlignResult {
-    pub(crate) begin: u64,
-    pub(crate) end: u64,
-    pub(crate) index_offset: usize,
-}
-pub(crate) fn perfect_mapping_alignment(align: Align) -> AlignResult {
-    struct Alignment(pub(crate) u64);
-    fn align_top(alignment: Alignment, value: u64) -> u64 {
-        if value % alignment.0 != 0 {
-            let alig = value + (alignment.0 - value % alignment.0);
-            assert![alig % alignment.0 == 0];
-            alig
-        } else {
-            value
-        }
-    }
-    let begin = align.access_offset - align.access_offset % align.non_coherent_atom_size;
-    let end = align_top(
-        Alignment(align.non_coherent_atom_size),
-        align.access_offset + align.how_many_bytes_you_need,
-    );
-    let index_offset = (align.access_offset - begin) as usize;
-    AlignResult {
-        begin,
-        end,
-        index_offset,
-    }
-}
-
 #[cfg(test)]
 pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
