@@ -1416,7 +1416,11 @@ impl VxDraw {
                                             offset: 0,
                                             index_type: gfx_hal::IndexType::U32,
                                         });
-                                        enc.draw_indexed(0..quad.count as u32 * 6, 0, 0..1);
+                                        enc.draw_indexed(
+                                            0..quad.posbuffer.len() as u32 * 6,
+                                            0,
+                                            0..1,
+                                        );
                                     }
                                 }
                             }

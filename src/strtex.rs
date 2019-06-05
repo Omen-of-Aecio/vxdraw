@@ -781,7 +781,6 @@ impl<'a> Strtex<'a> {
 
         s.strtexs.push(StreamingTexture {
             hidden: false,
-            count: 0,
             removed: vec![],
 
             width: options.width as u32,

@@ -611,7 +611,6 @@ impl<'a> Quads<'a> {
 
         let quads = QuadsData {
             hidden: options.hide,
-            count: 0,
 
             holes: vec![],
 
@@ -767,9 +766,7 @@ impl<'a> Quads<'a> {
                 .scalebuffer
                 .push([quad.scale, quad.scale, quad.scale, quad.scale]);
 
-            quads.count += 1;
-
-            Handle(layer.0, quads.count - 1)
+            Handle(layer.0, quads.posbuffer.len() - 1)
         };
 
         let quads = self.vx.quads.get_mut(layer.0).unwrap();

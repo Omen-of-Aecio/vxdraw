@@ -25,7 +25,6 @@ pub(crate) enum StreamingTextureWrite {
 #[derive(Debug)]
 pub(crate) struct StreamingTexture {
     pub(crate) hidden: bool,
-    pub(crate) count: u32,
     pub(crate) removed: Vec<usize>,
 
     pub(crate) width: u32,
@@ -75,7 +74,6 @@ pub(crate) struct StreamingTexture {
 #[derive(Debug)]
 pub(crate) struct DynamicTexture {
     pub(crate) hidden: bool,
-    pub(crate) count: u32,
     pub(crate) removed: Vec<usize>,
 
     pub(crate) fixed_perspective: Option<Matrix4<f32>>,
@@ -150,7 +148,6 @@ pub(crate) struct DebugTriangleData {
 #[derive(Debug)]
 pub(crate) struct QuadsData {
     pub(crate) hidden: bool,
-    pub(crate) count: usize,
 
     pub(crate) holes: Vec<usize>,
 

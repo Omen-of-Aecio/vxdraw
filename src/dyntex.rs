@@ -793,7 +793,6 @@ impl<'a> Dyntex<'a> {
 
         s.dyntexs.push(DynamicTexture {
             hidden: false,
-            count: 0,
 
             fixed_perspective: options.fixed_perspective,
             removed: vec![],
