@@ -346,9 +346,9 @@ pub(crate) fn make_transfer_img_of_size(
             image::Usage::TRANSFER_SRC | image::Usage::TRANSFER_DST,
             image::ViewCapabilities::empty(),
         ) {
-            const msg: &str = "Device does not support VK_FORMAT_R8G8B8A8_UNORM transfer image";
-            error![s.log, "vxdraw", "{}", msg];
-            panic!(msg);
+            const MSG: &str = "Device does not support VK_FORMAT_R8G8B8A8_UNORM transfer image";
+            error![s.log, "vxdraw", "{}", MSG];
+            panic![MSG];
         }
         if !s
             .adapter
@@ -357,10 +357,10 @@ pub(crate) fn make_transfer_img_of_size(
             .linear_tiling
             .contains(format::ImageFeature::BLIT_DST)
         {
-            const msg: &str =
+            const MSG: &str =
                 "Device does not support VK_FORMAT_R8G8B8A8_UNORM as blit destination";
-            error![s.log, "vxdraw", "{}", msg];
-            panic!(msg);
+            error![s.log, "vxdraw", "{}", MSG];
+            panic![MSG];
         }
         let mut buffer = device
             .create_image(
