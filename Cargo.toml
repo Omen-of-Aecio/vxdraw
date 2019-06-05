@@ -16,7 +16,6 @@ gfx-backend-gl = { version = "0.2", optional = true }
 gfx-backend-metal = { version = "0.2", optional = true }
 gfx-backend-vulkan = { version = "0.2", optional = true }
 gfx-hal = "0.2"
-glsl-to-spirv = "0.1.4"
 glutin = { version = "0.20", optional = true }
 glyph_brush = "0.5"
 image = "0.21"
@@ -25,7 +24,7 @@ rand_pcg = "0.1.2"
 winit = "0.19"
 
 [build-dependencies]
-glsl-to-spirv = "0.1.4"
+shaderc = "0.5"
 
 [dev-dependencies]
 itertools = "0.8"
