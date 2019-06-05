@@ -1077,6 +1077,10 @@ impl<'a> Strtex<'a> {
     }
 
     /// Removes a single sprite, making it not be drawn
+    ///
+    /// The sprite is set to a scale of 0 and its handle is stored internally in a list of
+    /// `holes`. Calling [Strtex::add] with available holes will fill the first available hole
+    /// with the new triangle.
     pub fn remove(&mut self, handle: Handle) {
         self.vx.strtexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
         if let Some(strtex) = self.vx.strtexs.get_mut(handle.0) {
@@ -1459,6 +1463,7 @@ impl<'a> Strtex<'a> {
     /// Set the scale on all strtexs
     ///
     /// Applies [Strtex::set_scale] to each dynamic texture.
+    /// Note: This may re-enable removed sprites, see [Strtex::remove].
     pub fn set_scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
         self.vx.strtexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.strtexs[layer.0].scalebuffer.iter_mut().enumerate() {

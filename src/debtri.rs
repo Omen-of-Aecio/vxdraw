@@ -641,6 +641,7 @@ impl<'a> Debtri<'a> {
     /// Set the scale on all debug triangles
     ///
     /// Applies [Debtri::set_scale] to all triangles.
+    /// Note: This may re-enable removed triangles, see [Debtri::remove].
     pub fn set_scale_all(&mut self, mut delta: impl FnMut(usize) -> f32) {
         self.vx.debtris.scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, scs) in &mut self.vx.debtris.scalebuffer.iter_mut().enumerate() {

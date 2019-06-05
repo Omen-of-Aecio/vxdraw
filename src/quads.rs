@@ -1085,6 +1085,7 @@ impl<'a> Quads<'a> {
     /// Set the scale on all quads
     ///
     /// Applies [Quads::set_scale] to each quad.
+    /// Note: This may re-enable removed quads, see [Quads::remove].
     pub fn set_scale_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> f32) {
         self.vx.quads[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.quads[layer.0].scalebuffer.iter_mut().enumerate() {
