@@ -7,9 +7,9 @@
 //! # Example - Drawing a sprite #
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{dyntex::{LayerOptions, Sprite}, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
+//! use vxdraw::{dyntex::{ImgData, LayerOptions, Sprite}, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
 //! fn main() {
-//!     static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
+//!     static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!
@@ -246,6 +246,22 @@ impl Default for Sprite {
     }
 }
 
+/// Specify the type of incoming texture data
+pub enum ImgData<'a> {
+    /// Raw PNG bytes, no size is needed as this is included in the bytestream
+    PNGBytes(&'a [u8]),
+    /// Raw RGBA8 bytes
+    RawBytes {
+        /// Width of the image in pixels
+        width: usize,
+        /// Height of the image in pixels
+        height: usize,
+        /// Bytes of the image, if there is a width/height mismatch, the image will be truncated or
+        /// tiled (extended)
+        bytes: &'a [u8],
+    },
+}
+
 // ---
 
 /// Accessor object to all dynamic textures
@@ -278,21 +294,41 @@ impl<'a> Dyntex<'a> {
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
     /// To make sure transparency works correctly you can turn off the depth test for foreground
     /// objects and ensure that the foreground texture is allocated last.
-    pub fn add_layer(&mut self, img_data: &[u8], options: LayerOptions) -> Layer {
+    pub fn add_layer<'x>(&mut self, img_data: &ImgData<'x>, options: LayerOptions) -> Layer {
+        match img_data {
+            ImgData::PNGBytes(ref bytes) => {
+                let image = load_image::load_from_memory_with_format(&bytes[..], load_image::PNG)
+                    .unwrap()
+                    .to_rgba();
+                let (width, height) = (image.width() as usize, image.height() as usize);
+                let img_bytes = image.into_raw();
+                self.add_layer_internal(width, height, &img_bytes[..], options)
+            }
+            ImgData::RawBytes {
+                width,
+                height,
+                bytes,
+            } => self.add_layer_internal(*width, *height, bytes, options),
+        }
+    }
+
+    fn add_layer_internal(
+        &mut self,
+        img_width: usize,
+        img_height: usize,
+        img: &[u8],
+        options: LayerOptions,
+    ) -> Layer {
         let s = &mut *self.vx;
         let device = &s.device;
 
-        let img = load_image::load_from_memory_with_format(&img_data[..], load_image::PNG)
-            .unwrap()
-            .to_rgba();
-
         let pixel_size = 4; //size_of::<image::Rgba<u8>>();
-        let row_size = pixel_size * (img.width() as usize);
+        let row_size = pixel_size * img_width;
         let limits = s.adapter.physical_device.limits();
         let row_alignment_mask = limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
         let row_pitch = ((row_size as u32 + row_alignment_mask) & !row_alignment_mask) as usize;
         debug_assert!(row_pitch as usize >= row_size);
-        let required_bytes = row_pitch * img.height() as usize;
+        let required_bytes = row_pitch * img_height;
 
         let mut image_upload_buffer = unsafe {
             device.create_buffer(required_bytes as u64, gfx_hal::buffer::Usage::TRANSFER_SRC)
@@ -314,10 +350,14 @@ impl<'a> Dyntex<'a> {
                 .device
                 .acquire_mapping_writer::<u8>(&image_upload_memory, 0..image_mem_reqs.size)
                 .expect("Unable to get mapping writer");
-            for y in 0..img.height() as usize {
-                let row = &(*img)[y * row_size..(y + 1) * row_size];
+            let mut idx = 0;
+            for y in 0..img_height {
+                // let row = &(*img)[y * row_size..(y + 1) * row_size];
                 let dest_base = y * row_pitch;
-                writer[dest_base..dest_base + row.len()].copy_from_slice(row);
+                for row_index in 0..row_size {
+                    writer[dest_base + row_index] = img[idx % img.len()];
+                    idx += 1;
+                }
             }
             device
                 .release_mapping_writer(writer)
@@ -327,7 +367,7 @@ impl<'a> Dyntex<'a> {
         let mut the_image = unsafe {
             device
                 .create_image(
-                    image::Kind::D2(img.width(), img.height(), 1, 1),
+                    image::Kind::D2(img_width as u32, img_height as u32, 1, 1),
                     1,
                     format::Format::Rgba8Srgb,
                     image::Tiling::Optimal,
@@ -411,7 +451,7 @@ impl<'a> Dyntex<'a> {
                 &[command::BufferImageCopy {
                     buffer_offset: 0,
                     buffer_width: (row_pitch / pixel_size) as u32,
-                    buffer_height: img.height(),
+                    buffer_height: img_height as u32,
                     image_layers: gfx_hal::image::SubresourceLayers {
                         aspects: format::Aspects::COLOR,
                         level: 0,
@@ -419,8 +459,8 @@ impl<'a> Dyntex<'a> {
                     },
                     image_offset: image::Offset { x: 0, y: 0, z: 0 },
                     image_extent: image::Extent {
-                        width: img.width(),
-                        height: img.height(),
+                        width: img_width as u32,
+                        height: img_height as u32,
                         depth: 1,
                     },
                 }],
@@ -1439,11 +1479,11 @@ mod tests {
 
     // ---
 
-    static LOGO: &[u8] = include_bytes!["../images/logo.png"];
-    static FOREST: &[u8] = include_bytes!["../images/forest-light.png"];
-    static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
-    static TREE: &[u8] = include_bytes!["../images/treetest.png"];
-    static FIREBALL: &[u8] = include_bytes!["../images/Fireball_68x9.png"];
+    static LOGO: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/logo.png"]);
+    static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/forest-light.png"]);
+    static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
+    static TREE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/treetest.png"]);
+    static FIREBALL: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/Fireball_68x9.png"]);
 
     // ---
 
@@ -1969,6 +2009,32 @@ mod tests {
         }
 
         vx.draw_frame(&prspect);
+    }
+
+    #[test]
+    fn too_little_data_in_texture_wraps() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let options = LayerOptions::default();
+        #[rustfmt::skip]
+        let tex = ImgData::RawBytes {
+            width: 7,
+            height: 8,
+            bytes: &[
+                255,   0,   0, 255,
+                  0, 255,   0, 255,
+                  0,   0, 255, 255,
+                255,   0, 255, 255,
+                  0,   0,   0, 255,
+            ],
+        };
+        let testure = vx.dyntex().add_layer(&tex, options);
+        let sprite = vx.dyntex().add(&testure, Sprite::default());
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "too_little_data_in_texture_wraps", img);
     }
 
     #[bench]

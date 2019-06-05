@@ -1565,7 +1565,8 @@ mod tests {
 
     // ---
 
-    static TESTURE: &[u8] = include_bytes!["../images/testure.png"];
+    static TESTURE: &dyntex::ImgData =
+        &dyntex::ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 
     // ---
 
