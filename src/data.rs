@@ -9,7 +9,7 @@ use gfx_backend_gl as back;
 use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
-use gfx_hal::{device::Device, Adapter, Backend};
+use gfx_hal::{command::ClearColor, device::Device, Adapter, Backend};
 use std::mem::ManuallyDrop;
 
 #[derive(Debug)]
@@ -230,6 +230,7 @@ pub struct VxDraw {
     pub(crate) log: Logpass,
 
     pub(crate) queue_group: gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>,
+    pub(crate) clear_color: ClearColor,
 
     ////////////////////////////////////////////////////////////
     // WARNING: ORDER SENSITIVE CODE

@@ -631,7 +631,20 @@ impl VxDraw {
             window,
             log,
             debtris,
+
+            clear_color: ClearColor::Float([1.0f32, 0.25, 0.5, 0.0]),
         }
+    }
+
+    /// Set the clear color when clearing a frame
+    pub fn set_clear_color(&mut self, color: Color) {
+        let (r, g, b, a) = color.into();
+        self.clear_color = ClearColor::Float([
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+            a as f32 / 255.0,
+        ]);
     }
 
     /// Get how many swapchain images there exist
@@ -1030,7 +1043,7 @@ impl VxDraw {
             {
                 let buffer = &mut self.command_buffers[self.current_frame];
                 let clear_values = [
-                    ClearValue::Color(ClearColor::Float([1.0f32, 0.25, 0.5, 0.75])),
+                    ClearValue::Color(self.clear_color),
                     ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0)),
                 ];
                 buffer.begin(false);
@@ -1610,6 +1623,19 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer(&prspect);
 
         assert_swapchain_eq(&mut vx, "setup_and_teardown_draw_with_test", img);
+    }
+
+    #[test]
+    fn setup_and_teardown_custom_clear_color() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        vx.set_clear_color(Color::Rgba(255, 0, 255, 128));
+        let prspect = gen_perspective(&vx);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+
+        assert_swapchain_eq(&mut vx, "setup_and_teardown_custom_clear_color", img);
     }
 
     #[test]
