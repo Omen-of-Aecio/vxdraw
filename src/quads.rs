@@ -175,6 +175,11 @@ impl Default for LayerOptions {
 }
 
 impl LayerOptions {
+    /// Same as default
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Hide this layer
     pub fn hide(mut self) -> Self {
         self.hide = true;
