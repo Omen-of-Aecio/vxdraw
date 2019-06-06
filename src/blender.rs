@@ -148,26 +148,18 @@ impl BlendOp {
 
 /// Specify whether blending be on or off
 #[derive(Clone, Copy, Debug)]
-pub enum BlendState {
-    /// Enable color blending
-    On {
-        /// The blend operations for the color channels
-        color: BlendOp,
-        /// The blend operations for the alpha channel
-        alpha: BlendOp,
-    },
-    /// Disable color blending
-    Off,
+pub struct BlendState {
+    /// The blend operations for the color channels
+    color: BlendOp,
+    /// The blend operations for the alpha channel
+    alpha: BlendOp,
 }
 
 impl BlendState {
     fn to_gfx_blend_state(self) -> pso::BlendState {
-        match self {
-            BlendState::On { color, alpha } => pso::BlendState::On {
-                color: color.to_gfx_blend_op(),
-                alpha: alpha.to_gfx_blend_op(),
-            },
-            BlendState::Off => pso::BlendState::Off,
+        pso::BlendState::On {
+            color: self.color.to_gfx_blend_op(),
+            alpha: self.alpha.to_gfx_blend_op(),
         }
     }
 }
@@ -221,38 +213,71 @@ impl Blender {
     }
 
     /// Set the blender for all color channels
-    pub fn colors(mut self, state: BlendState) -> Self {
-        self.add_blend_state(state, pso::ColorMask::COLOR);
+    pub fn colors(mut self, state: BlendOp) -> Self {
+        self.add_blend_state(
+            BlendState {
+                color: state,
+                alpha: BlendOp::Min,
+            },
+            pso::ColorMask::COLOR,
+        );
         self
     }
 
     /// Set the blender for the alpha channel
-    pub fn alpha(mut self, state: BlendState) -> Self {
-        self.add_blend_state(state, pso::ColorMask::ALPHA);
+    pub fn alpha(mut self, state: BlendOp) -> Self {
+        self.add_blend_state(
+            BlendState {
+                color: BlendOp::Min,
+                alpha: state,
+            },
+            pso::ColorMask::ALPHA,
+        );
         self
     }
 
     /// Set the red color blender
-    pub fn red(mut self, state: BlendState) -> Self {
-        self.add_blend_state(state, pso::ColorMask::RED);
+    pub fn red(mut self, state: BlendOp) -> Self {
+        self.add_blend_state(
+            BlendState {
+                color: state,
+                alpha: BlendOp::Min,
+            },
+            pso::ColorMask::RED,
+        );
         self
     }
 
     /// Set the green color blender
-    pub fn green(mut self, state: BlendState) -> Self {
-        self.add_blend_state(state, pso::ColorMask::GREEN);
+    pub fn green(mut self, state: BlendOp) -> Self {
+        self.add_blend_state(
+            BlendState {
+                color: state,
+                alpha: BlendOp::Min,
+            },
+            pso::ColorMask::GREEN,
+        );
         self
     }
 
     /// Set the blue color blender
-    pub fn blue(mut self, state: BlendState) -> Self {
-        self.add_blend_state(state, pso::ColorMask::BLUE);
+    pub fn blue(mut self, state: BlendOp) -> Self {
+        self.add_blend_state(
+            BlendState {
+                color: state,
+                alpha: BlendOp::Min,
+            },
+            pso::ColorMask::BLUE,
+        );
         self
     }
 
-    /// Set the color blender to blend nothing
-    pub fn none(mut self, state: BlendState) -> Self {
-        self.add_blend_state(state, pso::ColorMask::NONE);
+    /// Turn the color blender off
+    pub fn none(mut self) -> Self {
+        self.targets = vec![pso::ColorBlendDesc(
+            pso::ColorMask::NONE,
+            pso::BlendState::Off,
+        )];
         self
     }
 }
@@ -264,10 +289,7 @@ impl Default for Blender {
                 src: pso::Factor::SrcAlpha,
                 dst: pso::Factor::OneMinusSrcAlpha,
             },
-            alpha: pso::BlendOp::Add {
-                src: pso::Factor::One,
-                dst: pso::Factor::OneMinusSrcAlpha,
-            },
+            alpha: pso::BlendOp::Max,
         };
         Self {
             logic_op: None,
