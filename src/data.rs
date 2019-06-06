@@ -31,21 +31,21 @@ pub(crate) struct StreamingTexture {
     pub(crate) height: u32,
 
     pub(crate) posbuf_touch: u32,
-    pub(crate) colbuf_touch: u32,
+    pub(crate) opacbuf_touch: u32,
     pub(crate) uvbuf_touch: u32,
     pub(crate) tranbuf_touch: u32,
     pub(crate) rotbuf_touch: u32,
     pub(crate) scalebuf_touch: u32,
 
     pub(crate) posbuffer: Vec<[f32; 8]>,   // 8 per quad
-    pub(crate) colbuffer: Vec<[u8; 16]>,   // 16 per quad
+    pub(crate) opacbuffer: Vec<[u8; 4]>,   // 16 per quad
     pub(crate) uvbuffer: Vec<[f32; 8]>,    // 8 per quad
     pub(crate) tranbuffer: Vec<[f32; 8]>,  // 8 per quad
     pub(crate) rotbuffer: Vec<[f32; 4]>,   // 4 per quad
     pub(crate) scalebuffer: Vec<[f32; 4]>, // 4 per quad
 
     pub(crate) posbuf: Vec<super::utils::ResizBuf>,
-    pub(crate) colbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) opacbuf: Vec<super::utils::ResizBuf>,
     pub(crate) uvbuf: Vec<super::utils::ResizBuf>,
     pub(crate) tranbuf: Vec<super::utils::ResizBuf>,
     pub(crate) rotbuf: Vec<super::utils::ResizBuf>,
@@ -416,8 +416,8 @@ impl Drop for VxDraw {
                 for mut posbuf in strtex.posbuf.drain(..) {
                     posbuf.destroy(&self.device);
                 }
-                for mut colbuf in strtex.colbuf.drain(..) {
-                    colbuf.destroy(&self.device);
+                for mut opacbuf in strtex.opacbuf.drain(..) {
+                    opacbuf.destroy(&self.device);
                 }
                 for mut uvbuf in strtex.uvbuf.drain(..) {
                     uvbuf.destroy(&self.device);

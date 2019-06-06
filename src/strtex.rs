@@ -205,7 +205,7 @@ impl Default for LayerOptions {
 /// call [Strtex::add] with.
 #[derive(Clone, Copy)]
 pub struct Sprite {
-    colors: [(u8, u8, u8, u8); 4],
+    opacity: [u8; 4],
     height: f32,
     origin: (f32, f32),
     rotation: f32,
@@ -237,8 +237,8 @@ impl Sprite {
     /// Set the colors of the sprite
     ///
     /// The colors are added on top of whatever the sprite's texture data is
-    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
-        self.colors = colors;
+    pub fn opacity(mut self, opacity: u8) -> Self {
+        self.opacity = [opacity; 4];
         self
     }
 
@@ -284,7 +284,7 @@ impl Default for Sprite {
         Sprite {
             width: 2.0,
             height: 2.0,
-            colors: [(0, 0, 0, 255); 4],
+            opacity: [255; 4],
             uv_begin: (0.0, 0.0),
             uv_end: (1.0, 1.0),
             translation: (0.0, 0.0),
@@ -478,7 +478,7 @@ impl<'a> Strtex<'a> {
             },
             pso::VertexBufferDesc {
                 binding: 5,
-                stride: 4,
+                stride: 1,
                 rate: pso::VertexInputRate::Vertex,
             },
         ];
@@ -527,7 +527,7 @@ impl<'a> Strtex<'a> {
                 location: 5,
                 binding: 5,
                 element: pso::Element {
-                    format: format::Format::Rgba8Unorm,
+                    format: format::Format::R8Unorm,
                     offset: 0,
                 },
             },
@@ -753,7 +753,7 @@ impl<'a> Strtex<'a> {
         let posbuf = (0..image_count)
             .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
-        let colbuf = (0..image_count)
+        let opacbuf = (0..image_count)
             .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
         let uvbuf = (0..image_count)
@@ -781,21 +781,21 @@ impl<'a> Strtex<'a> {
             height: options.height as u32,
 
             posbuf_touch: 0,
-            colbuf_touch: 0,
+            opacbuf_touch: 0,
             uvbuf_touch: 0,
             tranbuf_touch: 0,
             rotbuf_touch: 0,
             scalebuf_touch: 0,
 
             posbuffer: vec![],
-            colbuffer: vec![],
+            opacbuffer: vec![],
             uvbuffer: vec![],
             tranbuffer: vec![],
             rotbuffer: vec![],
             scalebuffer: vec![],
 
             posbuf,
-            colbuf,
+            opacbuf,
             uvbuf,
             tranbuf,
             rotbuf,
@@ -870,8 +870,8 @@ impl<'a> Strtex<'a> {
             for mut posbuf in strtex.posbuf.drain(..) {
                 posbuf.destroy(&s.device);
             }
-            for mut colbuf in strtex.colbuf.drain(..) {
-                colbuf.destroy(&s.device);
+            for mut opacbuf in strtex.opacbuf.drain(..) {
+                opacbuf.destroy(&s.device);
             }
             for mut uvbuf in strtex.uvbuf.drain(..) {
                 uvbuf.destroy(&s.device);
@@ -964,33 +964,13 @@ impl<'a> Strtex<'a> {
                     (topright.0, topright.1),
                 ],
             );
-            self.set_color(
+            self.set_opacity_raw(
                 &handle,
                 [
-                    Color::Rgba(
-                        sprite.colors[0].0,
-                        sprite.colors[0].1,
-                        sprite.colors[0].2,
-                        sprite.colors[0].3,
-                    ),
-                    Color::Rgba(
-                        sprite.colors[1].0,
-                        sprite.colors[1].1,
-                        sprite.colors[1].2,
-                        sprite.colors[1].3,
-                    ),
-                    Color::Rgba(
-                        sprite.colors[2].0,
-                        sprite.colors[2].1,
-                        sprite.colors[2].2,
-                        sprite.colors[2].3,
-                    ),
-                    Color::Rgba(
-                        sprite.colors[3].0,
-                        sprite.colors[3].1,
-                        sprite.colors[3].2,
-                        sprite.colors[3].3,
-                    ),
+                    sprite.opacity[0],
+                    sprite.opacity[1],
+                    sprite.opacity[2],
+                    sprite.opacity[3],
                 ],
             );
             self.set_translation(&handle, (sprite.translation.0, sprite.translation.1));
@@ -1010,23 +990,11 @@ impl<'a> Strtex<'a> {
                 topright.0,
                 topright.1,
             ]);
-            tex.colbuffer.push([
-                sprite.colors[0].0,
-                sprite.colors[0].1,
-                sprite.colors[0].2,
-                sprite.colors[0].3,
-                sprite.colors[1].0,
-                sprite.colors[1].1,
-                sprite.colors[1].2,
-                sprite.colors[1].3,
-                sprite.colors[2].0,
-                sprite.colors[2].1,
-                sprite.colors[2].2,
-                sprite.colors[2].3,
-                sprite.colors[3].0,
-                sprite.colors[3].1,
-                sprite.colors[3].2,
-                sprite.colors[3].3,
+            tex.opacbuffer.push([
+                sprite.opacity[0],
+                sprite.opacity[1],
+                sprite.opacity[2],
+                sprite.opacity[3],
             ]);
             tex.tranbuffer.push([
                 sprite.translation.0,
@@ -1061,7 +1029,7 @@ impl<'a> Strtex<'a> {
 
         let tex = &mut self.vx.strtexs[layer.0];
         tex.posbuf_touch = self.vx.swapconfig.image_count;
-        tex.colbuf_touch = self.vx.swapconfig.image_count;
+        tex.opacbuf_touch = self.vx.swapconfig.image_count;
         tex.uvbuf_touch = self.vx.swapconfig.image_count;
         tex.tranbuf_touch = self.vx.swapconfig.image_count;
         tex.rotbuf_touch = self.vx.swapconfig.image_count;
@@ -1088,7 +1056,7 @@ impl<'a> Strtex<'a> {
         self.vx.strtexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         if let Some(strtex) = self.vx.strtexs.get_mut(layer.0) {
             strtex.removed.clear();
-            strtex.colbuffer.clear();
+            strtex.opacbuffer.clear();
             strtex.posbuffer.clear();
             strtex.rotbuffer.clear();
             strtex.scalebuffer.clear();
@@ -1172,23 +1140,19 @@ impl<'a> Strtex<'a> {
         }
     }
 
-    /// Set a solid color of a sprite
-    pub fn set_solid_color(&mut self, handle: &Handle, rgba: Color) {
-        self.vx.strtexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
-        let Color::Rgba(r, g, b, a) = rgba;
+    /// Set a solid color each vertex of a sprite
+    pub fn set_opacity(&mut self, handle: &Handle, opacity: u8) {
+        self.vx.strtexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
-            self.vx.strtexs[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
-                .copy_from_slice(&[r, g, b, a]);
+            self.vx.strtexs[handle.0].opacbuffer[handle.1].copy_from_slice(&[opacity; 4]);
         }
     }
 
     /// Set a solid color each vertex of a sprite
-    pub fn set_color(&mut self, handle: &Handle, rgba: [Color; 4]) {
-        self.vx.strtexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, dt) in rgba.iter().enumerate() {
-            let Color::Rgba(r, g, b, a) = dt;
-            self.vx.strtexs[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
-                .copy_from_slice(&[*r, *g, *b, *a]);
+    pub fn set_opacity_raw(&mut self, handle: &Handle, opacity: [u8; 4]) {
+        self.vx.strtexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.strtexs[handle.0].opacbuffer[handle.1].copy_from_slice(&opacity);
         }
     }
 
@@ -1321,6 +1285,15 @@ impl<'a> Strtex<'a> {
         }
     }
 
+    /// Set opacity on all sprites
+    pub fn set_opacity_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> u8) {
+        self.vx.strtexs[layer.0].opacbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, quad) in self.vx.strtexs[layer.0].opacbuffer.iter_mut().enumerate() {
+            let delta = delta(idx);
+            quad.copy_from_slice(&[delta; 4]);
+        }
+    }
+
     /// Rotate all strtexs by adding delta rotations
     ///
     /// Applies [Strtex::rotate] to each dynamic texture.
@@ -1372,34 +1345,6 @@ impl<'a> Strtex<'a> {
             quad[5] = delta[2].1;
             quad[6] = delta[3].0;
             quad[7] = delta[3].1;
-        }
-    }
-
-    /// Set the color on all strtexs
-    ///
-    /// Applies [Strtex::set_solid_color] to each dynamic texture.
-    pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> Color) {
-        self.vx.strtexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, strtex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
-            let delta = delta(idx);
-            for idx in 0..4 {
-                let Color::Rgba(r, g, b, a) = delta;
-                strtex[idx * 4..(idx + 1) * 4].copy_from_slice(&[r, g, b, a]);
-            }
-        }
-    }
-
-    /// Set the color on all strtexs
-    ///
-    /// Applies [Strtex::set_color] to each dynamic texture.
-    pub fn set_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [Color; 4]) {
-        self.vx.strtexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, strtex) in self.vx.strtexs[layer.0].colbuffer.iter_mut().enumerate() {
-            let delta = delta(idx);
-            for (idx, dt) in delta.iter().enumerate() {
-                let Color::Rgba(r, g, b, a) = dt;
-                strtex[idx * 4..(idx + 1) * 4].copy_from_slice(&[*r, *g, *b, *a]);
-            }
         }
     }
 
@@ -2059,63 +2004,6 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn overlay_color_pure() {
-    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
-    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-    //     let prspect = gen_perspective(&vx);
-
-    //     let mut strtex = vx.strtex();
-    //     let id = strtex.add_layer(&LayerOptions::new().width(1).height(1));
-    //     let sprite = strtex.add(&id, strtex::Sprite::new());
-
-    //     strtex.set_pixel(&id, 0, 0, Color::Rgba(255, 0, 0, 255));
-
-    //     strtex.set_color(
-    //         &sprite,
-    //         [
-    //             Color::Rgba(0, 255, 0, 255),
-    //             Color::Rgba(0, 255, 0, 255),
-    //             Color::Rgba(0, 255, 0, 255),
-    //             Color::Rgba(0, 255, 0, 255),
-    //         ],
-    //     );
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "overlay_color_pure", img);
-    // }
-
-    // #[test]
-    // fn overlay_color_4() {
-    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
-    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-    //     let prspect = gen_perspective(&vx);
-
-    //     let mut strtex = vx.strtex();
-    //     let id = strtex.add_layer(&LayerOptions::new().width(4).height(4));
-    //     let sprite = strtex.add(&id, strtex::Sprite::new());
-
-    //     strtex.set_pixels_block(&id, (0, 0), (4, 4), Color::Rgba(0, 0, 0, 255));
-
-    //     strtex.set_pixel(&id, 1, 1, Color::Rgba(255, 0, 0, 255));
-    //     strtex.set_pixel(&id, 1, 2, Color::Rgba(0, 255, 0, 255));
-    //     strtex.set_pixel(&id, 2, 2, Color::Rgba(0, 0, 255, 255));
-    //     strtex.set_pixel(&id, 2, 1, Color::Rgba(255, 255, 255, 255));
-
-    //     strtex.set_color(
-    //         &sprite,
-    //         [
-    //             Color::Rgba(0, 255, 0, 128),
-    //             Color::Rgba(0, 255, 0, 128),
-    //             Color::Rgba(0, 255, 0, 128),
-    //             Color::Rgba(0, 255, 0, 128),
-    //         ],
-    //     );
-
-    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
-    //     utils::assert_swapchain_eq(&mut vx, "overlay_color", img);
-    // }
-
     #[test]
     fn strtex_mass_manip() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
@@ -2174,15 +2062,15 @@ mod tests {
         vx.strtex()
             .set_scale_all(&layer, |idx| if idx < 500 { 0.1 } else { 0.2 });
 
-        vx.strtex().set_solid_color_all(&layer, |idx| {
+        vx.strtex().set_opacity_all(&layer, |idx| {
             if idx < 250 {
-                Color::Rgba(0, 255, 255, 128)
+                64
             } else if idx < 500 {
-                Color::Rgba(0, 255, 0, 128)
+                128
             } else if idx < 750 {
-                Color::Rgba(0, 0, 255, 128)
+                196
             } else {
-                Color::Rgba(255, 255, 255, 128)
+                255
             }
         });
 

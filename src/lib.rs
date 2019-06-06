@@ -1171,14 +1171,14 @@ impl VxDraw {
                                             );
                                         strtex.posbuf_touch -= 1;
                                     }
-                                    if strtex.colbuf_touch != 0 {
-                                        strtex.colbuf[self.current_frame]
+                                    if strtex.opacbuf_touch != 0 {
+                                        strtex.opacbuf[self.current_frame]
                                             .copy_from_slice_and_maybe_resize(
                                                 &self.device,
                                                 &self.adapter,
-                                                &strtex.colbuffer[..],
+                                                &strtex.opacbuffer[..],
                                             );
-                                        strtex.colbuf_touch -= 1;
+                                        strtex.opacbuf_touch -= 1;
                                     }
                                     if strtex.uvbuf_touch != 0 {
                                         strtex.uvbuf[self.current_frame]
@@ -1228,7 +1228,7 @@ impl VxDraw {
                                         (strtex.tranbuf[self.current_frame].buffer(), 0),
                                         (strtex.rotbuf[self.current_frame].buffer(), 0),
                                         (strtex.scalebuf[self.current_frame].buffer(), 0),
-                                        (strtex.colbuf[self.current_frame].buffer(), 0),
+                                        (strtex.opacbuf[self.current_frame].buffer(), 0),
                                     ]
                                     .into();
                                     enc.push_graphics_constants(
