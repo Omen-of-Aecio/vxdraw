@@ -1908,7 +1908,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
-        strtex.add(&id, Sprite::default());
+        strtex.add(&id, Sprite::new());
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1923,7 +1923,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
-        strtex.add(&id, Sprite::default().origin((1.0, 1.0)));
+        strtex.add(&id, Sprite::new().origin((1.0, 1.0)));
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1939,7 +1939,7 @@ mod tests {
         let mut strtex = vx.strtex();
 
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
-        strtex.add(&id, strtex::Sprite::default());
+        strtex.add(&id, strtex::Sprite::new());
 
         strtex.set_pixels_block(&id, (0, 0), (500, 500), Color::Rgba(255, 0, 0, 255));
         strtex.set_pixels_block(&id, (500, 0), (500, 500), Color::Rgba(0, 255, 0, 255));
@@ -1958,7 +1958,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(10).height(1));
-        strtex.add(&id, strtex::Sprite::default());
+        strtex.add(&id, strtex::Sprite::new());
 
         strtex.set_pixels_block(&id, (0, 0), (10, 1), Color::Rgba(0, 255, 0, 255));
 
@@ -2027,7 +2027,7 @@ mod tests {
         let mut strtex = vx.strtex();
 
         let id = strtex.add_layer(&LayerOptions::new().width(20).height(20));
-        strtex.add(&id, strtex::Sprite::default());
+        strtex.add(&id, strtex::Sprite::new());
 
         let mut rng = random::new(0);
 
@@ -2047,7 +2047,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(64).height(64));
-        strtex.add(&id, strtex::Sprite::default());
+        strtex.add(&id, strtex::Sprite::new());
 
         let mut rng = random::new(0);
 
@@ -2067,7 +2067,7 @@ mod tests {
 
     //     let mut strtex = vx.strtex();
     //     let id = strtex.add_layer(&LayerOptions::new().width(1).height(1));
-    //     let sprite = strtex.add(&id, strtex::Sprite::default());
+    //     let sprite = strtex.add(&id, strtex::Sprite::new());
 
     //     strtex.set_pixel(&id, 0, 0, Color::Rgba(255, 0, 0, 255));
 
@@ -2093,7 +2093,7 @@ mod tests {
 
     //     let mut strtex = vx.strtex();
     //     let id = strtex.add_layer(&LayerOptions::new().width(4).height(4));
-    //     let sprite = strtex.add(&id, strtex::Sprite::default());
+    //     let sprite = strtex.add(&id, strtex::Sprite::new());
 
     //     strtex.set_pixels_block(&id, (0, 0), (4, 4), Color::Rgba(0, 0, 0, 255));
 
@@ -2206,7 +2206,7 @@ mod tests {
             .wrap_mode(WrapMode::Clamp);
         let testure = strtex.add_layer(options);
         strtex.fill_with_perlin_noise(&testure, [1.0, 2.0, 3.0]);
-        let sprite = strtex.add(&testure, Sprite::default());
+        let sprite = strtex.add(&testure, Sprite::new());
         strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -2226,7 +2226,7 @@ mod tests {
             .wrap_mode(WrapMode::Mirror);
         let testure = strtex.add_layer(options);
         strtex.fill_with_perlin_noise(&testure, [1.0, 2.0, 3.0]);
-        let sprite = strtex.add(&testure, Sprite::default());
+        let sprite = strtex.add(&testure, Sprite::new());
         strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -2243,7 +2243,7 @@ mod tests {
         let id = vx
             .strtex()
             .add_layer(&LayerOptions::new().width(50).height(50));
-        vx.strtex().add(&id, strtex::Sprite::default());
+        vx.strtex().add(&id, strtex::Sprite::new());
 
         b.iter(|| {
             vx.strtex()
@@ -2260,7 +2260,7 @@ mod tests {
         let id = vx
             .strtex()
             .add_layer(&LayerOptions::new().width(1000).height(1000));
-        vx.strtex().add(&id, strtex::Sprite::default());
+        vx.strtex().add(&id, strtex::Sprite::new());
 
         b.iter(|| {
             vx.strtex()
@@ -2277,7 +2277,7 @@ mod tests {
         let id = vx
             .strtex()
             .add_layer(&LayerOptions::new().width(1000).height(1000));
-        vx.strtex().add(&id, strtex::Sprite::default());
+        vx.strtex().add(&id, strtex::Sprite::new());
 
         b.iter(|| {
             vx.strtex().set_pixels(
@@ -2297,7 +2297,7 @@ mod tests {
         let id = vx
             .strtex()
             .add_layer(&LayerOptions::new().width(1000).height(1000));
-        vx.strtex().add(&id, strtex::Sprite::default());
+        vx.strtex().add(&id, strtex::Sprite::new());
 
         b.iter(|| {
             vx.strtex()

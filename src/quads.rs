@@ -15,10 +15,10 @@
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
-//!     let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::default());
+//!     let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::new());
 //!
 //!     // Create a new quad
-//!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::default());
+//!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::new());
 //!
 //!     // Turn the quad white
 //!     vx.quads().set_solid_color(&handle, Color::Rgba(255, 255, 255, 255));
@@ -48,7 +48,7 @@
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
-//!     let layer = vx.quads().add_layer(&LayerOptions::default());
+//!     let layer = vx.quads().add_layer(&LayerOptions::new());
 //!
 //!     // The width of the faded quad, try changing this to 2.0, or 1.0 and observe
 //!     let fade_width = 0.5;
@@ -82,7 +82,7 @@
 //!     let right_quad_fade = vx.quads().add(&layer, quad_data);
 //!
 //!     // Now create the completely black quads
-//!     let quad_data = Quad::default();
+//!     let quad_data = Quad::new();
 //!     let left_quad = vx.quads().add(&layer, quad_data);
 //!     let right_quad = vx.quads().add(&layer, quad_data);
 //!
@@ -1144,11 +1144,11 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        let layer = vx.quads().add_layer(&LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::new());
         vx.quads().add(&layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1161,9 +1161,9 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let quad = quads::Quad::default();
+        let quad = quads::Quad::new();
 
-        let layer = vx.quads().add_layer(&LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::new());
         vx.quads().add(&layer, quad);
         vx.quads().hide(&layer);
 
@@ -1177,12 +1177,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         let handle = quads.add(&layer, quad);
         quads.translate(&handle, (0.25, 0.4));
 
@@ -1196,8 +1196,8 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let quad = quads::Quad::default();
-        let layer = vx.quads().add_layer(&LayerOptions::default());
+        let quad = quads::Quad::new();
+        let layer = vx.quads().add_layer(&LayerOptions::new());
         let mut q1 = vx.quads().add(&layer, quad);
         let mut q2 = vx.quads().add(&layer, quad);
 
@@ -1224,9 +1224,9 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let quad = quads::Quad::default();
-        let layer1 = vx.quads().add_layer(&LayerOptions::default());
-        let layer2 = vx.quads().add_layer(&LayerOptions::default());
+        let quad = quads::Quad::new();
+        let layer1 = vx.quads().add_layer(&LayerOptions::new());
+        let layer2 = vx.quads().add_layer(&LayerOptions::new());
         let mut q1 = vx.quads().add(&layer1, quad);
         let mut q2 = vx.quads().add(&layer2, quad);
 
@@ -1253,12 +1253,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         let _q1 = quads.add(&layer, quad);
         let q2 = quads.add(&layer, quad);
         let q3 = quads.add(&layer, quad);
@@ -1279,16 +1279,16 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer1 = quads.add_layer(&LayerOptions::default());
+        let layer1 = quads.add_layer(&LayerOptions::new());
         let _q1 = quads.add(&layer1, quad);
-        let layer2 = quads.add_layer(&LayerOptions::default());
+        let layer2 = quads.add_layer(&LayerOptions::new());
         let q2 = quads.add(&layer2, quad);
-        let layer3 = quads.add_layer(&LayerOptions::default());
+        let layer3 = quads.add_layer(&LayerOptions::new());
         let q3 = quads.add(&layer3, quad);
 
         quads.translate(&q2, (0.25, 0.4));
@@ -1307,12 +1307,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         let handle = quads.add(&layer, quad);
         quads.set_translation(&handle, (0.25, 0.4));
 
@@ -1326,12 +1326,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[2].2 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         let handle = quads.add(&layer, quad);
         quads.set_scale(&handle, 0.5);
 
@@ -1345,12 +1345,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[2].2 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         let handle = quads.add(&layer, quad);
         quads.scale(&handle, 0.5);
         quads.deform(&handle, [(-0.5, 0.0), (0.0, 0.0), (0.0, 0.0), (0.5, 0.1)]);
@@ -1365,10 +1365,10 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         quads.add(&layer, quad.scale(0.5).translation((-0.5, 0.0)));
         quads.add(&layer, quad.scale(0.5).translation((0.5, 0.0)));
 
@@ -1398,12 +1398,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(&LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::new());
         let handle = quads.add(&layer, quad);
 
         for _ in 0..3 {
@@ -1422,15 +1422,15 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.scale = 0.2;
         quad.colors[0].0 = 255;
         quad.colors[3].0 = 255;
 
-        let layer = vx.quads().add_layer(&LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::new());
         vx.quads().add(&layer, quad);
 
-        let mut quad = quads::Quad::default();
+        let mut quad = quads::Quad::new();
         quad.scale = 0.2;
         quad.origin = (-1.0, -1.0);
         quad.colors[0].1 = 255;
@@ -1454,7 +1454,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
         let mut quad = quads::Quad {
             scale: 0.5,
-            ..quads::Quad::default()
+            ..quads::Quad::new()
         };
 
         for i in 0..4 {
@@ -1463,8 +1463,8 @@ mod tests {
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
 
-        let layer1 = vx.quads().add_layer(&LayerOptions::default());
-        let layer2 = vx.quads().add_layer(&LayerOptions::default());
+        let layer1 = vx.quads().add_layer(&LayerOptions::new());
+        let layer2 = vx.quads().add_layer(&LayerOptions::new());
 
         vx.quads().add(&layer2, quad);
 
@@ -1484,7 +1484,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let layer = vx.quads().add_layer(&LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::new());
 
         use rand::Rng;
         use rand_pcg::Pcg64Mcg as random;

@@ -14,7 +14,7 @@
 //!
 //!
 //!     let mut dyntex = vx.dyntex();
-//!     let tex = dyntex.add_layer(TESTURE, &LayerOptions::default());
+//!     let tex = dyntex.add_layer(TESTURE, &LayerOptions::new());
 //!     vx.dyntex().add(&tex, Sprite::new().scale(0.5));
 //!
 //!     let prspect = gen_perspective(&vx);
@@ -1468,8 +1468,8 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.add_layer(LOGO, &&LayerOptions::default());
-        vx.dyntex().add(&tex, Sprite::default());
+        let tex = dyntex.add_layer(LOGO, &&LayerOptions::new());
+        vx.dyntex().add(&tex, Sprite::new());
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1480,8 +1480,8 @@ mod tests {
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
-        vx.dyntex().add(&tex, Sprite::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
+        vx.dyntex().add(&tex, Sprite::new());
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1492,7 +1492,7 @@ mod tests {
     fn colored_simple_texture1() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new().opacity(100));
 
         let prspect = gen_perspective(&vx);
@@ -1506,7 +1506,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.add_layer(LOGO, &LayerOptions::default());
+        let tex = dyntex.add_layer(LOGO, &LayerOptions::new());
         let sprite = dyntex.add(&tex, Sprite::new().opacity(100));
         dyntex.set_translation(&sprite, (0.5, 0.3));
 
@@ -1523,14 +1523,14 @@ mod tests {
             LOGO,
             &LayerOptions {
                 depth_test: false,
-                ..LayerOptions::default()
+                ..LayerOptions::new()
             },
         );
 
         let base = Sprite {
             width: 1.0,
             height: 1.0,
-            ..Sprite::default()
+            ..Sprite::new()
         };
 
         let mut dyntex = vx.dyntex();
@@ -1583,14 +1583,14 @@ mod tests {
             LOGO,
             &LayerOptions {
                 depth_test: false,
-                ..LayerOptions::default()
+                ..LayerOptions::new()
             },
         );
 
         let base = Sprite {
             width: 1.0,
             height: 1.0,
-            ..Sprite::default()
+            ..Sprite::new()
         };
 
         dyntex.add(
@@ -1640,7 +1640,7 @@ mod tests {
             LOGO,
             &LayerOptions {
                 depth_test: false,
-                ..LayerOptions::default()
+                ..LayerOptions::new()
             },
         );
         for i in 0..360 {
@@ -1649,7 +1649,7 @@ mod tests {
                 Sprite {
                     rotation: ((i * 10) as f32 / 180f32 * PI),
                     scale: 0.5,
-                    ..Sprite::default()
+                    ..Sprite::new()
                 },
             );
         }
@@ -1667,19 +1667,19 @@ mod tests {
 
         let options = &LayerOptions {
             depth_test: false,
-            ..LayerOptions::default()
+            ..LayerOptions::new()
         };
         let mut dyntex = vx.dyntex();
         let forest = dyntex.add_layer(FOREST, options);
         let player = dyntex.add_layer(LOGO, options);
         let tree = dyntex.add_layer(TREE, options);
 
-        vx.dyntex().add(&forest, Sprite::default());
+        vx.dyntex().add(&forest, Sprite::new());
         vx.dyntex().add(
             &player,
             Sprite {
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
         vx.dyntex().add(
@@ -1687,7 +1687,7 @@ mod tests {
             Sprite {
                 translation: (-0.3, 0.0),
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
 
@@ -1703,19 +1703,19 @@ mod tests {
 
         let options = &LayerOptions {
             depth_test: false,
-            ..LayerOptions::default()
+            ..LayerOptions::new()
         };
         let mut dyntex = vx.dyntex();
         let forest = dyntex.add_layer(FOREST, options);
         let player = dyntex.add_layer(LOGO, options);
         let tree = dyntex.add_layer(TREE, options);
 
-        dyntex.add(&forest, Sprite::default());
+        dyntex.add(&forest, Sprite::new());
         let middle = dyntex.add(
             &player,
             Sprite {
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
         dyntex.add(
@@ -1723,7 +1723,7 @@ mod tests {
             Sprite {
                 translation: (-0.3, 0.0),
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
 
@@ -1741,19 +1741,19 @@ mod tests {
 
         let options = &LayerOptions {
             depth_test: false,
-            ..LayerOptions::default()
+            ..LayerOptions::new()
         };
         let mut dyntex = vx.dyntex();
         let forest = dyntex.add_layer(FOREST, options);
         let player = dyntex.add_layer(LOGO, options);
         let tree = dyntex.add_layer(TREE, options);
 
-        dyntex.add(&forest, Sprite::default());
+        dyntex.add(&forest, Sprite::new());
         dyntex.add(
             &player,
             Sprite {
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
         dyntex.add(
@@ -1761,7 +1761,7 @@ mod tests {
             Sprite {
                 translation: (-0.3, 0.0),
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
 
@@ -1783,7 +1783,7 @@ mod tests {
 
         let options = &LayerOptions {
             depth_test: false,
-            ..LayerOptions::default()
+            ..LayerOptions::new()
         };
 
         let mut dyntex = vx.dyntex();
@@ -1791,12 +1791,12 @@ mod tests {
         let player = dyntex.add_layer(LOGO, options);
         let tree = dyntex.add_layer(TREE, options);
 
-        dyntex.add(&forest, Sprite::default());
+        dyntex.add(&forest, Sprite::new());
         dyntex.add(
             &player,
             Sprite {
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
         dyntex.add(
@@ -1804,7 +1804,7 @@ mod tests {
             Sprite {
                 translation: (-0.3, 0.0),
                 scale: 0.4,
-                ..Sprite::default()
+                ..Sprite::new()
             },
         );
 
@@ -1827,11 +1827,11 @@ mod tests {
         let options = &LayerOptions {
             depth_test: false,
             fixed_perspective: Some(Matrix4::identity()),
-            ..LayerOptions::default()
+            ..LayerOptions::new()
         };
         let forest = vx.dyntex().add_layer(FOREST, options);
 
-        vx.dyntex().add(&forest, Sprite::default());
+        vx.dyntex().add(&forest, Sprite::new());
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "fixed_perspective", img);
@@ -1845,9 +1845,9 @@ mod tests {
 
         let mut dyntex = vx.dyntex();
 
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         let testure = dyntex.add_layer(TESTURE, options);
-        let sprite = dyntex.add(&testure, Sprite::default());
+        let sprite = dyntex.add(&testure, Sprite::new());
 
         dyntex.set_uvs(std::iter::once((
             &sprite,
@@ -1873,7 +1873,7 @@ mod tests {
 
         let mut dyntex = vx.dyntex();
 
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         let testure = dyntex.add_layer(LOGO, options);
 
         for idx in 0..10 {
@@ -1896,9 +1896,9 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         let testure = dyntex.add_layer(TESTURE, options);
-        let sprite = dyntex.add(&testure, Sprite::default());
+        let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_rotation(&sprite, Rad(0.3));
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1914,7 +1914,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().filter(Filter::Linear);
         let testure = dyntex.add_layer(TESTURE, options);
-        let sprite = dyntex.add(&testure, Sprite::default());
+        let sprite = dyntex.add(&testure, Sprite::new());
 
         dyntex.set_rotation(&sprite, Rad(0.3));
 
@@ -1929,9 +1929,9 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         let testure = dyntex.add_layer(TESTURE, options);
-        let sprite = dyntex.add(&testure, Sprite::default());
+        let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_uv_raw(&sprite, [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (0.0, 0.0)]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1947,7 +1947,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().wrap_mode(WrapMode::Clamp);
         let testure = dyntex.add_layer(TESTURE, options);
-        let sprite = dyntex.add(&testure, Sprite::default());
+        let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1963,7 +1963,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().wrap_mode(WrapMode::Mirror);
         let testure = dyntex.add_layer(TESTURE, options);
-        let sprite = dyntex.add(&testure, Sprite::default());
+        let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_uv_raw(&sprite, [(-1.0, 0.0), (-1.0, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1976,12 +1976,12 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         let testure = vx.dyntex().add_layer(TESTURE, options);
 
         let mut dyntex = vx.dyntex();
         for _ in 0..100_000 {
-            let sprite = dyntex.add(&testure, Sprite::default());
+            let sprite = dyntex.add(&testure, Sprite::new());
             dyntex.remove(sprite);
         }
 
@@ -1994,7 +1994,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         #[rustfmt::skip]
         let tex = ImgData::RawBytes {
             width: 7,
@@ -2008,7 +2008,7 @@ mod tests {
             ],
         };
         let testure = vx.dyntex().add_layer(&tex, options);
-        let sprite = vx.dyntex().add(&testure, Sprite::default());
+        let sprite = vx.dyntex().add(&testure, Sprite::new());
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "too_little_data_in_texture_wraps", img);
@@ -2018,14 +2018,14 @@ mod tests {
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         for i in 0..1000 {
             vx.dyntex().add(
                 &tex,
                 Sprite {
                     rotation: ((i * 10) as f32 / 180f32 * PI),
                     scale: 0.5,
-                    ..Sprite::default()
+                    ..Sprite::new()
                 },
             );
         }
@@ -2040,7 +2040,7 @@ mod tests {
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         let mut rng = random::new(0);
         for i in 0..1000 {
             let (dx, dy) = (
@@ -2053,7 +2053,7 @@ mod tests {
                     translation: (dx, dy),
                     rotation: ((i * 10) as f32 / 180f32 * PI),
                     scale: 0.01,
-                    ..Sprite::default()
+                    ..Sprite::new()
                 },
             );
         }
@@ -2074,7 +2074,7 @@ mod tests {
             FIREBALL,
             &LayerOptions {
                 depth_test: false,
-                ..LayerOptions::default()
+                ..LayerOptions::new()
             },
         );
 
@@ -2088,7 +2088,7 @@ mod tests {
                         height: 0.09,
                         rotation: idx as f32 / 18.0 + jdx as f32 / 16.0,
                         translation: (idx as f32 / 10.0, jdx as f32 / 10.0),
-                        ..Sprite::default()
+                        ..Sprite::new()
                     },
                 ));
             }
@@ -2126,12 +2126,12 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        let options = &LayerOptions::default();
+        let options = &LayerOptions::new();
         let testure = vx.dyntex().add_layer(TESTURE, options);
 
         let mut dyntex = vx.dyntex();
         b.iter(|| {
-            let sprite = dyntex.add(&testure, Sprite::default());
+            let sprite = dyntex.add(&testure, Sprite::new());
             dyntex.remove(sprite);
         });
     }
@@ -2143,7 +2143,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
 
         b.iter(|| {
-            let options = &LayerOptions::default();
+            let options = &LayerOptions::new();
             let testure = dyntex.add_layer(TESTURE, options);
             dyntex.remove_layer(testure);
         });
