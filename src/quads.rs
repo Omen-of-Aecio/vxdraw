@@ -136,6 +136,71 @@ use std::mem::ManuallyDrop;
 
 // ---
 
+#[allow(missing_docs)]
+pub enum BlendFactor {
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    DstColor,
+    OneMinusDstColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstAlpha,
+    OneMinusDstAlpha,
+    ConstColor,
+    OneMinusConstColor,
+    ConstAlpha,
+    OneMinusConstAlpha,
+    SrcAlphaSaturate,
+    Src1Color,
+    OneMinusSrc1Color,
+    Src1Alpha,
+    OneMinusSrc1Alpha,
+}
+
+/// Specify the blend operation for a color attachment
+pub enum BlendOp {
+    /// Adds the source and destination colors, both multiplied by factors
+    Add {
+        /// Source multiplied by a factor
+        src: BlendFactor,
+        /// Destination (attachment) multiplied by factor
+        dst: BlendFactor,
+    },
+    /// Subtracts destination from source, both multiplied by factors
+    Sub {
+        /// Source multiplied by a factor
+        src: BlendFactor,
+        /// Destination (attachment) multiplied by factor
+        dst: BlendFactor,
+    },
+    /// Subtracts source from destination, both multiplied by factors
+    RevSub {
+        /// Source multiplied by a factor
+        src: BlendFactor,
+        /// Destination (attachment) multiplied by factor
+        dst: BlendFactor,
+    },
+    /// Minimum value of either src or dst
+    Min,
+    /// Maximum value of either src or dst
+    Max,
+}
+
+/// Specify whether blending be on or off
+pub enum BlendState {
+    /// Enable color blending
+    On {
+        /// The blend operations for the color channels
+        color: BlendOp,
+        /// The blend operations for the alpha channel
+        alpha: BlendOp,
+    },
+    /// Disable color blending
+    Off,
+}
+
 /// Handle referring to a single quad
 #[derive(Debug)]
 pub struct Handle(usize, usize);
