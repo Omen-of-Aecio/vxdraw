@@ -28,8 +28,7 @@ fn main() {
             }
         };
         let mut compiler = shaderc::Compiler::new().expect("Unable to create shader compiler");
-        let mut options =
-            shaderc::CompileOptions::new().expect("Unable to create compiler options");
+        let options = shaderc::CompileOptions::new().expect("Unable to create compiler options");
         let spirv = compiler
             .compile_into_spirv(&source, shadertype, filename, "main", Some(&options))
             .expect("Unable to compile to SPIRV");
