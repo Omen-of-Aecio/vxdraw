@@ -106,6 +106,7 @@ use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowBuilder};
 
+pub mod blender;
 mod data;
 pub mod debtri;
 pub mod dyntex;
@@ -1708,14 +1709,14 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let options = dyntex::LayerOptions::new().depth(false);
-        let tex1 = vx.dyntex().add_layer(TESTURE, options);
+        let tex1 = vx.dyntex().add_layer(TESTURE, &options);
         let tex2 = vx
             .strtex()
-            .add_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
-        let tex3 = vx.dyntex().add_layer(TESTURE, options);
+            .add_layer(&strtex::LayerOptions::new().width(1).height(1).depth(false));
+        let tex3 = vx.dyntex().add_layer(TESTURE, &options);
         let tex4 = vx
             .strtex()
-            .add_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
+            .add_layer(&strtex::LayerOptions::new().width(1).height(1).depth(false));
 
         vx.strtex()
             .set_pixel(&tex2, 0, 0, Color::Rgba(255, 0, 255, 255));
@@ -1757,10 +1758,10 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let options = dyntex::LayerOptions::new().depth(false);
-        let tex1 = vx.dyntex().add_layer(TESTURE, options);
+        let tex1 = vx.dyntex().add_layer(TESTURE, &options);
         let tex2 = vx
             .strtex()
-            .add_layer(strtex::LayerOptions::new().width(1).height(1).depth(false));
+            .add_layer(&strtex::LayerOptions::new().width(1).height(1).depth(false));
 
         vx.strtex()
             .set_pixel(&tex2, 0, 0, Color::Rgba(255, 0, 255, 255));
@@ -1781,11 +1782,11 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let quad1 = vx.quads().add_layer(LayerOptions::default());
+        let quad1 = vx.quads().add_layer(&LayerOptions::default());
         vx.quads().add(&quad1, Quad::new().scale(0.25));
 
         let options = dyntex::LayerOptions::new().depth(false);
-        let tex1 = vx.dyntex().add_layer(TESTURE, options);
+        let tex1 = vx.dyntex().add_layer(TESTURE, &options);
 
         vx.dyntex().add(&tex1, dyntex::Sprite::new().scale(0.5));
 

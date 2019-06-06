@@ -17,7 +17,7 @@
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
-//!     let clock = vx.strtex().add_layer(LayerOptions::new().width(8));
+//!     let clock = vx.strtex().add_layer(&LayerOptions::new().width(8));
 //!
 //!     // Create a new sprite view into this streaming texture
 //!     let handle = vx.strtex().add(&clock, Sprite::new());
@@ -47,7 +47,7 @@
 //!     }
 //! }
 //! ```
-use super::{utils::*, Color};
+use super::{blender, utils::*, Color};
 use crate::data::{DrawType, StreamingTexture, StreamingTextureWrite, VxDraw};
 use arrayvec::ArrayVec;
 use cgmath::Matrix4;
@@ -117,7 +117,7 @@ pub enum WrapMode {
 }
 
 /// Options for creating a layer of a single streaming texture with sprites
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct LayerOptions {
     /// Perform depth testing (and fragment culling) when drawing sprites from this texture
     depth_test: bool,
@@ -132,6 +132,8 @@ pub struct LayerOptions {
     filtering: Filter,
     /// Specify wrap mode for texture sampling
     wrap_mode: WrapMode,
+    /// Blending mode for this layer
+    blend: blender::Blender,
 }
 
 impl LayerOptions {
@@ -175,6 +177,12 @@ impl LayerOptions {
         self.wrap_mode = wrap_mode;
         self
     }
+
+    /// Set the blender of this layer (see [blender])
+    pub fn blend(mut self, blend_setter: impl Fn(blender::Blender) -> blender::Blender) -> Self {
+        self.blend = blend_setter(self.blend);
+        self
+    }
 }
 
 impl Default for LayerOptions {
@@ -186,6 +194,7 @@ impl Default for LayerOptions {
             width: 1,
             height: 1,
             wrap_mode: WrapMode::Tile,
+            blend: blender::Blender::default(),
         }
     }
 }
@@ -319,7 +328,7 @@ impl<'a> Strtex<'a> {
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
     /// To make sure transparency works correctly you can turn off the depth test for foreground
     /// objects and ensure that the foreground texture is allocated last.
-    pub fn add_layer(&mut self, options: LayerOptions) -> Layer {
+    pub fn add_layer(&mut self, options: &LayerOptions) -> Layer {
         let s = &mut *self.vx;
 
         let device = &s.device;
@@ -545,22 +554,7 @@ impl<'a> Strtex<'a> {
             depth_bounds: false,
             stencil: pso::StencilTest::Off,
         };
-        let blender = {
-            let blend_state = pso::BlendState::On {
-                color: pso::BlendOp::Add {
-                    src: pso::Factor::SrcAlpha,
-                    dst: pso::Factor::OneMinusSrcAlpha,
-                },
-                alpha: pso::BlendOp::Add {
-                    src: pso::Factor::One,
-                    dst: pso::Factor::OneMinusSrcAlpha,
-                },
-            };
-            pso::BlendDesc {
-                logic_op: Some(pso::LogicOp::Copy),
-                targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
-            }
-        };
+        let blender = options.blend.clone().to_gfx_blender();
         let triangle_render_pass = {
             let attachment = pass::Attachment {
                 format: Some(s.format),
@@ -1913,7 +1907,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
+        let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::default());
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
@@ -1928,7 +1922,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
+        let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::default().origin((1.0, 1.0)));
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
@@ -1944,7 +1938,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
 
-        let id = strtex.add_layer(LayerOptions::new().width(1000).height(1000));
+        let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, strtex::Sprite::default());
 
         strtex.set_pixels_block(&id, (0, 0), (500, 500), Color::Rgba(255, 0, 0, 255));
@@ -1963,7 +1957,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let id = strtex.add_layer(LayerOptions::new().width(10).height(1));
+        let id = strtex.add_layer(&LayerOptions::new().width(10).height(1));
         strtex.add(&id, strtex::Sprite::default());
 
         strtex.set_pixels_block(&id, (0, 0), (10, 1), Color::Rgba(0, 255, 0, 255));
@@ -1992,7 +1986,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
+        let id = strtex.add_layer(&LayerOptions::new().width(10).height(10));
         strtex.set_pixel(&id, 3, 2, Color::Rgba(0, 123, 0, 255));
         let mut green_value = 0;
         strtex.read(&id, |arr, pitch| {
@@ -2012,7 +2006,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.add_layer(LayerOptions::new().width(10).height(10));
+        let id = strtex.add_layer(&LayerOptions::new().width(10).height(10));
         strtex.set_pixel(&id, 3, 2, Color::Rgba(0, 123, 0, 255));
         strtex.write(&id, |arr, pitch| {
             arr[3 + 2 * pitch].1 = 124;
@@ -2032,7 +2026,7 @@ mod tests {
 
         let mut strtex = vx.strtex();
 
-        let id = strtex.add_layer(LayerOptions::new().width(20).height(20));
+        let id = strtex.add_layer(&LayerOptions::new().width(20).height(20));
         strtex.add(&id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
@@ -2052,7 +2046,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut strtex = vx.strtex();
-        let id = strtex.add_layer(LayerOptions::new().width(64).height(64));
+        let id = strtex.add_layer(&LayerOptions::new().width(64).height(64));
         strtex.add(&id, strtex::Sprite::default());
 
         let mut rng = random::new(0);
@@ -2072,7 +2066,7 @@ mod tests {
     //     let prspect = gen_perspective(&vx);
 
     //     let mut strtex = vx.strtex();
-    //     let id = strtex.add_layer(LayerOptions::new().width(1).height(1));
+    //     let id = strtex.add_layer(&LayerOptions::new().width(1).height(1));
     //     let sprite = strtex.add(&id, strtex::Sprite::default());
 
     //     strtex.set_pixel(&id, 0, 0, Color::Rgba(255, 0, 0, 255));
@@ -2098,7 +2092,7 @@ mod tests {
     //     let prspect = gen_perspective(&vx);
 
     //     let mut strtex = vx.strtex();
-    //     let id = strtex.add_layer(LayerOptions::new().width(4).height(4));
+    //     let id = strtex.add_layer(&LayerOptions::new().width(4).height(4));
     //     let sprite = strtex.add(&id, strtex::Sprite::default());
 
     //     strtex.set_pixels_block(&id, (0, 0), (4, 4), Color::Rgba(0, 0, 0, 255));
@@ -2130,7 +2124,7 @@ mod tests {
 
         let layer = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(10).height(5));
+            .add_layer(&LayerOptions::new().width(10).height(5));
         vx.strtex().write(&layer, |color, pitch| {
             color[5 + 0 * pitch].2 = 255;
             color[5 + 0 * pitch].3 = 255;
@@ -2206,7 +2200,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let options = LayerOptions::new()
+        let options = &LayerOptions::new()
             .width(1000)
             .height(1000)
             .wrap_mode(WrapMode::Clamp);
@@ -2226,7 +2220,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
-        let options = LayerOptions::new()
+        let options = &LayerOptions::new()
             .width(1000)
             .height(1000)
             .wrap_mode(WrapMode::Mirror);
@@ -2248,7 +2242,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(50).height(50));
+            .add_layer(&LayerOptions::new().width(50).height(50));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -2265,7 +2259,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(&LayerOptions::new().width(1000).height(1000));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -2282,7 +2276,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(&LayerOptions::new().width(1000).height(1000));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -2302,7 +2296,7 @@ mod tests {
 
         let id = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(&LayerOptions::new().width(1000).height(1000));
         vx.strtex().add(&id, strtex::Sprite::default());
 
         b.iter(|| {
@@ -2317,7 +2311,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let layer = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(&LayerOptions::new().width(1000).height(1000));
 
         b.iter(|| {
             vx.strtex().add(&layer, strtex::Sprite::new());
@@ -2333,7 +2327,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let layer = vx
             .strtex()
-            .add_layer(LayerOptions::new().width(1000).height(1000));
+            .add_layer(&LayerOptions::new().width(1000).height(1000));
 
         b.iter(|| {
             vx.strtex().fill_with_perlin_noise(&layer, [1.0, 2.0, 3.0]);

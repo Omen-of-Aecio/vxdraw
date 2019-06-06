@@ -15,7 +15,7 @@
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
-//!     let quad = vx.quads().add_layer(vxdraw::quads::LayerOptions::default());
+//!     let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::default());
 //!
 //!     // Create a new quad
 //!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::default());
@@ -48,7 +48,7 @@
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer of quads
-//!     let layer = vx.quads().add_layer(LayerOptions::default());
+//!     let layer = vx.quads().add_layer(&LayerOptions::default());
 //!
 //!     // The width of the faded quad, try changing this to 2.0, or 1.0 and observe
 //!     let fade_width = 0.5;
@@ -119,7 +119,7 @@
 //!
 //! Note how the above has two overlapping, faded quads. This can be an undesired animation
 //! artifact. The intent of the example is to show how to work with the library.
-use super::{utils::*, Color};
+use super::{blender, utils::*, Color};
 use crate::data::{DrawType, QuadsData, VxDraw};
 use cgmath::Rad;
 use core::ptr::read;
@@ -135,71 +135,6 @@ use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
 use std::mem::ManuallyDrop;
 
 // ---
-
-#[allow(missing_docs)]
-pub enum BlendFactor {
-    Zero,
-    One,
-    SrcColor,
-    OneMinusSrcColor,
-    DstColor,
-    OneMinusDstColor,
-    SrcAlpha,
-    OneMinusSrcAlpha,
-    DstAlpha,
-    OneMinusDstAlpha,
-    ConstColor,
-    OneMinusConstColor,
-    ConstAlpha,
-    OneMinusConstAlpha,
-    SrcAlphaSaturate,
-    Src1Color,
-    OneMinusSrc1Color,
-    Src1Alpha,
-    OneMinusSrc1Alpha,
-}
-
-/// Specify the blend operation for a color attachment
-pub enum BlendOp {
-    /// Adds the source and destination colors, both multiplied by factors
-    Add {
-        /// Source multiplied by a factor
-        src: BlendFactor,
-        /// Destination (attachment) multiplied by factor
-        dst: BlendFactor,
-    },
-    /// Subtracts destination from source, both multiplied by factors
-    Sub {
-        /// Source multiplied by a factor
-        src: BlendFactor,
-        /// Destination (attachment) multiplied by factor
-        dst: BlendFactor,
-    },
-    /// Subtracts source from destination, both multiplied by factors
-    RevSub {
-        /// Source multiplied by a factor
-        src: BlendFactor,
-        /// Destination (attachment) multiplied by factor
-        dst: BlendFactor,
-    },
-    /// Minimum value of either src or dst
-    Min,
-    /// Maximum value of either src or dst
-    Max,
-}
-
-/// Specify whether blending be on or off
-pub enum BlendState {
-    /// Enable color blending
-    On {
-        /// The blend operations for the color channels
-        color: BlendOp,
-        /// The blend operations for the alpha channel
-        alpha: BlendOp,
-    },
-    /// Disable color blending
-    Off,
-}
 
 /// Handle referring to a single quad
 #[derive(Debug)]
@@ -228,6 +163,7 @@ impl Layerable for Layer {
 pub struct LayerOptions {
     depth_test: bool,
     hide: bool,
+    blend: blender::Blender,
 }
 
 impl Default for LayerOptions {
@@ -235,6 +171,7 @@ impl Default for LayerOptions {
         Self {
             depth_test: false,
             hide: false,
+            blend: blender::Blender::default(),
         }
     }
 }
@@ -254,6 +191,12 @@ impl LayerOptions {
     /// Show this layer (default)
     pub fn show(mut self) -> Self {
         self.hide = false;
+        self
+    }
+
+    /// Set the blender of this layer (see [blender])
+    pub fn blend(mut self, blend_setter: impl Fn(blender::Blender) -> blender::Blender) -> Self {
+        self.blend = blend_setter(self.blend);
         self
     }
 }
@@ -427,7 +370,7 @@ impl<'a> Quads<'a> {
     /// This new layer will be ordered on top of all previous layers, meaning that its quads will
     /// be drawn on top of all other drawn items. If another layer is created, that layer will be
     /// drawn on top of this layer, and so on.
-    pub fn add_layer(&mut self, options: LayerOptions) -> Layer {
+    pub fn add_layer(&mut self, options: &LayerOptions) -> Layer {
         let s = &mut *self.vx;
         pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.vert.spirv"];
 
@@ -551,22 +494,7 @@ impl<'a> Quads<'a> {
             depth_bounds: false,
             stencil: pso::StencilTest::Off,
         };
-        let blender = {
-            let blend_state = pso::BlendState::On {
-                color: pso::BlendOp::Add {
-                    src: pso::Factor::SrcAlpha,
-                    dst: pso::Factor::OneMinusSrcAlpha,
-                },
-                alpha: pso::BlendOp::Add {
-                    src: pso::Factor::One,
-                    dst: pso::Factor::OneMinusSrcAlpha,
-                },
-            };
-            pso::BlendDesc {
-                logic_op: Some(pso::LogicOp::Copy),
-                targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
-            }
-        };
+        let blender = options.blend.clone().to_gfx_blender();
         let quad_render_pass = {
             let attachment = pass::Attachment {
                 format: Some(s.format),
@@ -1220,7 +1148,7 @@ mod tests {
         quad.colors[0].1 = 255;
         quad.colors[3].1 = 255;
 
-        let layer = vx.quads().add_layer(LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::default());
         vx.quads().add(&layer, quad);
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1235,7 +1163,7 @@ mod tests {
 
         let quad = quads::Quad::default();
 
-        let layer = vx.quads().add_layer(LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::default());
         vx.quads().add(&layer, quad);
         vx.quads().hide(&layer);
 
@@ -1254,7 +1182,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         let handle = quads.add(&layer, quad);
         quads.translate(&handle, (0.25, 0.4));
 
@@ -1269,7 +1197,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let quad = quads::Quad::default();
-        let layer = vx.quads().add_layer(LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::default());
         let mut q1 = vx.quads().add(&layer, quad);
         let mut q2 = vx.quads().add(&layer, quad);
 
@@ -1297,8 +1225,8 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let quad = quads::Quad::default();
-        let layer1 = vx.quads().add_layer(LayerOptions::default());
-        let layer2 = vx.quads().add_layer(LayerOptions::default());
+        let layer1 = vx.quads().add_layer(&LayerOptions::default());
+        let layer2 = vx.quads().add_layer(&LayerOptions::default());
         let mut q1 = vx.quads().add(&layer1, quad);
         let mut q2 = vx.quads().add(&layer2, quad);
 
@@ -1330,7 +1258,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         let _q1 = quads.add(&layer, quad);
         let q2 = quads.add(&layer, quad);
         let q3 = quads.add(&layer, quad);
@@ -1356,11 +1284,11 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer1 = quads.add_layer(LayerOptions::default());
+        let layer1 = quads.add_layer(&LayerOptions::default());
         let _q1 = quads.add(&layer1, quad);
-        let layer2 = quads.add_layer(LayerOptions::default());
+        let layer2 = quads.add_layer(&LayerOptions::default());
         let q2 = quads.add(&layer2, quad);
-        let layer3 = quads.add_layer(LayerOptions::default());
+        let layer3 = quads.add_layer(&LayerOptions::default());
         let q3 = quads.add(&layer3, quad);
 
         quads.translate(&q2, (0.25, 0.4));
@@ -1384,7 +1312,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         let handle = quads.add(&layer, quad);
         quads.set_translation(&handle, (0.25, 0.4));
 
@@ -1403,7 +1331,7 @@ mod tests {
         quad.colors[2].2 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         let handle = quads.add(&layer, quad);
         quads.set_scale(&handle, 0.5);
 
@@ -1422,7 +1350,7 @@ mod tests {
         quad.colors[2].2 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         let handle = quads.add(&layer, quad);
         quads.scale(&handle, 0.5);
         quads.deform(&handle, [(-0.5, 0.0), (0.0, 0.0), (0.0, 0.0), (0.5, 0.1)]);
@@ -1440,7 +1368,7 @@ mod tests {
         let mut quad = quads::Quad::default();
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         quads.add(&layer, quad.scale(0.5).translation((-0.5, 0.0)));
         quads.add(&layer, quad.scale(0.5).translation((0.5, 0.0)));
 
@@ -1475,7 +1403,7 @@ mod tests {
         quad.colors[3].1 = 255;
 
         let mut quads = vx.quads();
-        let layer = quads.add_layer(LayerOptions::default());
+        let layer = quads.add_layer(&LayerOptions::default());
         let handle = quads.add(&layer, quad);
 
         for _ in 0..3 {
@@ -1499,7 +1427,7 @@ mod tests {
         quad.colors[0].0 = 255;
         quad.colors[3].0 = 255;
 
-        let layer = vx.quads().add_layer(LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::default());
         vx.quads().add(&layer, quad);
 
         let mut quad = quads::Quad::default();
@@ -1535,8 +1463,8 @@ mod tests {
         quad.depth = 0.0;
         quad.translation = (0.25, 0.25);
 
-        let layer1 = vx.quads().add_layer(LayerOptions::default());
-        let layer2 = vx.quads().add_layer(LayerOptions::default());
+        let layer1 = vx.quads().add_layer(&LayerOptions::default());
+        let layer2 = vx.quads().add_layer(&LayerOptions::default());
 
         vx.quads().add(&layer2, quad);
 
@@ -1556,7 +1484,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let layer = vx.quads().add_layer(LayerOptions::default());
+        let layer = vx.quads().add_layer(&LayerOptions::default());
 
         use rand::Rng;
         use rand_pcg::Pcg64Mcg as random;

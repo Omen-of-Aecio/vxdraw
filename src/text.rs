@@ -131,7 +131,7 @@ impl<'a> Text<'a> {
         let (width, height) = glyph_brush.texture_dimensions();
 
         let layer = self.vx.strtex().add_layer(
-            strtex::LayerOptions::new()
+            &strtex::LayerOptions::new()
                 .width(width as usize)
                 .height(height as usize)
                 .filter(strtex::Filter::Linear),

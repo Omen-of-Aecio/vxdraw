@@ -14,7 +14,7 @@
 //!
 //!
 //!     let mut dyntex = vx.dyntex();
-//!     let tex = dyntex.add_layer(TESTURE, LayerOptions::default());
+//!     let tex = dyntex.add_layer(TESTURE, &LayerOptions::default());
 //!     vx.dyntex().add(&tex, Sprite::new().scale(0.5));
 //!
 //!     let prspect = gen_perspective(&vx);
@@ -23,7 +23,7 @@
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
-use super::{utils::*, Color};
+use super::{blender, utils::*, Color};
 use crate::data::{DrawType, DynamicTexture, VxDraw};
 use ::image as load_image;
 use cgmath::Matrix4;
@@ -72,7 +72,7 @@ impl Layerable for Layer {
 }
 
 /// Options for creating a layer of a dynamic texture with sprites
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct LayerOptions {
     /// Perform depth testing (and fragment culling) when drawing sprites from this texture
     depth_test: bool,
@@ -83,6 +83,8 @@ pub struct LayerOptions {
     filtering: Filter,
     /// Specify wrap mode for texture sampling
     wrap_mode: WrapMode,
+    /// Blending mode for this layer
+    blend: blender::Blender,
 }
 
 impl LayerOptions {
@@ -116,6 +118,12 @@ impl LayerOptions {
         self.wrap_mode = wrap_mode;
         self
     }
+
+    /// Set the blender of this layer (see [blender])
+    pub fn blend(mut self, blend_setter: impl Fn(blender::Blender) -> blender::Blender) -> Self {
+        self.blend = blend_setter(self.blend);
+        self
+    }
 }
 
 impl Default for LayerOptions {
@@ -125,6 +133,7 @@ impl Default for LayerOptions {
             fixed_perspective: None,
             filtering: Filter::Nearest,
             wrap_mode: WrapMode::Tile,
+            blend: blender::Blender::default(),
         }
     }
 }
@@ -294,7 +303,7 @@ impl<'a> Dyntex<'a> {
     /// Note: Alpha blending with depth testing will make foreground transparency not be transparent.
     /// To make sure transparency works correctly you can turn off the depth test for foreground
     /// objects and ensure that the foreground texture is allocated last.
-    pub fn add_layer<'x>(&mut self, img_data: &ImgData<'x>, options: LayerOptions) -> Layer {
+    pub fn add_layer<'x>(&mut self, img_data: &ImgData<'x>, options: &LayerOptions) -> Layer {
         match img_data {
             ImgData::PNGBytes(ref bytes) => {
                 let image = load_image::load_from_memory_with_format(&bytes[..], load_image::PNG)
@@ -302,7 +311,7 @@ impl<'a> Dyntex<'a> {
                     .to_rgba();
                 let (width, height) = (image.width() as usize, image.height() as usize);
                 let img_bytes = image.into_raw();
-                self.add_layer_internal(width, height, &img_bytes[..], options)
+                self.add_layer_internal(width, height, &img_bytes[..], &options)
             }
             ImgData::RawBytes {
                 width,
@@ -317,7 +326,7 @@ impl<'a> Dyntex<'a> {
         img_width: usize,
         img_height: usize,
         img: &[u8],
-        options: LayerOptions,
+        options: &LayerOptions,
     ) -> Layer {
         let s = &mut *self.vx;
         let device = &s.device;
@@ -641,23 +650,7 @@ impl<'a> Dyntex<'a> {
             depth_bounds: false,
             stencil: pso::StencilTest::Off,
         };
-        let blender = {
-            let blend_state = pso::BlendState::On {
-                color: pso::BlendOp::Add {
-                    src: pso::Factor::SrcAlpha,
-                    dst: pso::Factor::OneMinusSrcAlpha,
-                },
-                alpha: pso::BlendOp::Add {
-                    src: pso::Factor::One,
-                    dst: pso::Factor::OneMinusSrcAlpha,
-                },
-            };
-            pso::BlendDesc {
-                logic_op: Some(pso::LogicOp::Copy),
-                targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
-            }
-        };
-
+        let blender = options.blend.clone().to_gfx_blender();
         let triangle_render_pass = {
             let attachment = pass::Attachment {
                 format: Some(s.format),
@@ -1493,7 +1486,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.add_layer(LOGO, LayerOptions::default());
+        let tex = dyntex.add_layer(LOGO, &&LayerOptions::default());
         vx.dyntex().add(&tex, Sprite::default());
 
         let prspect = gen_perspective(&vx);
@@ -1505,7 +1498,7 @@ mod tests {
     fn simple_texture_adheres_to_view() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
         vx.dyntex().add(&tex, Sprite::default());
 
         let prspect = gen_perspective(&vx);
@@ -1517,7 +1510,7 @@ mod tests {
     fn colored_simple_texture1() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
         vx.dyntex().add(
             &tex,
             Sprite {
@@ -1542,7 +1535,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.add_layer(LOGO, LayerOptions::default());
+        let tex = dyntex.add_layer(LOGO, &LayerOptions::default());
         let sprite = dyntex.add(
             &tex,
             Sprite {
@@ -1568,7 +1561,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(
             LOGO,
-            LayerOptions {
+            &LayerOptions {
                 depth_test: false,
                 ..LayerOptions::default()
             },
@@ -1628,7 +1621,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
         let tex = dyntex.add_layer(
             LOGO,
-            LayerOptions {
+            &LayerOptions {
                 depth_test: false,
                 ..LayerOptions::default()
             },
@@ -1685,7 +1678,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(
             LOGO,
-            LayerOptions {
+            &LayerOptions {
                 depth_test: false,
                 ..LayerOptions::default()
             },
@@ -1712,7 +1705,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = LayerOptions {
+        let options = &LayerOptions {
             depth_test: false,
             ..LayerOptions::default()
         };
@@ -1748,7 +1741,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = LayerOptions {
+        let options = &LayerOptions {
             depth_test: false,
             ..LayerOptions::default()
         };
@@ -1786,7 +1779,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = LayerOptions {
+        let options = &LayerOptions {
             depth_test: false,
             ..LayerOptions::default()
         };
@@ -1828,7 +1821,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = LayerOptions {
+        let options = &LayerOptions {
             depth_test: false,
             ..LayerOptions::default()
         };
@@ -1871,7 +1864,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
         let prspect = Matrix4::from_scale(0.0) * gen_perspective(&vx);
 
-        let options = LayerOptions {
+        let options = &LayerOptions {
             depth_test: false,
             fixed_perspective: Some(Matrix4::identity()),
             ..LayerOptions::default()
@@ -1892,7 +1885,7 @@ mod tests {
 
         let mut dyntex = vx.dyntex();
 
-        let options = LayerOptions::default();
+        let options = &LayerOptions::default();
         let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
 
@@ -1919,7 +1912,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = LayerOptions::default();
+        let options = &LayerOptions::default();
         let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
         dyntex.set_rotation(&sprite, Rad(0.3));
@@ -1935,7 +1928,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = LayerOptions::new().filter(Filter::Linear);
+        let options = &LayerOptions::new().filter(Filter::Linear);
         let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
 
@@ -1952,7 +1945,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = LayerOptions::default();
+        let options = &LayerOptions::default();
         let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
         dyntex.set_uv_raw(&sprite, [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (0.0, 0.0)]);
@@ -1968,7 +1961,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = LayerOptions::new().wrap_mode(WrapMode::Clamp);
+        let options = &LayerOptions::new().wrap_mode(WrapMode::Clamp);
         let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
         dyntex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
@@ -1984,7 +1977,7 @@ mod tests {
         let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
-        let options = LayerOptions::new().wrap_mode(WrapMode::Mirror);
+        let options = &LayerOptions::new().wrap_mode(WrapMode::Mirror);
         let testure = dyntex.add_layer(TESTURE, options);
         let sprite = dyntex.add(&testure, Sprite::default());
         dyntex.set_uv_raw(&sprite, [(-1.0, 0.0), (-1.0, 1.0), (1.0, 1.0), (1.0, 0.0)]);
@@ -1999,7 +1992,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = LayerOptions::default();
+        let options = &LayerOptions::default();
         let testure = vx.dyntex().add_layer(TESTURE, options);
 
         let mut dyntex = vx.dyntex();
@@ -2017,7 +2010,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let options = LayerOptions::default();
+        let options = &LayerOptions::default();
         #[rustfmt::skip]
         let tex = ImgData::RawBytes {
             width: 7,
@@ -2041,7 +2034,7 @@ mod tests {
     fn bench_many_sprites(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
         for i in 0..1000 {
             vx.dyntex().add(
                 &tex,
@@ -2063,7 +2056,7 @@ mod tests {
     fn bench_many_particles(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let tex = vx.dyntex().add_layer(LOGO, LayerOptions::default());
+        let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
         let mut rng = random::new(0);
         for i in 0..1000 {
             let (dx, dy) = (
@@ -2095,7 +2088,7 @@ mod tests {
 
         let fireball_texture = vx.dyntex().add_layer(
             FIREBALL,
-            LayerOptions {
+            &LayerOptions {
                 depth_test: false,
                 ..LayerOptions::default()
             },
@@ -2149,7 +2142,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
-        let options = LayerOptions::default();
+        let options = &LayerOptions::default();
         let testure = vx.dyntex().add_layer(TESTURE, options);
 
         let mut dyntex = vx.dyntex();
@@ -2166,7 +2159,7 @@ mod tests {
         let mut dyntex = vx.dyntex();
 
         b.iter(|| {
-            let options = LayerOptions::default();
+            let options = &LayerOptions::default();
             let testure = dyntex.add_layer(TESTURE, options);
             dyntex.remove_layer(testure);
         });
