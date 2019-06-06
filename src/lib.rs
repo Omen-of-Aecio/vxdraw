@@ -1265,14 +1265,14 @@ impl VxDraw {
                                             );
                                         dyntex.posbuf_touch -= 1;
                                     }
-                                    if dyntex.colbuf_touch != 0 {
-                                        dyntex.colbuf[self.current_frame]
+                                    if dyntex.opacbuf_touch != 0 {
+                                        dyntex.opacbuf[self.current_frame]
                                             .copy_from_slice_and_maybe_resize(
                                                 &self.device,
                                                 &self.adapter,
-                                                &dyntex.colbuffer[..],
+                                                &dyntex.opacbuffer[..],
                                             );
-                                        dyntex.colbuf_touch -= 1;
+                                        dyntex.opacbuf_touch -= 1;
                                     }
                                     if dyntex.uvbuf_touch != 0 {
                                         dyntex.uvbuf[self.current_frame]
@@ -1322,7 +1322,7 @@ impl VxDraw {
                                         (dyntex.tranbuf[self.current_frame].buffer(), 0),
                                         (dyntex.rotbuf[self.current_frame].buffer(), 0),
                                         (dyntex.scalebuf[self.current_frame].buffer(), 0),
-                                        (dyntex.colbuf[self.current_frame].buffer(), 0),
+                                        (dyntex.opacbuf[self.current_frame].buffer(), 0),
                                     ]
                                     .into();
                                     if let Some(persp) = dyntex.fixed_perspective {

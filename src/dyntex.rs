@@ -165,7 +165,7 @@ pub enum WrapMode {
 /// call [Dyntex::add] with.
 #[derive(Clone, Copy)]
 pub struct Sprite {
-    colors: [(u8, u8, u8, u8); 4],
+    opacity: [u8; 4],
     height: f32,
     origin: (f32, f32),
     rotation: f32,
@@ -194,11 +194,19 @@ impl Sprite {
         self
     }
 
-    /// Set the colors of the sprite
+    /// Set the opacity of the sprite
     ///
-    /// The colors are added on top of whatever the sprite's texture data is
-    pub fn colors(mut self, colors: [(u8, u8, u8, u8); 4]) -> Self {
-        self.colors = colors;
+    /// The opacity per fragment is multiplied with the sprite's opacity value
+    pub fn opacity(mut self, opacity: u8) -> Self {
+        self.opacity = [opacity; 4];
+        self
+    }
+
+    /// Set the opacity of the sprite
+    ///
+    /// The opacity per fragment is multiplied with the sprite's opacity value
+    pub fn opacity_raw(mut self, opacity: [u8; 4]) -> Self {
+        self.opacity = opacity;
         self
     }
 
@@ -244,7 +252,7 @@ impl Default for Sprite {
         Sprite {
             width: 2.0,
             height: 2.0,
-            colors: [(0, 0, 0, 255); 4],
+            opacity: [255; 4],
             uv_begin: (0.0, 0.0),
             uv_end: (1.0, 1.0),
             translation: (0.0, 0.0),
@@ -574,7 +582,7 @@ impl<'a> Dyntex<'a> {
             },
             pso::VertexBufferDesc {
                 binding: 5,
-                stride: 4,
+                stride: 1,
                 rate: pso::VertexInputRate::Vertex,
             },
         ];
@@ -623,7 +631,7 @@ impl<'a> Dyntex<'a> {
                 location: 5,
                 binding: 5,
                 element: pso::Element {
-                    format: format::Format::Rgba8Unorm,
+                    format: format::Format::R8Unorm,
                     offset: 0,
                 },
             },
@@ -804,7 +812,7 @@ impl<'a> Dyntex<'a> {
         let posbuf = (0..image_count)
             .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
-        let colbuf = (0..image_count)
+        let opacbuf = (0..image_count)
             .map(|_| super::utils::ResizBuf::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
         let uvbuf = (0..image_count)
@@ -831,21 +839,21 @@ impl<'a> Dyntex<'a> {
             removed: vec![],
 
             posbuf_touch: 0,
-            colbuf_touch: 0,
+            opacbuf_touch: 0,
             uvbuf_touch: 0,
             tranbuf_touch: 0,
             rotbuf_touch: 0,
             scalebuf_touch: 0,
 
             posbuffer: vec![],
-            colbuffer: vec![],
+            opacbuffer: vec![],
             uvbuffer: vec![],
             tranbuffer: vec![],
             rotbuffer: vec![],
             scalebuffer: vec![],
 
             posbuf,
-            colbuf,
+            opacbuf,
             uvbuf,
             tranbuf,
             rotbuf,
@@ -962,33 +970,13 @@ impl<'a> Dyntex<'a> {
                     (topright.0, topright.1),
                 ],
             );
-            self.set_color(
+            self.set_opacity_raw(
                 &handle,
                 [
-                    Color::Rgba(
-                        sprite.colors[0].0,
-                        sprite.colors[0].1,
-                        sprite.colors[0].2,
-                        sprite.colors[0].3,
-                    ),
-                    Color::Rgba(
-                        sprite.colors[1].0,
-                        sprite.colors[1].1,
-                        sprite.colors[1].2,
-                        sprite.colors[1].3,
-                    ),
-                    Color::Rgba(
-                        sprite.colors[2].0,
-                        sprite.colors[2].1,
-                        sprite.colors[2].2,
-                        sprite.colors[2].3,
-                    ),
-                    Color::Rgba(
-                        sprite.colors[3].0,
-                        sprite.colors[3].1,
-                        sprite.colors[3].2,
-                        sprite.colors[3].3,
-                    ),
+                    sprite.opacity[0],
+                    sprite.opacity[1],
+                    sprite.opacity[2],
+                    sprite.opacity[3],
                 ],
             );
             self.set_translation(&handle, (sprite.translation.0, sprite.translation.1));
@@ -1008,23 +996,11 @@ impl<'a> Dyntex<'a> {
                 topright.0,
                 topright.1,
             ]);
-            tex.colbuffer.push([
-                sprite.colors[0].0,
-                sprite.colors[0].1,
-                sprite.colors[0].2,
-                sprite.colors[0].3,
-                sprite.colors[1].0,
-                sprite.colors[1].1,
-                sprite.colors[1].2,
-                sprite.colors[1].3,
-                sprite.colors[2].0,
-                sprite.colors[2].1,
-                sprite.colors[2].2,
-                sprite.colors[2].3,
-                sprite.colors[3].0,
-                sprite.colors[3].1,
-                sprite.colors[3].2,
-                sprite.colors[3].3,
+            tex.opacbuffer.push([
+                sprite.opacity[0],
+                sprite.opacity[1],
+                sprite.opacity[2],
+                sprite.opacity[3],
             ]);
             tex.tranbuffer.push([
                 sprite.translation.0,
@@ -1059,7 +1035,7 @@ impl<'a> Dyntex<'a> {
 
         let tex = &mut self.vx.dyntexs[layer.0];
         tex.posbuf_touch = self.vx.swapconfig.image_count;
-        tex.colbuf_touch = self.vx.swapconfig.image_count;
+        tex.opacbuf_touch = self.vx.swapconfig.image_count;
         tex.uvbuf_touch = self.vx.swapconfig.image_count;
         tex.tranbuf_touch = self.vx.swapconfig.image_count;
         tex.rotbuf_touch = self.vx.swapconfig.image_count;
@@ -1099,21 +1075,27 @@ impl<'a> Dyntex<'a> {
 
     /// Set a solid color of a quad
     pub fn set_solid_color(&mut self, handle: &Handle, rgba: Color) {
-        self.vx.dyntexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
+        self.vx.dyntexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
             let Color::Rgba(r, g, b, a) = rgba;
-            self.vx.dyntexs[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
+            self.vx.dyntexs[handle.0].opacbuffer[handle.1][idx * 4..(idx + 1) * 4]
                 .copy_from_slice(&[r, g, b, a]);
         }
     }
 
-    /// Set a solid color each vertex of a sprite
-    pub fn set_color(&mut self, handle: &Handle, rgba: [Color; 4]) {
-        self.vx.dyntexs[handle.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, dt) in rgba.iter().enumerate() {
-            let Color::Rgba(r, g, b, a) = dt;
-            self.vx.dyntexs[handle.0].colbuffer[handle.1][idx * 4..(idx + 1) * 4]
-                .copy_from_slice(&[*r, *g, *b, *a]);
+    /// Set an opacity each vertex of a sprite
+    pub fn set_opacity(&mut self, handle: &Handle, opacity: u8) {
+        self.vx.dyntexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.dyntexs[handle.0].opacbuffer[handle.1].copy_from_slice(&[opacity; 4]);
+        }
+    }
+
+    /// Set an opacity each vertex of a sprite
+    pub fn set_opacity_raw(&mut self, handle: &Handle, opacity: [u8; 4]) {
+        self.vx.dyntexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
+        for idx in 0..4 {
+            self.vx.dyntexs[handle.0].opacbuffer[handle.1].copy_from_slice(&opacity);
         }
     }
 
@@ -1304,8 +1286,8 @@ impl<'a> Dyntex<'a> {
     ///
     /// Applies [Dyntex::set_solid_color] to each dynamic texture.
     pub fn set_solid_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> Color) {
-        self.vx.dyntexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, dyntex) in self.vx.dyntexs[layer.0].colbuffer.iter_mut().enumerate() {
+        self.vx.dyntexs[layer.0].opacbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, dyntex) in self.vx.dyntexs[layer.0].opacbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for idx in 0..4 {
                 let Color::Rgba(r, g, b, a) = delta;
@@ -1318,8 +1300,8 @@ impl<'a> Dyntex<'a> {
     ///
     /// Applies [Dyntex::set_color] to each dynamic texture.
     pub fn set_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [Color; 4]) {
-        self.vx.dyntexs[layer.0].colbuf_touch = self.vx.swapconfig.image_count;
-        for (idx, dyntex) in self.vx.dyntexs[layer.0].colbuffer.iter_mut().enumerate() {
+        self.vx.dyntexs[layer.0].opacbuf_touch = self.vx.swapconfig.image_count;
+        for (idx, dyntex) in self.vx.dyntexs[layer.0].opacbuffer.iter_mut().enumerate() {
             let delta = delta(idx);
             for (idx, dt) in delta.iter().enumerate() {
                 let Color::Rgba(r, g, b, a) = dt;
@@ -1420,8 +1402,8 @@ fn destroy_texture(s: &mut VxDraw, mut dyntex: DynamicTexture) {
         for mut posbuf in dyntex.posbuf.drain(..) {
             posbuf.destroy(&s.device);
         }
-        for mut colbuf in dyntex.colbuf.drain(..) {
-            colbuf.destroy(&s.device);
+        for mut opacbuf in dyntex.opacbuf.drain(..) {
+            opacbuf.destroy(&s.device);
         }
         for mut uvbuf in dyntex.uvbuf.drain(..) {
             uvbuf.destroy(&s.device);
@@ -1511,18 +1493,7 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::default());
-        vx.dyntex().add(
-            &tex,
-            Sprite {
-                colors: [
-                    (255, 1, 2, 255),
-                    (0, 255, 0, 255),
-                    (0, 0, 255, 100),
-                    (255, 2, 1, 0),
-                ],
-                ..Sprite::default()
-            },
-        );
+        vx.dyntex().add(&tex, Sprite::new().opacity(100));
 
         let prspect = gen_perspective(&vx);
         let img = vx.draw_frame_copy_framebuffer(&prspect);
@@ -1536,18 +1507,7 @@ mod tests {
 
         let mut dyntex = vx.dyntex();
         let tex = dyntex.add_layer(LOGO, &LayerOptions::default());
-        let sprite = dyntex.add(
-            &tex,
-            Sprite {
-                colors: [
-                    (255, 1, 2, 255),
-                    (0, 255, 0, 255),
-                    (0, 0, 255, 100),
-                    (255, 2, 1, 0),
-                ],
-                ..Sprite::default()
-            },
-        );
+        let sprite = dyntex.add(&tex, Sprite::new().opacity(100));
         dyntex.set_translation(&sprite, (0.5, 0.3));
 
         let prspect = gen_perspective(&vx);
@@ -1903,6 +1863,30 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "change_of_uv_works_for_first", img);
+    }
+
+    #[test]
+    fn bunch_of_different_opacity_sprites() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut dyntex = vx.dyntex();
+
+        let options = &LayerOptions::default();
+        let testure = dyntex.add_layer(LOGO, options);
+
+        for idx in 0..10 {
+            dyntex.add(
+                &testure,
+                Sprite::new()
+                    .translation((idx as f32 / 5.0 - 1.0, 0.0))
+                    .opacity((255.0 * idx as f32 / 20.0) as u8),
+            );
+        }
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        utils::assert_swapchain_eq(&mut vx, "bunch_of_different_opacity_sprites", img);
     }
 
     #[test]
