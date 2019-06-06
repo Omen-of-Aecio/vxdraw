@@ -116,7 +116,7 @@ impl ResizBufIdx4 {
             let memory_type_id = find_memory_type_id(
                 adapter,
                 requirements,
-                Properties::CPU_VISIBLE | Properties::COHERENT,
+                Properties::COHERENT | Properties::CPU_VISIBLE | Properties::DEVICE_LOCAL,
             );
             let memory = device
                 .allocate_memory(memory_type_id, requirements.size)
@@ -219,7 +219,7 @@ impl ResizBuf {
             let memory_type_id = find_memory_type_id(
                 adapter,
                 requirements,
-                Properties::CPU_VISIBLE | Properties::COHERENT,
+                Properties::COHERENT | Properties::CPU_VISIBLE | Properties::DEVICE_LOCAL,
             );
             let memory = device
                 .allocate_memory(memory_type_id, requirements.size)

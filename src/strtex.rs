@@ -367,7 +367,9 @@ impl<'a> Strtex<'a> {
                     let memory_type_id = find_memory_type_id(
                         &s.adapter,
                         requirements,
-                        memory::Properties::CPU_VISIBLE | memory::Properties::COHERENT,
+                        memory::Properties::COHERENT
+                            | memory::Properties::CPU_VISIBLE
+                            | memory::Properties::DEVICE_LOCAL,
                     );
                     device
                         .allocate_memory(memory_type_id, requirements.size)
