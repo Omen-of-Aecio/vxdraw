@@ -373,8 +373,6 @@ impl<'a> Debtri<'a> {
     /// `holes`. Calling [Debtri::add] with available holes will fill the first available hole
     /// with the new triangle.
     pub fn remove(&mut self, handle: Handle) {
-        let debtris = &mut self.vx.debtris;
-
         self.vx.debtris.holes.push(handle.0);
         self.set_scale(&handle, 0.0);
     }

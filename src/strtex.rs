@@ -557,7 +557,7 @@ impl<'a> Strtex<'a> {
             stencil: pso::StencilTest::Off,
         };
         let blender = options.blend.clone().to_gfx_blender();
-        let triangle_render_pass = {
+        let render_pass = {
             let attachment = pass::Attachment {
                 format: Some(s.format),
                 samples: 1,
@@ -599,7 +599,7 @@ impl<'a> Strtex<'a> {
             blend_color: None,
             depth_bounds: None,
         };
-        let triangle_descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout> = unsafe {
+        let descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout> = unsafe {
             (0..s.swapconfig.image_count)
                 .map(|_| {
                     let mut bindings = Vec::<pso::DescriptorSetLayoutBinding>::new();
@@ -648,7 +648,7 @@ impl<'a> Strtex<'a> {
 
         unsafe {
             descriptor_pool
-                .allocate_sets(&triangle_descriptor_set_layouts, &mut descriptor_sets)
+                .allocate_sets(&descriptor_set_layouts, &mut descriptor_sets)
                 .expect("Couldn't make a Descriptor Set!")
         };
 
@@ -678,13 +678,12 @@ impl<'a> Strtex<'a> {
 
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
         push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
-        let triangle_pipeline_layout = unsafe {
+        let pipeline_layout = unsafe {
             s.device
-                .create_pipeline_layout(&triangle_descriptor_set_layouts, push_constants)
+                .create_pipeline_layout(&descriptor_set_layouts, push_constants)
                 .expect("Couldn't create a pipeline layout")
         };
 
-        // Describe the pipeline (rasterization, triangle interpretation)
         let pipeline_desc = pso::GraphicsPipelineDesc {
             shaders: shader_entries,
             rasterizer,
@@ -695,16 +694,16 @@ impl<'a> Strtex<'a> {
             depth_stencil,
             multisampling: None,
             baked_states,
-            layout: &triangle_pipeline_layout,
+            layout: &pipeline_layout,
             subpass: pass::Subpass {
                 index: 0,
-                main_pass: &triangle_render_pass,
+                main_pass: &render_pass,
             },
             flags: pso::PipelineCreationFlags::empty(),
             parent: pso::BasePipeline::None,
         };
 
-        let triangle_pipeline = unsafe {
+        let pipeline = unsafe {
             s.device
                 .create_graphics_pipeline(&pipeline_desc, None)
                 .expect("Couldn't create a graphics pipeline!")
@@ -815,10 +814,10 @@ impl<'a> Strtex<'a> {
             sampler: ManuallyDrop::new(sampler),
 
             descriptor_sets,
-            descriptor_set_layouts: triangle_descriptor_set_layouts,
-            pipeline: ManuallyDrop::new(triangle_pipeline),
-            pipeline_layout: ManuallyDrop::new(triangle_pipeline_layout),
-            render_pass: ManuallyDrop::new(triangle_render_pass),
+            descriptor_set_layouts: descriptor_set_layouts,
+            pipeline: ManuallyDrop::new(pipeline),
+            pipeline_layout: ManuallyDrop::new(pipeline_layout),
+            render_pass: ManuallyDrop::new(render_pass),
         });
         s.draw_order.push(DrawType::StreamingTexture {
             id: s.strtexs.len() - 1,
@@ -1044,7 +1043,7 @@ impl<'a> Strtex<'a> {
     ///
     /// The sprite is set to a scale of 0 and its handle is stored internally in a list of
     /// `holes`. Calling [Strtex::add] with available holes will fill the first available hole
-    /// with the new triangle.
+    /// with the new sprite.
     pub fn remove(&mut self, handle: Handle) {
         self.vx.strtexs[handle.0].scalebuf_touch = self.vx.swapconfig.image_count;
         if let Some(strtex) = self.vx.strtexs.get_mut(handle.0) {
@@ -1132,7 +1131,7 @@ impl<'a> Strtex<'a> {
     ///
     /// The name `set_deform` is used to keep consistent [Strtex::deform].
     /// What this function does is just setting absolute vertex positions for each vertex in the
-    /// triangle.
+    /// sprite.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
         self.vx.strtexs[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
         let vertex = &mut self.vx.strtexs[handle.0].posbuffer[handle.1];
@@ -1145,17 +1144,13 @@ impl<'a> Strtex<'a> {
     /// Set a solid color each vertex of a sprite
     pub fn set_opacity(&mut self, handle: &Handle, opacity: u8) {
         self.vx.strtexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
-        for idx in 0..4 {
-            self.vx.strtexs[handle.0].opacbuffer[handle.1].copy_from_slice(&[opacity; 4]);
-        }
+        self.vx.strtexs[handle.0].opacbuffer[handle.1].copy_from_slice(&[opacity; 4]);
     }
 
     /// Set a solid color each vertex of a sprite
     pub fn set_opacity_raw(&mut self, handle: &Handle, opacity: [u8; 4]) {
         self.vx.strtexs[handle.0].opacbuf_touch = self.vx.swapconfig.image_count;
-        for idx in 0..4 {
-            self.vx.strtexs[handle.0].opacbuffer[handle.1].copy_from_slice(&opacity);
-        }
+        self.vx.strtexs[handle.0].opacbuffer[handle.1].copy_from_slice(&opacity);
     }
 
     /// Set the position of a sprite

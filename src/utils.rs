@@ -1,6 +1,6 @@
 //! Various utilities and helpers for vxdraw
 use crate::data::VxDraw;
-use cgmath::{Matrix4, Rad};
+use cgmath::Matrix4;
 use fast_logger::error;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -871,6 +871,7 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
 
 #[cfg(test)]
 pub(crate) fn add_windmills(vx: &mut VxDraw, rand_rotat: bool) -> Vec<super::debtri::Handle> {
+    use cgmath::Rad;
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     let mut rng = random::new(0);

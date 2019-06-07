@@ -820,7 +820,7 @@ impl<'a> Quads<'a> {
     ///
     /// The name `set_deform` is used to keep consistent [Quads::deform].
     /// What this function does is just setting absolute vertex positions for each vertex in the
-    /// triangle.
+    /// quad.
     pub fn set_deform(&mut self, handle: &Handle, points: [(f32, f32); 4]) {
         self.vx.quads[handle.0].posbuf_touch = self.vx.swapconfig.image_count;
         let vertex = &mut self.vx.quads[handle.0].posbuffer[handle.1];
@@ -850,11 +850,11 @@ impl<'a> Quads<'a> {
         }
     }
 
-    /// Set the position (translation) of a quad triangle
+    /// Set the position (translation) of a quad
     ///
     /// The name `set_translation` is chosen to keep the counterparts [Quads::translate] and
     /// `translate_all` consistent. This function can purely be thought of as setting the position
-    /// of the triangle with respect to the model-space's origin.
+    /// of the quad with respect to the model-space's origin.
     pub fn set_translation(&mut self, handle: &Handle, position: (f32, f32)) {
         self.vx.quads[handle.0].tranbuf_touch = self.vx.swapconfig.image_count;
         for idx in 0..4 {
