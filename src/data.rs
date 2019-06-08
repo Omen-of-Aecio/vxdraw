@@ -12,8 +12,98 @@ use gfx_backend_vulkan as back;
 use gfx_hal::{command::ClearColor, device::Device, Adapter, Backend};
 use std::mem::ManuallyDrop;
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct SData {
+    pub uv_begin: (f32, f32),
+    pub uv_end: (f32, f32),
+    pub topleft: (i32, i32),
+    pub bottomright: (i32, i32),
+}
+
 #[derive(Debug)]
-pub(crate) struct Text {}
+pub(crate) struct Text {
+    pub(crate) hidden: bool,
+    pub(crate) removed: Vec<std::ops::Range<usize>>,
+    pub(crate) glyph_brush: glyph_brush::GlyphBrush<'static, SData>,
+
+    pub(crate) fixed_perspective: Option<Matrix4<f32>>,
+
+    pub(crate) posbuf_touch: u32,
+    pub(crate) opacbuf_touch: u32,
+    pub(crate) uvbuf_touch: u32,
+    pub(crate) tranbuf_touch: u32,
+    pub(crate) rotbuf_touch: u32,
+    pub(crate) scalebuf_touch: u32,
+
+    pub(crate) posbuffer: Vec<[f32; 8]>,   // 8 per quad
+    pub(crate) opacbuffer: Vec<[u8; 4]>,   // 4per quad
+    pub(crate) uvbuffer: Vec<[f32; 8]>,    // 8 per quad
+    pub(crate) tranbuffer: Vec<[f32; 8]>,  // 8 per quad
+    pub(crate) rotbuffer: Vec<[f32; 4]>,   // 4 per quad
+    pub(crate) scalebuffer: Vec<[f32; 4]>, // 4 per quad
+
+    pub(crate) posbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) opacbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) uvbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) tranbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) rotbuf: Vec<super::utils::ResizBuf>,
+    pub(crate) scalebuf: Vec<super::utils::ResizBuf>,
+
+    pub(crate) indices: Vec<super::utils::ResizBufIdx4>,
+
+    pub(crate) image_buffer: ManuallyDrop<<back::Backend as Backend>::Image>,
+    pub(crate) image_memory: ManuallyDrop<<back::Backend as Backend>::Memory>,
+    pub(crate) image_view: ManuallyDrop<<back::Backend as Backend>::ImageView>,
+    pub(crate) image_requirements: gfx_hal::memory::Requirements,
+
+    pub(crate) sampler: ManuallyDrop<<back::Backend as Backend>::Sampler>,
+    pub(crate) descriptor_pool: ManuallyDrop<<back::Backend as Backend>::DescriptorPool>,
+
+    pub(crate) descriptor_set: ManuallyDrop<<back::Backend as Backend>::DescriptorSet>,
+    pub(crate) descriptor_set_layouts: Vec<<back::Backend as Backend>::DescriptorSetLayout>,
+    pub(crate) pipeline: ManuallyDrop<<back::Backend as Backend>::GraphicsPipeline>,
+    pub(crate) pipeline_layout: ManuallyDrop<<back::Backend as Backend>::PipelineLayout>,
+    pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
+}
+
+impl Text {
+    pub(crate) fn destroy(mut self, device: &back::Device) {
+        for mut indices in self.indices.drain(..) {
+            indices.destroy(&device);
+        }
+        for mut posbuf in self.posbuf.drain(..) {
+            posbuf.destroy(&device);
+        }
+        for mut opacbuf in self.opacbuf.drain(..) {
+            opacbuf.destroy(&device);
+        }
+        for mut uvbuf in self.uvbuf.drain(..) {
+            uvbuf.destroy(&device);
+        }
+        for mut tranbuf in self.tranbuf.drain(..) {
+            tranbuf.destroy(&device);
+        }
+        for mut rotbuf in self.rotbuf.drain(..) {
+            rotbuf.destroy(&device);
+        }
+        for mut scalebuf in self.scalebuf.drain(..) {
+            scalebuf.destroy(&device);
+        }
+        unsafe {
+            device.destroy_image(ManuallyDrop::into_inner(read(&self.image_buffer)));
+            device.free_memory(ManuallyDrop::into_inner(read(&self.image_memory)));
+            device.destroy_render_pass(ManuallyDrop::into_inner(read(&self.render_pass)));
+            device.destroy_pipeline_layout(ManuallyDrop::into_inner(read(&self.pipeline_layout)));
+            device.destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&self.pipeline)));
+            for dsl in self.descriptor_set_layouts.drain(..) {
+                device.destroy_descriptor_set_layout(dsl);
+            }
+            device.destroy_descriptor_pool(ManuallyDrop::into_inner(read(&self.descriptor_pool)));
+            device.destroy_sampler(ManuallyDrop::into_inner(read(&self.sampler)));
+            device.destroy_image_view(ManuallyDrop::into_inner(read(&self.image_view)));
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) enum StreamingTextureWrite {
@@ -182,6 +272,7 @@ pub(crate) enum DrawType {
     StreamingTexture { id: usize },
     DynamicTexture { id: usize },
     Quad { id: usize },
+    Text { id: usize },
 }
 
 /// Main structure that holds all vulkan draw states
@@ -191,6 +282,7 @@ pub(crate) enum DrawType {
 /// This structure can safely be dropped and all associated resources will be cleaned up correctly.
 pub struct VxDraw {
     pub(crate) draw_order: Vec<DrawType>,
+    pub(crate) texts: Vec<Text>,
     pub(crate) strtexs: Vec<StreamingTexture>,
     pub(crate) dyntexs: Vec<DynamicTexture>,
     pub(crate) quads: Vec<QuadsData>,
@@ -457,6 +549,10 @@ impl Drop for VxDraw {
                 for image_view in strtex.image_view.drain(..) {
                     self.device.destroy_image_view(image_view);
                 }
+            }
+
+            for mut text in self.texts.drain(..) {
+                text.destroy(&self.device);
             }
         }
     }

@@ -602,6 +602,7 @@ impl VxDraw {
             max_frames_in_flight,
             device,
             device_limits: phys_dev_limits,
+            texts: vec![],
             events_loop,
             frames_in_flight_fences,
             framebuffers,
@@ -633,6 +634,16 @@ impl VxDraw {
             debtris,
 
             clear_color: ClearColor::Float([1.0f32, 0.25, 0.5, 0.0]),
+        }
+    }
+
+    pub(crate) fn wait_for_fences(&self) {
+        unsafe {
+            self.device.wait_for_fences(
+                &self.frames_in_flight_fences[..],
+                gfx_hal::device::WaitFor::All,
+                u64::max_value(),
+            );
         }
     }
 
@@ -713,8 +724,8 @@ impl VxDraw {
     }
 
     /// Drawing text
-    pub fn text(&mut self) -> text::Text {
-        text::Text::new(self)
+    pub fn text(&mut self) -> text::Texts {
+        text::Texts::new(self)
     }
 
     /// Collect all pending input events to this window
@@ -1061,6 +1072,44 @@ impl VxDraw {
                     }),
                 );
                 buffer.set_scissors(0, std::iter::once(&rect));
+                for text in self.texts.iter() {
+                    let image_barrier = memory::Barrier::Image {
+                        states: (image::Access::empty(), image::Layout::General)
+                            ..(
+                                image::Access::SHADER_READ,
+                                image::Layout::ShaderReadOnlyOptimal,
+                            ),
+                        target: &*text.image_buffer,
+                        families: None,
+                        range: image::SubresourceRange {
+                            aspects: format::Aspects::COLOR,
+                            levels: 0..1,
+                            layers: 0..1,
+                        },
+                    };
+                    buffer.pipeline_barrier(
+                        pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
+                        memory::Dependencies::empty(),
+                        &[image_barrier],
+                    );
+                    // Submit automatically makes host writes available for the device
+                    let image_barrier = memory::Barrier::Image {
+                        states: (image::Access::empty(), image::Layout::ShaderReadOnlyOptimal)
+                            ..(image::Access::empty(), image::Layout::General),
+                        target: &*text.image_buffer,
+                        families: None,
+                        range: image::SubresourceRange {
+                            aspects: format::Aspects::COLOR,
+                            levels: 0..1,
+                            layers: 0..1,
+                        },
+                    };
+                    buffer.pipeline_barrier(
+                        pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
+                        memory::Dependencies::empty(),
+                        &[image_barrier],
+                    );
+                }
                 for strtex in self.strtexs.iter() {
                     let image_barrier = memory::Barrier::Image {
                         states: (image::Access::empty(), image::Layout::General)
@@ -1108,6 +1157,100 @@ impl VxDraw {
                     );
                     for draw_cmd in self.draw_order.iter() {
                         match draw_cmd {
+                            DrawType::Text { id } => {
+                                let text = &mut self.texts[*id];
+                                if !text.hidden {
+                                    enc.bind_graphics_pipeline(&text.pipeline);
+                                    if text.posbuf_touch != 0 {
+                                        text.posbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &text.posbuffer[..],
+                                            );
+                                        text.posbuf_touch -= 1;
+                                    }
+                                    if text.opacbuf_touch != 0 {
+                                        text.opacbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &text.opacbuffer[..],
+                                            );
+                                        text.opacbuf_touch -= 1;
+                                    }
+                                    if text.uvbuf_touch != 0 {
+                                        text.uvbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &text.uvbuffer[..],
+                                            );
+                                        text.uvbuf_touch -= 1;
+                                    }
+                                    if text.tranbuf_touch != 0 {
+                                        text.tranbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &text.tranbuffer[..],
+                                            );
+                                        text.tranbuf_touch -= 1;
+                                    }
+                                    if text.rotbuf_touch != 0 {
+                                        text.rotbuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &text.rotbuffer[..],
+                                            );
+                                        text.rotbuf_touch -= 1;
+                                    }
+                                    if text.scalebuf_touch != 0 {
+                                        text.scalebuf[self.current_frame]
+                                            .copy_from_slice_and_maybe_resize(
+                                                &self.device,
+                                                &self.adapter,
+                                                &text.scalebuffer[..],
+                                            );
+                                        text.scalebuf_touch -= 1;
+                                    }
+                                    let count = text.posbuffer.len();
+                                    text.indices[self.current_frame].ensure_capacity(
+                                        &self.device,
+                                        &self.adapter,
+                                        count,
+                                    );
+                                    let buffers: ArrayVec<[_; 6]> = [
+                                        (text.posbuf[self.current_frame].buffer(), 0),
+                                        (text.uvbuf[self.current_frame].buffer(), 0),
+                                        (text.tranbuf[self.current_frame].buffer(), 0),
+                                        (text.rotbuf[self.current_frame].buffer(), 0),
+                                        (text.scalebuf[self.current_frame].buffer(), 0),
+                                        (text.opacbuf[self.current_frame].buffer(), 0),
+                                    ]
+                                    .into();
+                                    enc.push_graphics_constants(
+                                        &text.pipeline_layout,
+                                        pso::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &*(view.as_ptr() as *const [u32; 16]),
+                                    );
+                                    enc.bind_graphics_descriptor_sets(
+                                        &text.pipeline_layout,
+                                        0,
+                                        Some(&*text.descriptor_set),
+                                        &[],
+                                    );
+                                    enc.bind_vertex_buffers(0, buffers);
+                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                        buffer: text.indices[self.current_frame].buffer(),
+                                        offset: 0,
+                                        index_type: gfx_hal::IndexType::U32,
+                                    });
+                                    enc.draw_indexed(0..text.posbuffer.len() as u32 * 6, 0, 0..1);
+                                }
+                            }
                             DrawType::StreamingTexture { id } => {
                                 let strtex = &mut self.strtexs[*id];
                                 let foot = self.device.get_image_subresource_footprint(
