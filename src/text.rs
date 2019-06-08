@@ -179,9 +179,16 @@ impl<'a> Texts<'a> {
         Self { vx }
     }
 
+    fn get_texture_dimensions(&self, layer: &Layer) -> (u32, u32) {
+        self.vx.texts[layer.0].glyph_brush.texture_dimensions()
+    }
+
     /// Add a text layer to the system
     pub fn add_layer(&mut self, font: &'static [u8], options: LayerOptions) -> Layer {
-        let glyph_brush = GlyphBrushBuilder::using_font_bytes(font).build();
+        let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(font);
+        glyph_brush.cache_glyph_positioning = false;
+        glyph_brush.cache_glyph_drawing = false;
+        let glyph_brush = glyph_brush.build();
         let (width, height) = glyph_brush.texture_dimensions();
 
         /// Create an image, image view, and memory
@@ -724,7 +731,6 @@ impl<'a> Texts<'a> {
             Ok(BrushAction::Draw(vertices)) => {
                 assert_eq![0, count];
                 count = vertices.len();
-                // dbg![("Drawing add: ", string)];
                 self.vx.texts[layer.0].texts.push(string.to_string());
                 self.vx.texts[layer.0]
                     .font_sizes
@@ -739,7 +745,6 @@ impl<'a> Texts<'a> {
                     right = right.max(vtx.bottomright.0);
                 }
                 for (idx, vtx) in vertices.iter().enumerate() {
-                    // dbg![idx];
                     let muscale = PIX_WIDTH_DIVISOR;
                     let uv_b = vtx.uv_begin;
                     let uv_e = vtx.uv_end;
@@ -801,7 +806,6 @@ impl<'a> Texts<'a> {
             }
             Ok(BrushAction::ReDraw) => {}
             Err(BrushError::TextureTooSmall { suggested }) => {
-                // dbg![suggested];
                 self.resize_internal_texture(&layer, suggested);
                 resized = true;
             }
@@ -872,9 +876,7 @@ impl<'a> Texts<'a> {
     fn recompute_text(&mut self, layer: &Layer) {
         let this_layer = &mut self.vx.texts[layer.0];
         let mut count = 0;
-        // dbg![this_layer.posbuffer.len()];
         for (idx, text) in this_layer.texts.iter().enumerate() {
-            // dbg![text];
             let font_size = this_layer.font_sizes[idx];
             let width = this_layer.width[idx];
             let height = this_layer.height[idx];
@@ -889,12 +891,16 @@ impl<'a> Texts<'a> {
             };
             let mut tex_values = vec![];
 
-            this_layer.glyph_brush.process_queued(
+            match this_layer.glyph_brush.process_queued(
                 |rect, tex_data| {
                     tex_values.push((rect, tex_data.to_owned()));
                 },
                 |_| SData::default(),
-            );
+            ) {
+                Ok(BrushAction::Draw(vertices)) => {}
+                Ok(_) => {}
+                Err(_) => {}
+            }
 
             this_layer.glyph_brush.queue(section);
             let mut resized = None;
@@ -911,7 +917,6 @@ impl<'a> Texts<'a> {
             ) {
                 Ok(BrushAction::Draw(vertices)) => {
                     for (idx2, vtx) in vertices.iter().enumerate() {
-                        // dbg![idx2];
                         let muscale = PIX_WIDTH_DIVISOR;
                         let uv_b = vtx.uv_begin;
                         let uv_e = vtx.uv_end;
@@ -961,7 +966,6 @@ impl<'a> Texts<'a> {
                 }
                 Ok(BrushAction::ReDraw) => {}
                 Err(BrushError::TextureTooSmall { suggested }) => {
-                    // dbg![("Resizing again", suggested)];
                     resized = Some(suggested);
                 }
             }
@@ -1003,7 +1007,6 @@ impl<'a> Texts<'a> {
             }
 
             if let Some(suggested) = resized {
-                // dbg![("Tex values in resizing", tex_cnt)];
                 self.resize_internal_texture(layer, suggested);
                 self.recompute_text(layer);
                 return;
@@ -1288,19 +1291,79 @@ mod tests {
                 .translation((0.0, 1.0)),
         );
 
-        //         dbg!["Adding huge text"];
-
-        //         vx.text().add(
-        //             &mut layer,
-        //             "Even Bigger",
-        //             text::TextOptions::new()
-        //                 .font_size(800.0)
-        //                 .origin((0.5, 0.0))
-        //                 .translation((0.0, -2.0)),
-        //         );
+        // vx.text().add(
+        //     &mut layer,
+        //     "Even Bigger",
+        //     text::TextOptions::new()
+        //         .font_size(800.0)
+        //         .origin((0.5, 0.0))
+        //         .translation((0.0, -2.0)),
+        // );
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         assert_swapchain_eq(&mut vx, "resizing_back_texture", img);
+    }
+
+    #[test]
+    fn resizing_twice() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+        vx.text().add(
+            &mut layer,
+            "Bottom Text",
+            text::TextOptions::new()
+                .font_size(40.0)
+                .origin((0.5, 1.0))
+                .translation((0.0, 0.8)),
+        );
+
+        vx.text().add(
+            &mut layer,
+            "Even Bigger",
+            text::TextOptions::new()
+                .font_size(300.0)
+                .origin((0.5, 0.0))
+                .translation((0.0, -1.0)),
+        );
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "resizing_twice", img);
+    }
+
+    #[test]
+    fn do_not_resize_texture_when_making_the_same_text() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+        for idx in -10..=10 {
+            vx.text().add(
+                &mut layer,
+                "Some text",
+                text::TextOptions::new()
+                    .font_size(153.0)
+                    .origin(((idx as f32 + 10.0) / 20.0, 0.0))
+                    .scale((idx as f32).abs() / 10.0)
+                    .translation((idx as f32 / 10.0, idx as f32 / 20.0)),
+            );
+        }
+
+        assert_eq![(256, 256), vx.text().get_texture_dimensions(&layer)];
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(
+            &mut vx,
+            "do_not_resize_texture_when_making_the_same_text",
+            img,
+        );
     }
 
     #[bench]
