@@ -30,6 +30,10 @@ use std::mem::ManuallyDrop;
 
 // ---
 
+const PIX_WIDTH_DIVISOR: f32 = 500f32;
+
+// ---
+
 /// Options for this text layer
 pub struct LayerOptions {
     // Wrap mode does not make sense here...
@@ -76,6 +80,8 @@ pub struct TextOptions<'a> {
     font_size_x: f32,
     font_size_y: f32,
     translation: (f32, f32),
+    origin: (f32, f32),
+    rotation: f32,
 }
 
 impl<'a> TextOptions<'a> {
@@ -86,6 +92,8 @@ impl<'a> TextOptions<'a> {
             font_size_x: 16.0,
             font_size_y: 16.0,
             translation: (0.0, 0.0),
+            origin: (0.0, 0.0),
+            rotation: 0.0,
         }
     }
 
@@ -121,10 +129,24 @@ impl<'a> TextOptions<'a> {
             ..self
         }
     }
+
+    /// Set the origin of the text
+    pub fn origin(self, origin: (f32, f32)) -> Self {
+        Self { origin, ..self }
+    }
+
+    /// Set the rotation of the text
+    pub fn rotation(self, rotation: f32) -> Self {
+        Self { rotation, ..self }
+    }
 }
 
 /// Handle to a piece of text
-pub struct Handle(usize, std::ops::Range<usize>);
+pub struct Handle {
+    layer: usize,
+    vertices: std::ops::Range<usize>,
+    id: usize,
+}
 
 /// Handle to a layer (a single glyph store/font)
 pub struct Layer(usize);
@@ -226,8 +248,8 @@ impl<'a> Texts<'a> {
         };
 
         /// Add shader
-        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.vert.spirv"];
-        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.frag.spirv"];
+        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/text.vert.spirv"];
+        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/text.frag.spirv"];
 
         let vs_module =
             { unsafe { self.vx.device.create_shader_module(&VERTEX_SOURCE_TEXTURE) }.unwrap() };
@@ -593,6 +615,9 @@ impl<'a> Texts<'a> {
             removed: vec![],
             glyph_brush,
 
+            width: vec![],
+            height: vec![],
+
             fixed_perspective: None,
 
             posbuf_touch: 0,
@@ -648,16 +673,22 @@ impl<'a> Texts<'a> {
             },
             ..Section::default()
         });
-        self.vx.wait_for_fences();
         self.vx.texts[layer.0].posbuf_touch = self.vx.swapconfig.image_count;
         self.vx.texts[layer.0].opacbuf_touch = self.vx.swapconfig.image_count;
         self.vx.texts[layer.0].uvbuf_touch = self.vx.swapconfig.image_count;
         self.vx.texts[layer.0].tranbuf_touch = self.vx.swapconfig.image_count;
         self.vx.texts[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         self.vx.texts[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
+        self.vx.wait_for_fences();
         let prev_begin = self.vx.texts[layer.0].posbuffer.len();
         let mut count = 0usize;
         let mut tex_values = vec![];
+
+        let mut top = 0;
+        let mut bottom = 0;
+        let mut left = 0;
+        let mut right = 0;
+
         match self.vx.texts[layer.0].glyph_brush.process_queued(
             |rect, tex_data| {
                 tex_values.push((rect, tex_data.to_owned()));
@@ -673,15 +704,18 @@ impl<'a> Texts<'a> {
                 assert_eq![0, count];
                 count = vertices.len();
                 for (idx, vtx) in vertices.iter().enumerate() {
-                    let muscale = 500.0;
+                    top = top.min(vtx.topleft.0);
+                    left = left.min(vtx.topleft.1);
+                    bottom = bottom.max(vtx.bottomright.1);
+                    right = right.max(vtx.bottomright.0);
+                }
+                for (idx, vtx) in vertices.iter().enumerate() {
+                    let muscale = PIX_WIDTH_DIVISOR;
                     let uv_b = vtx.uv_begin;
                     let uv_e = vtx.uv_end;
                     let beg = vtx.topleft;
                     let end = vtx.bottomright;
-                    let begf = (
-                        beg.0 as f32 / muscale + opts.translation.0,
-                        beg.1 as f32 / muscale + opts.translation.1,
-                    );
+                    let begf = (beg.0 as f32 / muscale, beg.1 as f32 / muscale);
                     let width = (end.0 - beg.0) as f32 / muscale;
                     let height = (end.1 - beg.1) as f32 / muscale;
                     let orig = (-width / 2.0, -height / 2.0);
@@ -711,8 +745,17 @@ impl<'a> Texts<'a> {
                         topright.1,
                     ]);
                     tex.opacbuffer.push([255, 255, 255, 255]);
-                    tex.tranbuffer.push([0.0; 8]);
-                    tex.rotbuffer.push([0.0; 4]);
+                    tex.tranbuffer.push([
+                        opts.translation.0,
+                        opts.translation.1,
+                        opts.translation.0,
+                        opts.translation.1,
+                        opts.translation.0,
+                        opts.translation.1,
+                        opts.translation.0,
+                        opts.translation.1,
+                    ]);
+                    tex.rotbuffer.push([opts.rotation; 4]);
                     tex.scalebuffer.push([1.0; 4]);
                     tex.uvbuffer.push([
                         topleft_uv.0,
@@ -730,6 +773,23 @@ impl<'a> Texts<'a> {
             Err(BrushError::TextureTooSmall { suggested }) => {
                 println!["{:?}", suggested];
             }
+        }
+
+        let width = right - left;
+        let height = bottom - top;
+        self.vx.texts[layer.0].width.push(width);
+        self.vx.texts[layer.0].height.push(height);
+        for idx in prev_begin..prev_begin + count {
+            // self.vx.texts[layer.0].posbuffer[self.vx.texts[layer.0].width.len() - 1].iter_mut() {
+            let pos = &mut self.vx.texts[layer.0].posbuffer[idx];
+            pos[0] -= opts.origin.0 * width as f32 / PIX_WIDTH_DIVISOR;
+            pos[1] -= opts.origin.1 * height as f32 / PIX_WIDTH_DIVISOR;
+            pos[2] -= opts.origin.0 * width as f32 / PIX_WIDTH_DIVISOR;
+            pos[3] -= opts.origin.1 * height as f32 / PIX_WIDTH_DIVISOR;
+            pos[4] -= opts.origin.0 * width as f32 / PIX_WIDTH_DIVISOR;
+            pos[5] -= opts.origin.1 * height as f32 / PIX_WIDTH_DIVISOR;
+            pos[6] -= opts.origin.0 * width as f32 / PIX_WIDTH_DIVISOR;
+            pos[7] -= opts.origin.1 * height as f32 / PIX_WIDTH_DIVISOR;
         }
 
         for (rect, tex_data) in tex_values {
@@ -766,6 +826,137 @@ impl<'a> Texts<'a> {
                     .expect("Unable to release mapping writer");
             }
         }
-        Handle(layer.0, prev_begin + 1..prev_begin + 1 + count)
+        Handle {
+            layer: layer.0,
+            vertices: prev_begin..prev_begin + count,
+            id: self.vx.texts[layer.0].width.len() - 1,
+        }
+    }
+
+    /// Get the width of the text in native -1..1 coordinates
+    ///
+    /// The width is in screen coordinates without considering scaling or translation effects. The
+    /// width is just the modelspace width.
+    pub fn get_width(&self, handle: &Handle) -> f32 {
+        self.vx.texts[handle.layer].width[handle.id] as f32 / PIX_WIDTH_DIVISOR
+    }
+
+    /// Get the height of the text in native -1..1 coordinates
+    ///
+    /// The height is in screen coordinates without considering scaling or translation effects. The
+    /// height is just the modelspace height.
+    pub fn get_height(&self, handle: &Handle) -> f32 {
+        self.vx.texts[handle.layer].height[handle.id] as f32 / PIX_WIDTH_DIVISOR
+    }
+
+    /// Set the scale of the text segment
+    pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
+        self.vx.texts[handle.layer].scalebuf_touch = self.vx.swapconfig.image_count;
+        for idx in handle.vertices.start..handle.vertices.end {
+            self.vx.texts[handle.layer].scalebuffer[idx].copy_from_slice(&[scale; 4]);
+        }
+    }
+
+    /// Set the rotation of the text segment as a whole
+    pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, angle: T) {
+        self.vx.texts[handle.layer].rotbuf_touch = self.vx.swapconfig.image_count;
+        for idx in handle.vertices.start..handle.vertices.end {
+            self.vx.texts[handle.layer].rotbuffer[idx].copy_from_slice(&[angle.into().0; 4]);
+        }
+    }
+
+    /// Set the rotation of the text segment as a whole
+    pub fn set_translation_glyphs(
+        &mut self,
+        handle: &Handle,
+        mut delta: impl FnMut(usize) -> (f32, f32),
+    ) {
+        self.vx.texts[handle.layer].tranbuf_touch = self.vx.swapconfig.image_count;
+        for idx in handle.vertices.start..handle.vertices.end {
+            let delta = delta(idx - handle.vertices.start);
+            self.vx.texts[handle.layer].tranbuffer[idx].copy_from_slice(&[
+                delta.0, delta.1, delta.0, delta.1, delta.0, delta.1, delta.0, delta.1,
+            ]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+    use cgmath::Deg;
+    use fast_logger::{Generic, GenericLogger, Logger};
+    use test::Bencher;
+
+    #[test]
+    fn texting() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+        vx.text()
+            .add(&mut layer, text::TextOptions::new("font").font_size(60.0));
+
+        vx.text().add(
+            &mut layer,
+            text::TextOptions::new("my text")
+                .font_size(32.0)
+                .translation((0.0, -0.5)),
+        );
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "some_text", img);
+    }
+
+    #[test]
+    fn centered_text_rotates_around_origin() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+        vx.text().add(
+            &mut layer,
+            text::TextOptions::new("This text shall be\ncentered, as a whole,\nbut each line is not centered individually")
+                .font_size(40.0)
+                .origin((0.5, 0.5))
+                .rotation(0.3),
+        );
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "centered_text_rotates_around_origin", img);
+    }
+
+    #[bench]
+    fn text_flag(b: &mut Bencher) {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+        let handle = vx.text().add(
+            &mut layer,
+            text::TextOptions::new("All your base are belong to us!").font_size(40.0),
+        );
+
+        let mut degree = 0;
+        let text_width = vx.text().get_width(&handle);
+
+        b.iter(|| {
+            degree = if degree == 360 { 0 } else { degree + 1 };
+            vx.text().set_translation_glyphs(&handle, |idx| {
+                let value = (((degree + idx * 4) as f32) / 180.0 * std::f32::consts::PI).sin();
+                (-text_width / 2.0, value / 3.0)
+            });
+            vx.draw_frame(&prspect);
+        });
     }
 }

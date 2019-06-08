@@ -26,6 +26,9 @@ pub(crate) struct Text {
     pub(crate) removed: Vec<std::ops::Range<usize>>,
     pub(crate) glyph_brush: glyph_brush::GlyphBrush<'static, SData>,
 
+    pub(crate) width: Vec<i32>,
+    pub(crate) height: Vec<i32>,
+
     pub(crate) fixed_perspective: Option<Matrix4<f32>>,
 
     pub(crate) posbuf_touch: u32,

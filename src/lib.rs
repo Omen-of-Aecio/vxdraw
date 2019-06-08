@@ -1734,29 +1734,6 @@ mod tests {
     }
 
     #[test]
-    fn texting() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
-
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
-
-        vx.text()
-            .add(&mut layer, text::TextOptions::new("font").font_size(60.0));
-
-        vx.text().add(
-            &mut layer,
-            text::TextOptions::new("my text")
-                .font_size(32.0)
-                .translation((0.0, -0.5)),
-        );
-
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
-        assert_swapchain_eq(&mut vx, "some_text", img);
-    }
-
-    #[test]
     fn setup_and_teardown_draw_clear() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
 
