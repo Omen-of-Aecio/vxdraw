@@ -7,6 +7,7 @@ use crate::{
 };
 use cgmath::Matrix4;
 use cgmath::Rad;
+use core::ptr::read;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -82,6 +83,7 @@ pub struct TextOptions<'a> {
     translation: (f32, f32),
     origin: (f32, f32),
     rotation: f32,
+    scale: f32,
 }
 
 impl<'a> TextOptions<'a> {
@@ -94,6 +96,7 @@ impl<'a> TextOptions<'a> {
             translation: (0.0, 0.0),
             origin: (0.0, 0.0),
             rotation: 0.0,
+            scale: 1.0,
         }
     }
 
@@ -131,6 +134,14 @@ impl<'a> TextOptions<'a> {
     }
 
     /// Set the origin of the text
+    ///
+    /// Each glyph will have its model space translated by the negation of the origin multiplied by
+    /// the width or height depending on the coordinate. This means an origin of (0.5, 0.5) will
+    /// put the origin in the center of the entire text block. An origin of (1.0, 1.0) puts the
+    /// origin in the bottom right of the text block. And (1.0, 0.0) puts the origin in the
+    /// top-right corner of the text block. You can use any value, even (3.0, -5.0) if you want to,
+    /// which just means that the text when rotated rotates around that relative point to the text
+    /// block width and height.
     pub fn origin(self, origin: (f32, f32)) -> Self {
         Self { origin, ..self }
     }
@@ -138,6 +149,11 @@ impl<'a> TextOptions<'a> {
     /// Set the rotation of the text
     pub fn rotation(self, rotation: f32) -> Self {
         Self { rotation, ..self }
+    }
+
+    /// Set the rotation of the text
+    pub fn scale(self, scale: f32) -> Self {
+        Self { scale, ..self }
     }
 }
 
@@ -178,7 +194,7 @@ impl<'a> Texts<'a> {
                 format::Format::Rgba8Srgb,
                 2,
                 image::Tiling::Linear,
-                image::Usage::TRANSFER_SRC,
+                image::Usage::SAMPLED | image::Usage::TRANSFER_SRC,
                 image::ViewCapabilities::empty(),
             )
             .expect("Device does not support linear sampled textures");
@@ -689,6 +705,8 @@ impl<'a> Texts<'a> {
         let mut left = 0;
         let mut right = 0;
 
+        let mut resized = false;
+
         match self.vx.texts[layer.0].glyph_brush.process_queued(
             |rect, tex_data| {
                 tex_values.push((rect, tex_data.to_owned()));
@@ -756,7 +774,7 @@ impl<'a> Texts<'a> {
                         opts.translation.1,
                     ]);
                     tex.rotbuffer.push([opts.rotation; 4]);
-                    tex.scalebuffer.push([1.0; 4]);
+                    tex.scalebuffer.push([opts.scale; 4]);
                     tex.uvbuffer.push([
                         topleft_uv.0,
                         topleft_uv.1,
@@ -771,8 +789,148 @@ impl<'a> Texts<'a> {
             }
             Ok(BrushAction::ReDraw) => {}
             Err(BrushError::TextureTooSmall { suggested }) => {
-                println!["{:?}", suggested];
+                dbg![suggested];
+                /// Create an image, image view, and memory
+                self.vx
+                    .adapter
+                    .physical_device
+                    .image_format_properties(
+                        format::Format::Rgba8Srgb,
+                        2,
+                        image::Tiling::Linear,
+                        image::Usage::SAMPLED | image::Usage::TRANSFER_SRC,
+                        image::ViewCapabilities::empty(),
+                    )
+                    .expect("Device does not support linear sampled textures");
+                let mut image = unsafe {
+                    self.vx
+                        .device
+                        .create_image(
+                            image::Kind::D2(suggested.0 as u32, suggested.1 as u32, 1, 1),
+                            1,
+                            format::Format::Rgba8Srgb,
+                            image::Tiling::Linear,
+                            image::Usage::SAMPLED | image::Usage::TRANSFER_DST,
+                            image::ViewCapabilities::empty(),
+                        )
+                        .expect("Couldn't create the image!")
+                };
+
+                let image_requirements = unsafe { self.vx.device.get_image_requirements(&image) };
+                let image_memory = unsafe {
+                    let memory_type_id = find_memory_type_id(
+                        &self.vx.adapter,
+                        image_requirements,
+                        memory::Properties::DEVICE_LOCAL
+                            | memory::Properties::CPU_VISIBLE
+                            | memory::Properties::COHERENT,
+                    );
+                    self.vx
+                        .device
+                        .allocate_memory(memory_type_id, image_requirements.size)
+                        .expect("Unable to allocate")
+                };
+
+                let image_view = unsafe {
+                    self.vx
+                        .device
+                        .bind_image_memory(&image_memory, 0, &mut image)
+                        .expect("Unable to bind memory");
+
+                    self.vx
+                        .device
+                        .create_image_view(
+                            &image,
+                            image::ViewKind::D2,
+                            format::Format::Rgba8Srgb,
+                            format::Swizzle::NO,
+                            image::SubresourceRange {
+                                aspects: format::Aspects::COLOR,
+                                levels: 0..1,
+                                layers: 0..1,
+                            },
+                        )
+                        .expect("Couldn't create the image view!")
+                };
+                unsafe {
+                    self.vx
+                        .device
+                        .write_descriptor_sets(vec![pso::DescriptorSetWrite {
+                            set: &*self.vx.texts[layer.0].descriptor_set,
+                            binding: 0,
+                            array_offset: 0,
+                            descriptors: Some(pso::Descriptor::Image(
+                                &image_view,
+                                image::Layout::General,
+                            )),
+                        }]);
+                }
+                unsafe {
+                    self.vx.device.destroy_image(ManuallyDrop::into_inner(read(
+                        &self.vx.texts[layer.0].image_buffer,
+                    )));
+                    self.vx.device.free_memory(ManuallyDrop::into_inner(read(
+                        &self.vx.texts[layer.0].image_memory,
+                    )));
+                    self.vx
+                        .device
+                        .destroy_image_view(ManuallyDrop::into_inner(read(
+                            &self.vx.texts[layer.0].image_view,
+                        )));
+                }
+                // Change the image to layout general
+                unsafe {
+                    let barrier_fence = self
+                        .vx
+                        .device
+                        .create_fence(false)
+                        .expect("unable to make fence");
+                    // TODO Use a proper command buffer here
+                    self.vx.device.wait_idle().unwrap();
+                    let buffer = &mut self.vx.command_buffers[self.vx.current_frame];
+                    buffer.begin(false);
+                    let image_barrier = memory::Barrier::Image {
+                        states: (image::Access::empty(), image::Layout::Undefined)
+                            ..(
+                                // image::Access::HOST_READ | image::Access::HOST_WRITE,
+                                image::Access::empty(),
+                                image::Layout::General,
+                            ),
+                        target: &image,
+                        families: None,
+                        range: image::SubresourceRange {
+                            aspects: format::Aspects::COLOR,
+                            levels: 0..1,
+                            layers: 0..1,
+                        },
+                    };
+                    buffer.pipeline_barrier(
+                        pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::HOST,
+                        memory::Dependencies::empty(),
+                        &[image_barrier],
+                    );
+                    buffer.finish();
+                    self.vx.queue_group.queues[0]
+                        .submit_nosemaphores(Some(&*buffer), Some(&barrier_fence));
+                    self.vx
+                        .device
+                        .wait_for_fence(&barrier_fence, u64::max_value())
+                        .unwrap();
+                    self.vx.device.destroy_fence(barrier_fence);
+                }
+                self.vx.texts[layer.0].image_buffer = ManuallyDrop::new(image);
+                self.vx.texts[layer.0].image_view = ManuallyDrop::new(image_view);
+                self.vx.texts[layer.0].image_memory = ManuallyDrop::new(image_memory);
+                self.vx.texts[layer.0].image_requirements = image_requirements;
+                self.vx.texts[layer.0]
+                    .glyph_brush
+                    .resize_texture(suggested.0, suggested.1);
+                resized = true;
             }
+        }
+
+        if resized {
+            return self.add(layer, opts);
         }
 
         let width = right - left;
@@ -933,10 +1091,48 @@ mod tests {
         assert_swapchain_eq(&mut vx, "centered_text_rotates_around_origin", img);
     }
 
+    // #[test]
+    // fn resizing_back_texture() {
+    //     let logger = Logger::<Generic>::spawn_void().to_compatibility();
+    //     let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+    //     let prspect = gen_perspective(&vx);
+
+    //     let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+    //     let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+
+    //     vx.text().add(
+    //         &mut layer,
+    //         text::TextOptions::new("This text shall be\ncentered, as a whole,\nbut each line is not centered individually")
+    //             .font_size(40.0)
+    //             .origin((0.5, 0.5))
+    //             .rotation(0.3),
+    //     );
+
+    //     vx.draw_frame(&prspect);
+
+    //     vx.text().add(
+    //         &mut layer,
+    //         text::TextOptions::new("Top text")
+    //             .font_size(300.0)
+    //             .scale(0.5)
+    //             .origin((0.5, 0.0)),
+    //     );
+
+    //     vx.text().add(
+    //         &mut layer,
+    //         text::TextOptions::new("Bottom text")
+    //             .font_size(40.0)
+    //             .origin((0.5, 1.0)),
+    //     );
+
+    //     let img = vx.draw_frame_copy_framebuffer(&prspect);
+    //     assert_swapchain_eq(&mut vx, "resizing_back_texture", img);
+    // }
+
     #[bench]
     fn text_flag(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Enable);
         let prspect = gen_perspective(&vx);
 
         let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
@@ -944,7 +1140,9 @@ mod tests {
 
         let handle = vx.text().add(
             &mut layer,
-            text::TextOptions::new("All your base are belong to us!").font_size(40.0),
+            text::TextOptions::new("All your base are belong to us!")
+                .font_size(40.0)
+                .origin((0.5, 0.5)),
         );
 
         let mut degree = 0;
@@ -954,7 +1152,7 @@ mod tests {
             degree = if degree == 360 { 0 } else { degree + 1 };
             vx.text().set_translation_glyphs(&handle, |idx| {
                 let value = (((degree + idx * 4) as f32) / 180.0 * std::f32::consts::PI).sin();
-                (-text_width / 2.0, value / 3.0)
+                (0.0, value / 3.0)
             });
             vx.draw_frame(&prspect);
         });
