@@ -26,6 +26,10 @@ pub(crate) struct Text {
     pub(crate) removed: Vec<std::ops::Range<usize>>,
     pub(crate) glyph_brush: glyph_brush::GlyphBrush<'static, SData>,
 
+    pub(crate) texts: Vec<String>,
+    pub(crate) font_sizes: Vec<(f32, f32)>,
+    pub(crate) origin: Vec<(f32, f32)>,
+
     pub(crate) width: Vec<i32>,
     pub(crate) height: Vec<i32>,
 
