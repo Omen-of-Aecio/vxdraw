@@ -12,7 +12,7 @@ use gfx_backend_vulkan as back;
 use gfx_hal::{command::ClearColor, device::Device, Adapter, Backend};
 use std::mem::ManuallyDrop;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct SData {
     pub uv_begin: (f32, f32),
     pub uv_end: (f32, f32),

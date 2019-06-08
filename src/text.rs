@@ -724,6 +724,14 @@ impl<'a> Texts<'a> {
             Ok(BrushAction::Draw(vertices)) => {
                 assert_eq![0, count];
                 count = vertices.len();
+                // dbg![("Drawing add: ", string)];
+                self.vx.texts[layer.0].texts.push(string.to_string());
+                self.vx.texts[layer.0]
+                    .font_sizes
+                    .push((opts.font_size_x, opts.font_size_y));
+                self.vx.texts[layer.0]
+                    .origin
+                    .push((opts.origin.0, opts.origin.1));
                 for (idx, vtx) in vertices.iter().enumerate() {
                     top = top.min(vtx.topleft.0);
                     left = left.min(vtx.topleft.1);
@@ -731,6 +739,7 @@ impl<'a> Texts<'a> {
                     right = right.max(vtx.bottomright.0);
                 }
                 for (idx, vtx) in vertices.iter().enumerate() {
+                    // dbg![idx];
                     let muscale = PIX_WIDTH_DIVISOR;
                     let uv_b = vtx.uv_begin;
                     let uv_e = vtx.uv_end;
@@ -754,13 +763,6 @@ impl<'a> Texts<'a> {
 
                     let bottomright = (begf.0 + width, begf.1 + height);
                     let bottomright_uv = (uv_b.0, uv_b.1);
-                    self.vx.texts[layer.0].texts.push(string.to_string());
-                    self.vx.texts[layer.0]
-                        .font_sizes
-                        .push((opts.font_size_x, opts.font_size_y));
-                    self.vx.texts[layer.0]
-                        .origin
-                        .push((opts.origin.0, opts.origin.1));
                     let tex = &mut self.vx.texts[layer.0];
                     tex.posbuffer.push([
                         topleft.0,
@@ -799,13 +801,14 @@ impl<'a> Texts<'a> {
             }
             Ok(BrushAction::ReDraw) => {}
             Err(BrushError::TextureTooSmall { suggested }) => {
-                dbg![suggested];
+                // dbg![suggested];
                 self.resize_internal_texture(&layer, suggested);
                 resized = true;
             }
         }
 
         if resized {
+            self.recompute_text(layer);
             return self.add(layer, string, opts);
         }
 
@@ -814,7 +817,6 @@ impl<'a> Texts<'a> {
         self.vx.texts[layer.0].width.push(width);
         self.vx.texts[layer.0].height.push(height);
         for idx in prev_begin..prev_begin + count {
-            // self.vx.texts[layer.0].posbuffer[self.vx.texts[layer.0].width.len() - 1].iter_mut() {
             let pos = &mut self.vx.texts[layer.0].posbuffer[idx];
             pos[0] -= opts.origin.0 * width as f32 / PIX_WIDTH_DIVISOR;
             pos[1] -= opts.origin.1 * height as f32 / PIX_WIDTH_DIVISOR;
@@ -864,6 +866,148 @@ impl<'a> Texts<'a> {
             layer: layer.0,
             vertices: prev_begin..prev_begin + count,
             id: self.vx.texts[layer.0].width.len() - 1,
+        }
+    }
+
+    fn recompute_text(&mut self, layer: &Layer) {
+        let this_layer = &mut self.vx.texts[layer.0];
+        let mut count = 0;
+        // dbg![this_layer.posbuffer.len()];
+        for (idx, text) in this_layer.texts.iter().enumerate() {
+            // dbg![text];
+            let font_size = this_layer.font_sizes[idx];
+            let width = this_layer.width[idx];
+            let height = this_layer.height[idx];
+            let origin = this_layer.origin[idx];
+            let section = glyph_brush::Section {
+                text: &text,
+                scale: glyph_brush::rusttype::Scale {
+                    x: font_size.0,
+                    y: font_size.1,
+                },
+                ..glyph_brush::Section::default()
+            };
+            let mut tex_values = vec![];
+
+            this_layer.glyph_brush.process_queued(
+                |rect, tex_data| {
+                    tex_values.push((rect, tex_data.to_owned()));
+                },
+                |_| SData::default(),
+            );
+
+            this_layer.glyph_brush.queue(section);
+            let mut resized = None;
+            match this_layer.glyph_brush.process_queued(
+                |rect, tex_data| {
+                    tex_values.push((rect, tex_data.to_owned()));
+                },
+                |vtx| SData {
+                    uv_begin: (vtx.tex_coords.min.x, vtx.tex_coords.min.y),
+                    uv_end: (vtx.tex_coords.max.x, vtx.tex_coords.max.y),
+                    topleft: (vtx.pixel_coords.min.x, vtx.pixel_coords.min.y),
+                    bottomright: (vtx.pixel_coords.max.x, vtx.pixel_coords.max.y),
+                },
+            ) {
+                Ok(BrushAction::Draw(vertices)) => {
+                    for (idx2, vtx) in vertices.iter().enumerate() {
+                        // dbg![idx2];
+                        let muscale = PIX_WIDTH_DIVISOR;
+                        let uv_b = vtx.uv_begin;
+                        let uv_e = vtx.uv_end;
+                        let beg = vtx.topleft;
+                        let end = vtx.bottomright;
+                        let begf = (beg.0 as f32 / muscale, beg.1 as f32 / muscale);
+                        let width2 = (end.0 - beg.0) as f32 / muscale;
+                        let height2 = (end.1 - beg.1) as f32 / muscale;
+                        let orig = (-width2 / 2.0, -height2 / 2.0);
+                        let uv_a = uv_b;
+                        let uv_b = uv_e;
+
+                        let topleft = (begf.0, begf.1);
+                        let topleft_uv = uv_a;
+
+                        let topright = (begf.0 + width2, begf.1);
+                        let topright_uv = (uv_b.0, uv_a.1);
+
+                        let bottomleft = (begf.0, begf.1 + height2);
+                        let bottomleft_uv = (uv_a.0, uv_b.1);
+
+                        let bottomright = (begf.0 + width2, begf.1 + height2);
+                        let bottomright_uv = (uv_b.0, uv_b.1);
+
+                        this_layer.posbuffer[count].copy_from_slice(&[
+                            topleft.0 - origin.0 * width as f32 / PIX_WIDTH_DIVISOR,
+                            topleft.1 - origin.1 * height as f32 / PIX_WIDTH_DIVISOR,
+                            bottomleft.0 - origin.0 * width as f32 / PIX_WIDTH_DIVISOR,
+                            bottomleft.1 - origin.1 * height as f32 / PIX_WIDTH_DIVISOR,
+                            bottomright.0 - origin.0 * width as f32 / PIX_WIDTH_DIVISOR,
+                            bottomright.1 - origin.1 * height as f32 / PIX_WIDTH_DIVISOR,
+                            topright.0 - origin.0 * width as f32 / PIX_WIDTH_DIVISOR,
+                            topright.1 - origin.1 * height as f32 / PIX_WIDTH_DIVISOR,
+                        ]);
+                        this_layer.uvbuffer[count].copy_from_slice(&[
+                            topleft_uv.0,
+                            topleft_uv.1,
+                            bottomleft_uv.0,
+                            bottomleft_uv.1,
+                            bottomright_uv.0,
+                            bottomright_uv.1,
+                            topright_uv.0,
+                            topright_uv.1,
+                        ]);
+                        count += 1;
+                    }
+                }
+                Ok(BrushAction::ReDraw) => {}
+                Err(BrushError::TextureTooSmall { suggested }) => {
+                    // dbg![("Resizing again", suggested)];
+                    resized = Some(suggested);
+                }
+            }
+
+            let tex_cnt = tex_values.len();
+            for (rect, tex_data) in tex_values {
+                unsafe {
+                    let foot = self.vx.device.get_image_subresource_footprint(
+                        &this_layer.image_buffer,
+                        image::Subresource {
+                            aspects: format::Aspects::COLOR,
+                            level: 0,
+                            layer: 0,
+                        },
+                    );
+                    let mut target = self
+                        .vx
+                        .device
+                        .acquire_mapping_writer(
+                            &this_layer.image_memory,
+                            0..this_layer.image_requirements.size,
+                        )
+                        .expect("unable to acquire mapping writer");
+
+                    let width = rect.max.x - rect.min.x;
+                    for (idx, alpha) in tex_data.iter().enumerate() {
+                        let idx = idx as u32;
+                        let x = rect.min.x + idx % width;
+                        let y = rect.min.y + idx / width;
+                        let access = foot.row_pitch * u64::from(y) + u64::from(x * 4);
+                        target[access as usize..(access + 4) as usize]
+                            .copy_from_slice(&[255, 255, 255, *alpha]);
+                    }
+                    self.vx
+                        .device
+                        .release_mapping_writer(target)
+                        .expect("Unable to release mapping writer");
+                }
+            }
+
+            if let Some(suggested) = resized {
+                // dbg![("Tex values in resizing", tex_cnt)];
+                self.resize_internal_texture(layer, suggested);
+                self.recompute_text(layer);
+                return;
+            }
         }
     }
 
@@ -1116,18 +1260,19 @@ mod tests {
 
         vx.text().add(
             &mut layer,
-            "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
+            "This is some angled text",
             text::TextOptions::new()
                 .font_size(40.0)
                 .origin((0.5, 0.5))
+                .translation((0.0, -0.5))
                 .rotation(0.3),
         );
 
-        vx.draw_frame(&prspect);
+        // vx.draw_frame(&prspect);
 
         vx.text().add(
             &mut layer,
-            "Top text",
+            "Big text",
             text::TextOptions::new()
                 .font_size(300.0)
                 .scale(0.5)
@@ -1136,9 +1281,23 @@ mod tests {
 
         vx.text().add(
             &mut layer,
-            "Bottom text",
-            text::TextOptions::new().font_size(40.0).origin((0.5, 1.0)),
+            "Bottom Text",
+            text::TextOptions::new()
+                .font_size(40.0)
+                .origin((0.5, 1.0))
+                .translation((0.0, 1.0)),
         );
+
+        //         dbg!["Adding huge text"];
+
+        //         vx.text().add(
+        //             &mut layer,
+        //             "Even Bigger",
+        //             text::TextOptions::new()
+        //                 .font_size(800.0)
+        //                 .origin((0.5, 0.0))
+        //                 .translation((0.0, -2.0)),
+        //         );
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         assert_swapchain_eq(&mut vx, "resizing_back_texture", img);
