@@ -1,4 +1,33 @@
-//! Tex
+//! Methods and types to control text rendering
+//!
+//! # Example - Drawing centered text #
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use vxdraw::{text, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
+//! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+//! fn main() {
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!     let prspect = gen_perspective(&vx);
+//!
+//!     // Create a new layer. A layer consists of a font file and some options
+//!     let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+//!
+//!     // Create a new piece of text. We use the origin to center the text. The origin spans
+//!     // between 0 and 1, where 0 is the left-most side of the entire text section, and 1 the
+//!     // right-most. The same goes for the top and bottom respectively. Note that values outside
+//!     // of 0 to 1 are allowed, and define the origin of transformations on that text.
+//!     vx.text().add(
+//!         &mut layer,
+//!         "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
+//!         text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
+//!     );
+//!
+//!     vx.draw_frame(&prspect);
+//!
+//!     #[cfg(not(test))]
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
+//! ```
 use super::utils::*;
 use crate::{
     blender,
@@ -1217,6 +1246,7 @@ impl<'a> Texts<'a> {
 
     // ---
 
+    /// Set the opacity on a per-glyph basis. Glyphs are enumerated as they would in a string
     pub fn set_opacity_glyphs(&mut self, handle: &Handle, mut delta: impl FnMut(usize) -> u8) {
         self.vx.texts[handle.layer].opacbuf_touch = self.vx.swapconfig.image_count;
         for idx in handle.vertices.start..handle.vertices.end {
