@@ -28,6 +28,58 @@
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
+//!
+//! # Example - Textured text #
+//!
+//! Text itself does not directly support textures, but by using blending modes we can overlay a texture
+//! onto the text.
+//! ```
+//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use vxdraw::{blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
+//! fn main() {
+//!     static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
+//!     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+//!
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
+//!
+//!     let clear_alpha = vx.quads().add_layer(&quads::LayerOptions::new().blend(|x| {
+//!         x.alpha(blender::BlendOp::Add {
+//!             src: blender::BlendFactor::Zero,
+//!             dst: blender::BlendFactor::Zero,
+//!         })
+//!     })
+//!     .fixed_perspective(Matrix4::identity()));
+//!
+//!     let text =  vx.text().add_layer(DEJAVU, text::LayerOptions::new().blend(|x| {
+//!         x.alpha(blender::BlendOp::Add {
+//!             src: blender::BlendFactor::One,
+//!             dst: blender::BlendFactor::Zero,
+//!         })
+//!     }));
+//!
+//!     let texture = vx.dyntex().add_layer(
+//!         FOREST,
+//!         &LayerOptions::new().blend(|x| {
+//!             x.colors(blender::BlendOp::Add {
+//!                 src: blender::BlendFactor::DstAlpha,
+//!                 dst: blender::BlendFactor::OneMinusDstAlpha,
+//!             })
+//!         })
+//!         .filter(Filter::Linear),
+//!     );
+//!
+//!     vx.quads().add(&clear_alpha, quads::Quad::new());
+//!     vx.text().add(&text, "This is\ntextured text", text::TextOptions::new()
+//!         .origin((0.5, 0.5))
+//!         .font_size(120.0));
+//!     vx.dyntex().add(&texture, Sprite::new().scale(1.0));
+//!
+//!     let prspect = gen_perspective(&vx);
+//!     vx.draw_frame(&prspect);
+//!     std::thread::sleep(std::time::Duration::new(3, 0));
+//! }
+//! ```
+////!     #[cfg(not(test))]
 use super::utils::*;
 use crate::{
     blender,

@@ -1504,12 +1504,20 @@ impl VxDraw {
                                 if let Some(quad) = self.quads.get_mut(*id) {
                                     if !quad.hidden {
                                         enc.bind_graphics_pipeline(&quad.pipeline);
-                                        enc.push_graphics_constants(
-                                            &quad.pipeline_layout,
-                                            pso::ShaderStageFlags::VERTEX,
-                                            0,
-                                            &*(view.as_ptr() as *const [u32; 16]),
-                                        );
+                                        {
+                                            let view =
+                                                if let Some(ref view) = quad.fixed_perspective {
+                                                    view
+                                                } else {
+                                                    view
+                                                };
+                                            enc.push_graphics_constants(
+                                                &quad.pipeline_layout,
+                                                pso::ShaderStageFlags::VERTEX,
+                                                0,
+                                                &*(view.as_ptr() as *const [u32; 16]),
+                                            );
+                                        }
                                         if quad.posbuf_touch != 0 {
                                             quad.posbuf[self.current_frame]
                                                 .copy_from_slice_and_maybe_resize(

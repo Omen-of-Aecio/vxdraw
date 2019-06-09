@@ -246,6 +246,7 @@ pub(crate) struct DebugTriangleData {
 pub(crate) struct QuadsData {
     pub(crate) hidden: bool,
 
+    pub(crate) fixed_perspective: Option<Matrix4<f32>>,
     pub(crate) holes: Vec<usize>,
 
     pub(crate) posbuf_touch: u32,

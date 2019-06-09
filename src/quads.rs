@@ -121,7 +121,7 @@
 //! artifact. The intent of the example is to show how to work with the library.
 use super::{blender, utils::*, Color};
 use crate::data::{DrawType, QuadsData, VxDraw};
-use cgmath::Rad;
+use cgmath::{Matrix4, Rad};
 use core::ptr::read;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -164,6 +164,7 @@ pub struct LayerOptions {
     depth_test: bool,
     hide: bool,
     blend: blender::Blender,
+    fixed_perspective: Option<Matrix4<f32>>,
 }
 
 impl Default for LayerOptions {
@@ -172,6 +173,7 @@ impl Default for LayerOptions {
             depth_test: false,
             hide: false,
             blend: blender::Blender::default(),
+            fixed_perspective: None,
         }
     }
 }
@@ -191,6 +193,12 @@ impl LayerOptions {
     /// Show this layer (default)
     pub fn show(mut self) -> Self {
         self.hide = false;
+        self
+    }
+
+    /// Set a fixed perspective for this layer
+    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
+        self.fixed_perspective = Some(mat);
         self
     }
 
@@ -610,6 +618,7 @@ impl<'a> Quads<'a> {
         let quads = QuadsData {
             hidden: options.hide,
 
+            fixed_perspective: options.fixed_perspective,
             holes: vec![],
 
             posbuf_touch: 0,

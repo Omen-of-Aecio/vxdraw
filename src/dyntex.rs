@@ -26,8 +26,7 @@
 use super::{blender, utils::*, Color};
 use crate::data::{DrawType, DynamicTexture, VxDraw};
 use ::image as load_image;
-use cgmath::Matrix4;
-use cgmath::Rad;
+use cgmath::{Matrix4, Rad};
 use core::ptr::read;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
