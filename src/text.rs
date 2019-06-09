@@ -697,7 +697,7 @@ impl<'a> Texts<'a> {
     }
 
     /// Add text to this layer
-    pub fn add(&mut self, layer: &mut Layer, string: &str, opts: TextOptions) -> Handle {
+    pub fn add(&mut self, layer: &Layer, string: &str, opts: TextOptions) -> Handle {
         let section = glyph_brush::Section {
             text: string,
             scale: glyph_brush::rusttype::Scale {
