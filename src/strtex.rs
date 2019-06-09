@@ -821,7 +821,9 @@ impl<'a> Strtex<'a> {
         s.draw_order.push(DrawType::StreamingTexture {
             id: s.strtexs.len() - 1,
         });
-        Layer(s.strtexs.len() - 1)
+        let layer = Layer(s.strtexs.len() - 1);
+        self.vx.strtex().write_all(&layer, (0, 0, 0, 0));
+        layer
     }
 
     /// Disable drawing of the sprites at this layer
@@ -1471,6 +1473,19 @@ impl<'a> Strtex<'a> {
                 }
             }
         }
+    }
+
+    /// Write a color to all pixels
+    pub fn write_all(&mut self, id: &Layer, color: (u8, u8, u8, u8)) {
+        let width = self.vx.strtexs[id.0].width;
+        let height = self.vx.strtexs[id.0].height;
+        self.write(id, |col, pitch| {
+            for y in 0..height as usize {
+                for x in 0..width as usize {
+                    col[x + y * pitch] = color;
+                }
+            }
+        });
     }
 
     /// Fills the streaming texture with perlin noise generated from an input seed

@@ -865,6 +865,7 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
             ])
             .output()
             .expect("Failed to execute process");
+        #[cfg(not(feature = "no-test-preview"))]
         std::process::Command::new("feh")
             .args(&[appendname])
             .output()
