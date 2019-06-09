@@ -494,7 +494,7 @@ impl<'a> Quads<'a> {
             depth_bounds: false,
             stencil: pso::StencilTest::Off,
         };
-        let blender = options.blend.clone().to_gfx_blender();
+        let blender = options.blend.clone().into_gfx_blender();
         let quad_render_pass = {
             let attachment = pass::Attachment {
                 format: Some(s.format),
@@ -974,8 +974,8 @@ impl<'a> Quads<'a> {
         self.vx.quads[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.quads[layer.0].rotbuffer.iter_mut().enumerate() {
             let delta = delta(idx).into().0;
-            for idx in 0..4 {
-                quad[idx] += delta;
+            for rotation in quad.iter_mut() {
+                *rotation += delta;
             }
         }
     }
@@ -987,8 +987,8 @@ impl<'a> Quads<'a> {
         self.vx.quads[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.quads[layer.0].scalebuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            for idx in 0..4 {
-                quad[idx] *= delta;
+            for scale in quad.iter_mut() {
+                *scale *= delta;
             }
         }
     }
@@ -1074,9 +1074,7 @@ impl<'a> Quads<'a> {
         self.vx.quads[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.quads[layer.0].rotbuffer.iter_mut().enumerate() {
             let delta = delta(idx).into().0;
-            for idx in 0..4 {
-                quad[idx] = delta;
-            }
+            quad.copy_from_slice(&[delta; 4]);
         }
     }
 
@@ -1088,9 +1086,7 @@ impl<'a> Quads<'a> {
         self.vx.quads[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.quads[layer.0].scalebuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            for idx in 0..4 {
-                quad[idx] = delta;
-            }
+            quad.copy_from_slice(&[delta; 4]);
         }
     }
 }
@@ -1365,7 +1361,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let mut quad = quads::Quad::new();
+        let quad = quads::Quad::new();
 
         let mut quads = vx.quads();
         let layer = quads.add_layer(&LayerOptions::new());

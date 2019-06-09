@@ -332,7 +332,7 @@ impl VxDraw {
             .open_with::<_, gfx_hal::Graphics>(1, |family| surf.supports_queue_family(family))
             .expect("Unable to find device supporting graphics");
 
-        let phys_dev_limits = adapter.physical_device.limits();
+        let _phys_dev_limits = adapter.physical_device.limits();
 
         let (caps, formats, present_modes) = surf.compatibility(&adapter.physical_device);
 
@@ -601,7 +601,7 @@ impl VxDraw {
             draw_order: vec![],
             max_frames_in_flight,
             device,
-            device_limits: phys_dev_limits,
+            // device_limits: phys_dev_limits,
             texts: vec![],
             events_loop,
             frames_in_flight_fences,
@@ -639,11 +639,13 @@ impl VxDraw {
 
     pub(crate) fn wait_for_fences(&self) {
         unsafe {
-            self.device.wait_for_fences(
-                &self.frames_in_flight_fences[..],
-                gfx_hal::device::WaitFor::All,
-                u64::max_value(),
-            );
+            self.device
+                .wait_for_fences(
+                    &self.frames_in_flight_fences[..],
+                    gfx_hal::device::WaitFor::All,
+                    u64::max_value(),
+                )
+                .expect("Unable to wait for frame fences");
         }
     }
 
@@ -651,10 +653,10 @@ impl VxDraw {
     pub fn set_clear_color(&mut self, color: Color) {
         let (r, g, b, a) = color.into();
         self.clear_color = ClearColor::Float([
-            r as f32 / 255.0,
-            g as f32 / 255.0,
-            b as f32 / 255.0,
-            a as f32 / 255.0,
+            f32::from(r) / 255.0,
+            f32::from(g) / 255.0,
+            f32::from(b) / 255.0,
+            f32::from(a) / 255.0,
         ]);
     }
 

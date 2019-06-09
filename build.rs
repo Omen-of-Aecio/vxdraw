@@ -1,5 +1,4 @@
 use shaderc;
-use std::io::Read;
 use std::path::PathBuf;
 
 fn main() {

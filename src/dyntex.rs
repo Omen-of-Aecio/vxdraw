@@ -658,7 +658,7 @@ impl<'a> Dyntex<'a> {
             depth_bounds: false,
             stencil: pso::StencilTest::Off,
         };
-        let blender = options.blend.clone().to_gfx_blender();
+        let blender = options.blend.clone().into_gfx_blender();
         let render_pass = {
             let attachment = pass::Attachment {
                 format: Some(s.format),
@@ -867,7 +867,7 @@ impl<'a> Dyntex<'a> {
             sampler: ManuallyDrop::new(sampler),
 
             descriptor_set: ManuallyDrop::new(descriptor_set),
-            descriptor_set_layouts: descriptor_set_layouts,
+            descriptor_set_layouts,
             pipeline: ManuallyDrop::new(pipeline),
             pipeline_layout: ManuallyDrop::new(pipeline_layout),
             render_pass: ManuallyDrop::new(render_pass),
@@ -1234,8 +1234,8 @@ impl<'a> Dyntex<'a> {
         self.vx.dyntexs[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.dyntexs[layer.0].rotbuffer.iter_mut().enumerate() {
             let delta = delta(idx).into().0;
-            for idx in 0..4 {
-                quad[idx] += delta;
+            for rotation in quad.iter_mut() {
+                *rotation += delta;
             }
         }
     }
@@ -1247,8 +1247,8 @@ impl<'a> Dyntex<'a> {
         self.vx.dyntexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.dyntexs[layer.0].scalebuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            for idx in 0..4 {
-                quad[idx] *= delta;
+            for scale in quad.iter_mut() {
+                *scale *= delta;
             }
         }
     }
@@ -1350,9 +1350,7 @@ impl<'a> Dyntex<'a> {
         self.vx.dyntexs[layer.0].rotbuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.dyntexs[layer.0].rotbuffer.iter_mut().enumerate() {
             let delta = delta(idx).into().0;
-            for idx in 0..4 {
-                quad[idx] = delta;
-            }
+            quad.copy_from_slice(&[delta; 4]);
         }
     }
 
@@ -1364,9 +1362,7 @@ impl<'a> Dyntex<'a> {
         self.vx.dyntexs[layer.0].scalebuf_touch = self.vx.swapconfig.image_count;
         for (idx, quad) in self.vx.dyntexs[layer.0].scalebuffer.iter_mut().enumerate() {
             let delta = delta(idx);
-            for idx in 0..4 {
-                quad[idx] = delta;
-            }
+            quad.copy_from_slice(&[delta; 4]);
         }
     }
 
@@ -2003,7 +1999,7 @@ mod tests {
             ],
         };
         let testure = vx.dyntex().add_layer(&tex, options);
-        let sprite = vx.dyntex().add(&testure, Sprite::new());
+        vx.dyntex().add(&testure, Sprite::new());
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         utils::assert_swapchain_eq(&mut vx, "too_little_data_in_texture_wraps", img);

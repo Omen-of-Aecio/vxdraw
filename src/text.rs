@@ -1,11 +1,9 @@
 //! Tex
-use super::{utils::*, Color};
+use super::utils::*;
 use crate::{
     blender,
-    data::{DrawType, DynamicTexture, SData, Text, VxDraw},
-    strtex,
+    data::{DrawType, SData, Text, VxDraw},
 };
-use cgmath::Matrix4;
 use cgmath::Rad;
 use core::ptr::read;
 #[cfg(feature = "dx12")]
@@ -18,15 +16,12 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::PhysicalDevice,
-    command,
     device::Device,
-    format, image, memory,
-    memory::Properties,
-    pass,
+    format, image, memory, pass,
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use glyph_brush::{BrushAction, BrushError, GlyphBrushBuilder, Section};
+use glyph_brush::{BrushAction, BrushError, GlyphBrushBuilder};
 use std::mem::ManuallyDrop;
 
 // ---
@@ -44,13 +39,19 @@ pub struct LayerOptions {
     blend: blender::Blender,
 }
 
-impl LayerOptions {
-    /// Create a new options structure
-    pub fn new() -> Self {
+impl Default for LayerOptions {
+    fn default() -> Self {
         Self {
             filtering: Filter::Linear,
             blend: blender::Blender::default(),
         }
+    }
+}
+
+impl LayerOptions {
+    /// Create a new options structure
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Set the sampling filter mode for the texture
@@ -85,9 +86,8 @@ pub struct TextOptions {
     scale: f32,
 }
 
-impl TextOptions {
-    /// Create a new text option
-    pub fn new() -> Self {
+impl Default for TextOptions {
+    fn default() -> Self {
         Self {
             font_size_x: 16.0,
             font_size_y: 16.0,
@@ -96,6 +96,13 @@ impl TextOptions {
             rotation: 0.0,
             scale: 1.0,
         }
+    }
+}
+
+impl TextOptions {
+    /// Create a new text option
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Set the font width and height
@@ -179,6 +186,7 @@ impl<'a> Texts<'a> {
         Self { vx }
     }
 
+    #[cfg(test)]
     fn get_texture_dimensions(&self, layer: &Layer) -> (u32, u32) {
         self.vx.texts[layer.0].glyph_brush.texture_dimensions()
     }
@@ -191,7 +199,7 @@ impl<'a> Texts<'a> {
         let glyph_brush = glyph_brush.build();
         let (width, height) = glyph_brush.texture_dimensions();
 
-        /// Create an image, image view, and memory
+        // Create an image, image view, and memory
         self.vx
             .adapter
             .physical_device
@@ -254,7 +262,7 @@ impl<'a> Texts<'a> {
                 .expect("Couldn't create the image view!")
         };
 
-        /// Create a sampler
+        // Create a sampler
         let sampler = unsafe {
             self.vx
                 .device
@@ -309,7 +317,7 @@ impl<'a> Texts<'a> {
 
         let input_assembler = pso::InputAssemblerDesc::new(Primitive::TriangleList);
 
-        /// Describe input data
+        // Describe input data
         let vertex_buffers: Vec<pso::VertexBufferDesc> = vec![
             pso::VertexBufferDesc {
                 binding: 0,
@@ -408,7 +416,7 @@ impl<'a> Texts<'a> {
             stencil: pso::StencilTest::Off,
         };
 
-        let blender = options.blend.clone().to_gfx_blender();
+        let blender = options.blend.clone().into_gfx_blender();
 
         let render_pass = {
             let attachment = pass::Attachment {
@@ -505,7 +513,7 @@ impl<'a> Texts<'a> {
                 .expect("Couldn't make a Descriptor Set!")
         };
 
-        /// Write descriptor sets
+        // Write descriptor sets
         unsafe {
             self.vx.device.write_descriptor_sets(vec![
                 pso::DescriptorSetWrite {
@@ -523,7 +531,7 @@ impl<'a> Texts<'a> {
             ]);
         }
 
-        /// Push constants
+        // Push constants
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
         push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
 
@@ -560,7 +568,7 @@ impl<'a> Texts<'a> {
                 .expect("Couldn't create a graphics pipeline!")
         };
 
-        /// Clean up
+        // Clean up
         unsafe {
             self.vx.device.destroy_shader_module(vs_module);
             self.vx.device.destroy_shader_module(fs_module);
@@ -738,13 +746,13 @@ impl<'a> Texts<'a> {
                 self.vx.texts[layer.0]
                     .origin
                     .push((opts.origin.0, opts.origin.1));
-                for (idx, vtx) in vertices.iter().enumerate() {
+                for vtx in vertices.iter() {
                     top = top.min(vtx.topleft.0);
                     left = left.min(vtx.topleft.1);
                     bottom = bottom.max(vtx.bottomright.1);
                     right = right.max(vtx.bottomright.0);
                 }
-                for (idx, vtx) in vertices.iter().enumerate() {
+                for vtx in vertices.iter() {
                     let muscale = PIX_WIDTH_DIVISOR;
                     let uv_b = vtx.uv_begin;
                     let uv_e = vtx.uv_end;
@@ -753,7 +761,6 @@ impl<'a> Texts<'a> {
                     let begf = (beg.0 as f32 / muscale, beg.1 as f32 / muscale);
                     let width = (end.0 - beg.0) as f32 / muscale;
                     let height = (end.1 - beg.1) as f32 / muscale;
-                    let orig = (-width / 2.0, -height / 2.0);
                     let uv_a = uv_b;
                     let uv_b = uv_e;
 
@@ -891,16 +898,12 @@ impl<'a> Texts<'a> {
             };
             let mut tex_values = vec![];
 
-            match this_layer.glyph_brush.process_queued(
+            let _just_clear_the_cache = this_layer.glyph_brush.process_queued(
                 |rect, tex_data| {
                     tex_values.push((rect, tex_data.to_owned()));
                 },
                 |_| SData::default(),
-            ) {
-                Ok(BrushAction::Draw(vertices)) => {}
-                Ok(_) => {}
-                Err(_) => {}
-            }
+            );
 
             this_layer.glyph_brush.queue(section);
             let mut resized = None;
@@ -916,7 +919,7 @@ impl<'a> Texts<'a> {
                 },
             ) {
                 Ok(BrushAction::Draw(vertices)) => {
-                    for (idx2, vtx) in vertices.iter().enumerate() {
+                    for vtx in vertices.iter() {
                         let muscale = PIX_WIDTH_DIVISOR;
                         let uv_b = vtx.uv_begin;
                         let uv_e = vtx.uv_end;
@@ -925,7 +928,6 @@ impl<'a> Texts<'a> {
                         let begf = (beg.0 as f32 / muscale, beg.1 as f32 / muscale);
                         let width2 = (end.0 - beg.0) as f32 / muscale;
                         let height2 = (end.1 - beg.1) as f32 / muscale;
-                        let orig = (-width2 / 2.0, -height2 / 2.0);
                         let uv_a = uv_b;
                         let uv_b = uv_e;
 
@@ -970,7 +972,6 @@ impl<'a> Texts<'a> {
                 }
             }
 
-            let tex_cnt = tex_values.len();
             for (rect, tex_data) in tex_values {
                 unsafe {
                     let foot = self.vx.device.get_image_subresource_footprint(
@@ -1017,7 +1018,7 @@ impl<'a> Texts<'a> {
     fn resize_internal_texture(&mut self, layer: &Layer, suggested: (u32, u32)) {
         // Assume the existing image is not in use. Wait for fences before using this
         // function!
-        /// Create an image, image view, and memory
+        // Create an image, image view, and memory
         self.vx
             .adapter
             .physical_device
@@ -1202,7 +1203,6 @@ impl<'a> Texts<'a> {
 mod tests {
     use super::*;
     use crate::*;
-    use cgmath::Deg;
     use fast_logger::{Generic, GenericLogger, Logger};
     use test::Bencher;
 
@@ -1369,7 +1369,7 @@ mod tests {
     #[bench]
     fn text_flag(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Enable);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
         let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
@@ -1382,7 +1382,6 @@ mod tests {
         );
 
         let mut degree = 0;
-        let text_width = vx.text().get_width(&handle);
 
         b.iter(|| {
             degree = if degree == 360 { 0 } else { degree + 1 };

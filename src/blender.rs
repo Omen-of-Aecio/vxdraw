@@ -1,5 +1,5 @@
 //! Blender specification
-use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
+use gfx_hal::pso;
 
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug)]
@@ -179,7 +179,7 @@ pub struct Blender {
 }
 
 impl Blender {
-    pub(crate) fn to_gfx_blender(self) -> pso::BlendDesc {
+    pub(crate) fn into_gfx_blender(self) -> pso::BlendDesc {
         pso::BlendDesc {
             logic_op: self.logic_op,
             targets: self.targets,

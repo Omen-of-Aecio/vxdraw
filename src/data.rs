@@ -337,7 +337,7 @@ pub struct VxDraw {
     // Re-ordering may break dependencies and cause _rare_ segmentation faults, aborts, or illegal
     // instructions.
     ////////////////////////////////////////////////////////////
-    pub(crate) device_limits: gfx_hal::Limits,
+    // pub(crate) device_limits: gfx_hal::Limits,
     pub(crate) device: back::Device,
     pub(crate) adapter: Adapter<back::Backend>,
 
@@ -558,7 +558,7 @@ impl Drop for VxDraw {
                 }
             }
 
-            for mut text in self.texts.drain(..) {
+            for text in self.texts.drain(..) {
                 text.destroy(&self.device);
             }
         }

@@ -400,7 +400,7 @@ impl<'a> Debtri<'a> {
         self.vx.debtris.colbuf_touch = self.vx.swapconfig.image_count;
         for vtx in 0..3 {
             let Color::Rgba(r, g, b, a) = rgba;
-            self.vx.debtris.colbuffer[handle.0][vtx * 4 + 0] = r;
+            self.vx.debtris.colbuffer[handle.0][vtx * 4] = r;
             self.vx.debtris.colbuffer[handle.0][vtx * 4 + 1] = g;
             self.vx.debtris.colbuffer[handle.0][vtx * 4 + 2] = b;
             self.vx.debtris.colbuffer[handle.0][vtx * 4 + 3] = a;
@@ -1068,7 +1068,6 @@ mod tests {
     fn removing_iterates_minus_one() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
