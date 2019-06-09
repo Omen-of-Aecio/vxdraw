@@ -1194,6 +1194,14 @@ impl<'a> Texts<'a> {
         }
     }
 
+    /// Set the opacity of a text segment
+    pub fn set_opacity(&mut self, handle: &Handle, opacity: u8) {
+        self.vx.texts[handle.layer].opacbuf_touch = self.vx.swapconfig.image_count;
+        for idx in handle.vertices.start..handle.vertices.end {
+            self.vx.texts[handle.layer].opacbuffer[idx].copy_from_slice(&[opacity; 4]);
+        }
+    }
+
     /// Set the rotation of the text segment as a whole
     pub fn set_rotation<T: Copy + Into<Rad<f32>>>(&mut self, handle: &Handle, angle: T) {
         self.vx.texts[handle.layer].rotbuf_touch = self.vx.swapconfig.image_count;
@@ -1289,6 +1297,32 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         assert_swapchain_eq(&mut vx, "centered_text_translated_up", img);
+    }
+
+    #[test]
+    fn one_opaque_and_another_transparent() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+
+        vx.text().add(
+            &mut layer,
+            "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
+            text::TextOptions::new().font_size(40.0).origin((0.5, 1.0)),
+        );
+
+        let transparent = vx.text().add(
+            &mut layer,
+            "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
+            text::TextOptions::new().font_size(40.0).origin((0.5, 0.0)),
+        );
+
+        vx.text().set_opacity(&transparent, 128);
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "one_opaque_and_another_transparent", img);
     }
 
     #[test]
