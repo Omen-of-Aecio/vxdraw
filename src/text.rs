@@ -1167,6 +1167,11 @@ impl<'a> Texts<'a> {
         self.vx.texts[handle.layer].height[handle.id] as f32 / PIX_WIDTH_DIVISOR
     }
 
+    /// Get the amount of glyphs for this handle
+    pub fn get_glyph_count(&self, handle: &Handle) -> usize {
+        handle.vertices.end - handle.vertices.start
+    }
+
     // ---
 
     /// Set the scale of the text segment
@@ -1207,6 +1212,17 @@ impl<'a> Texts<'a> {
         self.vx.texts[handle.layer].rotbuf_touch = self.vx.swapconfig.image_count;
         for idx in handle.vertices.start..handle.vertices.end {
             self.vx.texts[handle.layer].rotbuffer[idx].copy_from_slice(&[angle.into().0; 4]);
+        }
+    }
+
+    // ---
+
+    pub fn set_opacity_glyphs(&mut self, handle: &Handle, mut delta: impl FnMut(usize) -> u8) {
+        self.vx.texts[handle.layer].opacbuf_touch = self.vx.swapconfig.image_count;
+        for idx in handle.vertices.start..handle.vertices.end {
+            let delta = delta(idx - handle.vertices.start);
+            self.vx.texts[handle.layer].opacbuffer[idx]
+                .copy_from_slice(&[delta, delta, delta, delta]);
         }
     }
 
@@ -1404,6 +1420,29 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer(&prspect);
         assert_swapchain_eq(&mut vx, "resizing_twice", img);
+    }
+
+    #[test]
+    fn set_glyph_opacity() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+
+        let text = vx.text().add(
+            &mut layer,
+            "Here is some text that fades with every letter",
+            text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
+        );
+
+        let cnt = vx.text().get_glyph_count(&text);
+        vx.text().set_opacity_glyphs(&text, |idx| {
+            ((1.0 - (idx as f32 / (cnt - 1) as f32)) * 255.0) as u8
+        });
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "set_glyph_opacity", img);
     }
 
     #[test]
