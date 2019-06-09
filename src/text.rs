@@ -1167,6 +1167,25 @@ impl<'a> Texts<'a> {
         self.vx.texts[handle.layer].height[handle.id] as f32 / PIX_WIDTH_DIVISOR
     }
 
+    // ---
+
+    /// Set the scale of the text segment
+    pub fn set_translation(&mut self, handle: &Handle, translation: (f32, f32)) {
+        self.vx.texts[handle.layer].tranbuf_touch = self.vx.swapconfig.image_count;
+        for idx in handle.vertices.start..handle.vertices.end {
+            self.vx.texts[handle.layer].tranbuffer[idx].copy_from_slice(&[
+                translation.0,
+                translation.1,
+                translation.0,
+                translation.1,
+                translation.0,
+                translation.1,
+                translation.0,
+                translation.1,
+            ]);
+        }
+    }
+
     /// Set the scale of the text segment
     pub fn set_scale(&mut self, handle: &Handle, scale: f32) {
         self.vx.texts[handle.layer].scalebuf_touch = self.vx.swapconfig.image_count;
@@ -1206,14 +1225,15 @@ mod tests {
     use fast_logger::{Generic, GenericLogger, Logger};
     use test::Bencher;
 
+    const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+
     #[test]
     fn texting() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
         vx.text()
             .add(&mut layer, "font", text::TextOptions::new().font_size(60.0));
@@ -1236,8 +1256,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
         vx.text().add(
             &mut layer,
@@ -1253,13 +1272,32 @@ mod tests {
     }
 
     #[test]
+    fn centered_text_translated_up() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let prspect = gen_perspective(&vx);
+
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+
+        let handle = vx.text().add(
+            &mut layer,
+            "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
+            text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
+        );
+
+        vx.text().set_translation(&handle, (0.0, -0.5));
+
+        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        assert_swapchain_eq(&mut vx, "centered_text_translated_up", img);
+    }
+
+    #[test]
     fn resizing_back_texture() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
         vx.text().add(
             &mut layer,
@@ -1310,8 +1348,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
         vx.text().add(
             &mut layer,
@@ -1341,8 +1378,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
         for idx in -10..=10 {
             vx.text().add(
@@ -1372,8 +1408,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         let prspect = gen_perspective(&vx);
 
-        let dejavu: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-        let mut layer = vx.text().add_layer(dejavu, text::LayerOptions::new());
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
         let handle = vx.text().add(
             &mut layer,
