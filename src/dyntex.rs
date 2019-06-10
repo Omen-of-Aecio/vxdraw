@@ -1292,7 +1292,7 @@ impl<'a> Dyntex<'a> {
 
     /// Set the color on all dyntexs
     ///
-    /// Applies [Dyntex::set_color] to each dynamic texture.
+    /// Applies [Dyntex::set_solid_color] to each dynamic texture.
     pub fn set_color_all(&mut self, layer: &Layer, mut delta: impl FnMut(usize) -> [Color; 4]) {
         self.vx.dyntexs[layer.0].opacbuf_touch = self.vx.swapconfig.image_count;
         for (idx, dyntex) in self.vx.dyntexs[layer.0].opacbuffer.iter_mut().enumerate() {
