@@ -675,6 +675,21 @@ impl VxDraw {
     }
 
     /// Get the size of the display window in floats
+    #[cfg(feature = "gl")]
+    pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
+        let dpi_factor = self.surf.get_window().get_hidpi_factor();
+        let (w, h): (u32, u32) = self
+            .surf
+            .get_window()
+            .get_inner_size()
+            .unwrap()
+            .to_physical(dpi_factor)
+            .into();
+        (w, h)
+    }
+
+    /// Get the size of the display window in floats
+    #[cfg(feature = "vulkan")]
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
         let dpi_factor = self.window.get_hidpi_factor();
         let (w, h): (u32, u32) = self
@@ -693,6 +708,17 @@ impl VxDraw {
     }
 
     /// Set the size of the display window
+    #[cfg(feature = "gl")]
+    pub fn set_window_size(&mut self, size: (u32, u32)) {
+        let dpi_factor = self.surf.get_window().get_hidpi_factor();
+        self.surf.get_window().set_inner_size(LogicalSize {
+            width: f64::from(size.0) / dpi_factor,
+            height: f64::from(size.1) / dpi_factor,
+        });
+    }
+
+    /// Set the size of the display window
+    #[cfg(feature = "vulkan")]
     pub fn set_window_size(&mut self, size: (u32, u32)) {
         let dpi_factor = self.window.get_hidpi_factor();
         self.window.set_inner_size(LogicalSize {
