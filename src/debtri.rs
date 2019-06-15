@@ -23,7 +23,7 @@
 //!     vx.debtri().set_rotation(&tri, Deg(90.0));
 //!
 //!     // Draw the frame with the identity matrix transformation (meaning no transformations)
-//!     vx.draw_frame(&Matrix4::identity());
+//!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
 //!     #[cfg(not(test))]
@@ -942,13 +942,12 @@ mod tests {
     fn simple_triangle() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         vx.debtri().add(tri);
         utils::add_4_screencorners(&mut vx);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "simple_triangle", img);
     }
@@ -957,7 +956,6 @@ mod tests {
     fn simple_triangle_pop() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         vx.debtri().add(tri);
@@ -966,7 +964,7 @@ mod tests {
             vx.debtri().pop();
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_middle", img);
     }
@@ -975,18 +973,17 @@ mod tests {
     fn simple_triangle_color() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let triangle = vx.debtri().add(tri);
         vx.debtri().color(&triangle, [-255, 0, 0, 0]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_color", img);
 
         vx.debtri().color_all(|_| [0, 0, -128, 0]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_color_opacity", img);
     }
 
@@ -994,7 +991,6 @@ mod tests {
     fn test_single_triangle_api() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1006,7 +1002,7 @@ mod tests {
         debtri.translate(&handle, (0.2, 0.1));
         debtri.rotate(&handle, Deg(5.0));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "test_single_triangle_api", img);
     }
 
@@ -1014,7 +1010,6 @@ mod tests {
     fn remove_middle_triangle() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1032,7 +1027,7 @@ mod tests {
 
         debtri.remove(middle);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "remove_middle_triangle", img);
     }
 
@@ -1040,7 +1035,6 @@ mod tests {
     fn fill_remove_hole() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1060,7 +1054,7 @@ mod tests {
         let middle = debtri.add(tri);
         debtri.set_rotation(&middle, Deg(60.0));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "fill_remove_hole", img);
     }
 
@@ -1107,7 +1101,6 @@ mod tests {
     fn swap_triangles() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1130,7 +1123,7 @@ mod tests {
             debtri.compare_draw_order(&left, &right)
         ];
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swap_triangles", img);
     }
 
@@ -1138,7 +1131,6 @@ mod tests {
     fn deform_triangles() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1155,7 +1147,7 @@ mod tests {
         debtri.deform(&left, [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]);
         debtri.deform_all(|_| [(-1.0, 0.0), (0.0, 0.0), (0.0, 0.0)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "deform_triangles", img);
     }
 
@@ -1165,14 +1157,13 @@ mod tests {
     fn simple_triangle_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
         let idx = debtri.add(tri);
         debtri.set_color(&idx, Color::Rgba(255, 0, 255, 255));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "simple_triangle_change_color", img);
     }
@@ -1181,7 +1172,6 @@ mod tests {
     fn debug_triangle_corners_widescreen() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = gen_perspective(&vx);
 
         for i in [-1f32, 1f32].iter() {
             for j in [-1f32, 1f32].iter() {
@@ -1191,7 +1181,7 @@ mod tests {
             }
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "debug_triangle_corners_widescreen", img);
     }
@@ -1200,7 +1190,6 @@ mod tests {
     fn debug_triangle_corners_tallscreen() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
-        let prspect = gen_perspective(&vx);
 
         for i in [-1f32, 1f32].iter() {
             for j in [-1f32, 1f32].iter() {
@@ -1210,7 +1199,7 @@ mod tests {
             }
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "debug_triangle_corners_tallscreen", img);
     }
@@ -1219,7 +1208,6 @@ mod tests {
     fn circle_of_triangles() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = gen_perspective(&vx);
 
         for i in 0..360 {
             let mut tri = DebugTriangle::default();
@@ -1228,7 +1216,7 @@ mod tests {
             let _idx = vx.debtri().add(tri);
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "circle_of_triangles", img);
     }
@@ -1237,7 +1225,6 @@ mod tests {
     fn triangle_in_corner() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut tri = DebugTriangle::default();
         tri.scale = 0.1f32;
@@ -1251,7 +1238,7 @@ mod tests {
             }
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "triangle_in_corner", img);
     }
 
@@ -1259,7 +1246,6 @@ mod tests {
     fn a_bunch_of_quads() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
         let mut bottomleft = debtri::DebugTriangle::from([-1.0, -1.0, -1.0, 1.0, 1.0, 1.0]);
@@ -1279,7 +1265,7 @@ mod tests {
             }
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "a_bunch_of_quads", img);
     }
 
@@ -1287,10 +1273,9 @@ mod tests {
     fn windmills() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "windmills", img);
     }
@@ -1299,7 +1284,6 @@ mod tests {
     fn windmills_mass_edits() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
         let mut debtri = vx.debtri();
@@ -1308,7 +1292,7 @@ mod tests {
         debtri.rotate_all(|_| Deg(90.0));
         debtri.scale_all(|_| 2.0);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "windmills_mass_edits", img);
     }
@@ -1317,18 +1301,17 @@ mod tests {
     fn windmills_hidden() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
 
         vx.debtri().hide();
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "windmills_hidden", img);
 
         vx.debtri().show();
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "windmills_hidden_now_shown", img);
     }
 
@@ -1336,10 +1319,9 @@ mod tests {
     fn windmills_ignore_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "windmills_ignore_perspective", img);
     }
@@ -1348,7 +1330,6 @@ mod tests {
     fn windmills_change_color() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let handles = utils::add_windmills(&mut vx, false);
         let mut debtri = vx.debtri();
@@ -1357,7 +1338,7 @@ mod tests {
         debtri.set_color(&handles[499], Color::Rgba(0, 0, 255, 255));
         debtri.set_color(&handles[999], Color::Rgba(0, 0, 0, 255));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "windmills_change_color", img);
     }
@@ -1366,13 +1347,12 @@ mod tests {
     fn rotating_windmills_drawing_invariant() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
             vx.debtri().rotate_all(|_| Deg(-1.0f32));
         }
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         utils::assert_swapchain_eq(&mut vx, "rotating_windmills_drawing_invariant", img);
         utils::remove_windmills(&mut vx);
@@ -1380,9 +1360,9 @@ mod tests {
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
             vx.debtri().rotate_all(|_| Deg(-1.0f32));
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         }
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "rotating_windmills_drawing_invariant", img);
     }
 
@@ -1390,10 +1370,9 @@ mod tests {
     fn windmills_given_initial_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, true);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "windmills_given_initial_rotation", img);
     }
 
@@ -1403,13 +1382,12 @@ mod tests {
     fn bench_simple_triangle(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         vx.debtri().add(DebugTriangle::default());
         utils::add_4_screencorners(&mut vx);
 
         b.iter(|| {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 
@@ -1417,12 +1395,11 @@ mod tests {
     fn bench_still_windmills(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 
@@ -1443,13 +1420,12 @@ mod tests {
     fn bench_rotating_windmills_only(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         utils::add_windmills(&mut vx, false);
 
         b.iter(|| {
             vx.debtri().rotate_all(|_| Deg(1.0f32));
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 
@@ -1457,14 +1433,13 @@ mod tests {
     fn bench_rotating_windmills_set_color(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let last = utils::add_windmills(&mut vx, false).pop().unwrap();
 
         b.iter(|| {
             vx.debtri().rotate_all(|_| Deg(1.0f32));
             vx.debtri().set_color(&last, Color::Rgba(255, 0, 255, 255));
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 

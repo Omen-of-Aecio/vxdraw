@@ -289,6 +289,8 @@ pub(crate) enum DrawType {
 ///
 /// This structure can safely be dropped and all associated resources will be cleaned up correctly.
 pub struct VxDraw {
+    pub(crate) perspective: Matrix4<f32>,
+
     pub(crate) draw_order: Vec<DrawType>,
     pub(crate) texts: Vec<Text>,
     pub(crate) strtexs: Vec<StreamingTexture>,

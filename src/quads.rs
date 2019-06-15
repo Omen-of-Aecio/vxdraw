@@ -9,7 +9,7 @@
 //! # Example - Simple quad and some operations #
 //! A showcase of basic operations on a quad.
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use cgmath::{prelude::*, Deg};
 //! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
@@ -29,8 +29,8 @@
 //!     // Scale the quad to half its current size
 //!     vx.quads().scale(&handle, 0.5);
 //!
-//!     // Draw the frame with the identity matrix transformation (meaning no transformations)
-//!     vx.draw_frame(&Matrix4::identity());
+//!     // Draw the frame
+//!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
 //!     #[cfg(not(test))]
@@ -104,11 +104,7 @@
 //!         vx.quads().set_translation(&left_quad, (-fade_pos_solid + (fade_width_offscreen / frames as f32) * perc, 0.0));
 //!         vx.quads().set_translation(&right_quad, (fade_pos_solid - (fade_width_offscreen / frames as f32) * perc, 0.0));
 //!
-//!         // Draw the frame with the identity matrix transformation (meaning no transformations)
-//!         // Normally we use a perspective that makes the window from appearing stretched, but
-//!         // for this example using the identity matrix makes the calculations easier, as the
-//!         // sides of the screen are now -1 to 1.
-//!         vx.draw_frame(&Matrix4::identity());
+//!         vx.draw_frame();
 //!
 //!         // Sleep so we can see some animation
 //!         #[cfg(not(test))]
@@ -1147,7 +1143,6 @@ mod tests {
     fn simple_quad() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1156,7 +1151,7 @@ mod tests {
         let layer = vx.quads().add_layer(&LayerOptions::new());
         vx.quads().add(&layer, quad);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad", img);
     }
 
@@ -1164,7 +1159,6 @@ mod tests {
     fn simple_quad_hide() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let quad = quads::Quad::new();
 
@@ -1172,7 +1166,7 @@ mod tests {
         vx.quads().add(&layer, quad);
         vx.quads().hide(&layer);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_hide", img);
     }
 
@@ -1180,7 +1174,6 @@ mod tests {
     fn simple_quad_translated() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1191,7 +1184,7 @@ mod tests {
         let handle = quads.add(&layer, quad);
         quads.translate(&handle, (0.25, 0.4));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_translated", img);
     }
 
@@ -1199,7 +1192,6 @@ mod tests {
     fn swapping_quad_draw_order() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let quad = quads::Quad::new();
         let layer = vx.quads().add_layer(&LayerOptions::new());
@@ -1219,7 +1211,7 @@ mod tests {
             quads.compare_draw_order(&q1, &q2)
         ];
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swapping_quad_draw_order", img);
     }
 
@@ -1227,7 +1219,6 @@ mod tests {
     fn swapping_quad_draw_order_different_layers() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let quad = quads::Quad::new();
         let layer1 = vx.quads().add_layer(&LayerOptions::new());
@@ -1248,7 +1239,7 @@ mod tests {
             quads.compare_draw_order(&q1, &q2)
         ];
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swapping_quad_draw_order_different_layers", img);
     }
 
@@ -1256,7 +1247,6 @@ mod tests {
     fn three_quads_add_remove() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1274,7 +1264,7 @@ mod tests {
         quads.translate(&q3, (0.35, 0.8));
         quads.remove(q2);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "three_quads_add_remove", img);
     }
 
@@ -1282,7 +1272,6 @@ mod tests {
     fn three_quads_add_remove_layer() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1302,7 +1291,7 @@ mod tests {
         quads.translate(&q3, (0.35, 0.8));
         quads.remove_layer(layer2);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "three_quads_add_remove_layer", img);
     }
 
@@ -1310,7 +1299,6 @@ mod tests {
     fn simple_quad_set_position() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1321,7 +1309,7 @@ mod tests {
         let handle = quads.add(&layer, quad);
         quads.set_translation(&handle, (0.25, 0.4));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position", img);
     }
 
@@ -1329,7 +1317,6 @@ mod tests {
     fn simple_quad_scale() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1340,7 +1327,7 @@ mod tests {
         let handle = quads.add(&layer, quad);
         quads.set_scale(&handle, 0.5);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_scale", img);
     }
 
@@ -1348,7 +1335,6 @@ mod tests {
     fn simple_quad_deform() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1360,7 +1346,7 @@ mod tests {
         quads.scale(&handle, 0.5);
         quads.deform(&handle, [(-0.5, 0.0), (0.0, 0.0), (0.0, 0.0), (0.5, 0.1)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_deform", img);
     }
 
@@ -1368,7 +1354,6 @@ mod tests {
     fn set_color_all() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let quad = quads::Quad::new();
 
@@ -1393,7 +1378,7 @@ mod tests {
             _ => panic!["There should only be 2 quads"],
         });
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "set_color_all", img);
     }
 
@@ -1401,7 +1386,6 @@ mod tests {
     fn simple_quad_set_position_after_initial() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.colors[0].1 = 255;
@@ -1412,12 +1396,12 @@ mod tests {
         let handle = quads.add(&layer, quad);
 
         for _ in 0..3 {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         }
 
         vx.quads().set_translation(&handle, (0.25, 0.4));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_set_position_after_initial", img);
     }
 
@@ -1425,7 +1409,6 @@ mod tests {
     fn simple_quad_rotated_with_exotic_origin() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut quad = quads::Quad::new();
         quad.scale = 0.2;
@@ -1448,7 +1431,7 @@ mod tests {
         quads.rotate_all(&layer, |_| Deg(30.0));
 
         // then
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_quad_rotated_with_exotic_origin", img);
     }
 
@@ -1456,7 +1439,6 @@ mod tests {
     fn quad_layering() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
         let mut quad = quads::Quad {
             scale: 0.5,
             ..quads::Quad::new()
@@ -1479,7 +1461,7 @@ mod tests {
         }
         vx.quads().add(&layer1, quad);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "quad_layering", img);
     }
 
@@ -1487,7 +1469,6 @@ mod tests {
     fn quad_mass_manip() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let layer = vx.quads().add_layer(&LayerOptions::new());
 
@@ -1502,7 +1483,7 @@ mod tests {
         }
 
         for _ in 0..vx.buffer_count() {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         }
 
         vx.quads().set_translation_all(&layer, |idx| {
@@ -1537,7 +1518,7 @@ mod tests {
         vx.quads()
             .set_rotation_all(&layer, |idx| if idx < 500 { Deg(0.0) } else { Deg(30.0) });
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "quad_mass_manip", img);
     }
 }

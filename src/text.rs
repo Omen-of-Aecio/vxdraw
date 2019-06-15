@@ -6,8 +6,7 @@
 //! use vxdraw::{text, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable); // Change this to ShowWindow::Enable to show the window
-//!     let prspect = gen_perspective(&vx);
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Create a new layer. A layer consists of a font file and some options
 //!     let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
@@ -22,7 +21,7 @@
 //!         text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
 //!     );
 //!
-//!     vx.draw_frame(&prspect);
+//!     vx.draw_frame();
 //!
 //!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
@@ -74,8 +73,7 @@
 //!         .font_size(120.0));
 //!     vx.dyntex().add(&texture, Sprite::new().scale(1.0));
 //!
-//!     let prspect = gen_perspective(&vx);
-//!     vx.draw_frame(&prspect);
+//!     vx.draw_frame();
 //!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
@@ -1338,7 +1336,6 @@ mod tests {
     fn texting() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1353,7 +1350,7 @@ mod tests {
                 .translation((0.0, -0.5)),
         );
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "some_text", img);
     }
 
@@ -1361,7 +1358,6 @@ mod tests {
     fn centered_text_rotates_around_origin() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1374,7 +1370,7 @@ mod tests {
                 .rotation(0.3),
         );
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "centered_text_rotates_around_origin", img);
     }
 
@@ -1382,7 +1378,6 @@ mod tests {
     fn centered_text_translated_up() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1394,7 +1389,7 @@ mod tests {
 
         vx.text().set_translation(&handle, (0.0, -0.5));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "centered_text_translated_up", img);
     }
 
@@ -1402,7 +1397,6 @@ mod tests {
     fn one_opaque_and_another_transparent() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1420,7 +1414,7 @@ mod tests {
 
         vx.text().set_opacity(&transparent, 128);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "one_opaque_and_another_transparent", img);
     }
 
@@ -1428,7 +1422,6 @@ mod tests {
     fn resizing_back_texture() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1442,7 +1435,7 @@ mod tests {
                 .rotation(0.3),
         );
 
-        // vx.draw_frame(&prspect);
+        // vx.draw_frame();
 
         vx.text().add(
             &mut layer,
@@ -1471,7 +1464,7 @@ mod tests {
         //         .translation((0.0, -2.0)),
         // );
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "resizing_back_texture", img);
     }
 
@@ -1479,7 +1472,6 @@ mod tests {
     fn resizing_twice() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1501,7 +1493,7 @@ mod tests {
                 .translation((0.0, -1.0)),
         );
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "resizing_twice", img);
     }
 
@@ -1509,7 +1501,6 @@ mod tests {
     fn set_glyph_opacity() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1524,7 +1515,7 @@ mod tests {
             ((1.0 - (idx as f32 / (cnt - 1) as f32)) * 255.0) as u8
         });
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "set_glyph_opacity", img);
     }
 
@@ -1532,7 +1523,6 @@ mod tests {
     fn do_not_resize_texture_when_making_the_same_text() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1550,7 +1540,7 @@ mod tests {
 
         assert_eq![(256, 256), vx.text().get_texture_dimensions(&layer)];
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(
             &mut vx,
             "do_not_resize_texture_when_making_the_same_text",
@@ -1562,7 +1552,6 @@ mod tests {
     fn text_flag(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1580,7 +1569,7 @@ mod tests {
                 let value = (((degree + idx * 4) as f32) / 180.0 * std::f32::consts::PI).sin();
                 (0.0, value / 3.0)
             });
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 }

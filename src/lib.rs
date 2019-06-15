@@ -9,7 +9,7 @@
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     vx.debtri().add(DebugTriangle::default());
-//!     vx.draw_frame(&Matrix4::identity());
+//!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
 //!     #[cfg(not(test))]
@@ -32,7 +32,7 @@
 //!         vx.debtri().rotate(&handle, Deg(1.0));
 //!
 //!         // Draw the scene
-//!         vx.draw_frame(&Matrix4::identity());
+//!         vx.draw_frame();
 //!
 //!         // Wait 10 milliseconds
 //!         #[cfg(not(test))]
@@ -66,7 +66,7 @@
 //!
 //!     vx.debtri().add(debtri::DebugTriangle::default());
 //!
-//!     vx.draw_frame(&Matrix4::identity());
+//!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
 //!     #[cfg(not(test))]
@@ -608,6 +608,7 @@ impl VxDraw {
             framebuffers,
             format,
             image_views,
+            perspective: Matrix4::identity(),
             present_wait_semaphores,
             queue_group,
             render_area: pso::Rect {
@@ -635,6 +636,11 @@ impl VxDraw {
 
             clear_color: ClearColor::Float([1.0f32, 0.25, 0.5, 0.0]),
         }
+    }
+
+    /// Set the perspective to be used when drawing geometry
+    pub fn set_perspective(&mut self, perspective: Matrix4<f32>) {
+        self.perspective = perspective;
     }
 
     pub(crate) fn wait_for_fences(&self) {
@@ -777,16 +783,16 @@ impl VxDraw {
     }
 
     /// Draw a frame but also copy the resulting image out
-    pub fn draw_frame_copy_framebuffer(&mut self, view: &Matrix4<f32>) -> Vec<u8> {
-        self.draw_frame_internal(view, copy_image_to_rgb)
+    pub fn draw_frame_copy_framebuffer(&mut self) -> Vec<u8> {
+        self.draw_frame_internal(copy_image_to_rgb)
     }
 
     /// Draw a single frame and present it to the screen
     ///
     /// The view matrix is used to translate all elements on the screen with the exception of debug
     /// triangles and layers that have their own view.
-    pub fn draw_frame(&mut self, view: &Matrix4<f32>) {
-        self.draw_frame_internal(view, |_, _| {});
+    pub fn draw_frame(&mut self) {
+        self.draw_frame_internal(|_, _| {});
     }
 
     /// Recreate the swapchain, must be called after a window resize
@@ -1027,9 +1033,9 @@ impl VxDraw {
     /// Internal drawing routine
     fn draw_frame_internal<T>(
         &mut self,
-        view: &Matrix4<f32>,
         postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
     ) -> T {
+        let view = self.perspective;
         let postproc_res = unsafe {
             let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match self
                 .swapchain
@@ -1042,12 +1048,12 @@ impl VxDraw {
                 Ok((_index, Some(_suboptimal))) => {
                     info![self.log, "vxdraw", "Swapchain in suboptimal state, recreating" ; "type" => "acquire_image"];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(view, postproc);
+                    return self.draw_frame_internal(postproc);
                 }
                 Err(gfx_hal::window::AcquireError::OutOfDate) => {
                     info![self.log, "vxdraw", "Swapchain out of date, recreating"; "type" => "acquire_image"];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(view, postproc);
+                    return self.draw_frame_internal(postproc);
                 }
                 Err(err) => {
                     error![self.log, "vxdraw", "Acquire image error"; "error" => err, "type" => "acquire_image"];
@@ -1535,7 +1541,7 @@ impl VxDraw {
                                                 if let Some(ref view) = quad.fixed_perspective {
                                                     view
                                                 } else {
-                                                    view
+                                                    &view
                                                 };
                                             enc.push_graphics_constants(
                                                 &quad.pipeline_layout,
@@ -1725,12 +1731,12 @@ impl VxDraw {
                         "vxdraw", "Swapchain in suboptimal state, recreating"; "type" => "present"
                     ];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(view, postproc);
+                    return self.draw_frame_internal(postproc);
                 }
                 Err(gfx_hal::window::PresentError::OutOfDate) => {
                     info![self.log, "vxdraw", "Swapchain out of date, recreating"; "type" => "present"];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(view, postproc);
+                    return self.draw_frame_internal(postproc);
                 }
                 Err(err) => {
                     error![self.log, "vxdraw", "Acquire image error"; "error" => err, "type" => "present"];
@@ -1774,9 +1780,8 @@ mod tests {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
 
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         assert_swapchain_eq(&mut vx, "setup_and_teardown_draw_with_test", img);
     }
@@ -1787,9 +1792,8 @@ mod tests {
 
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
         vx.set_clear_color(Color::Rgba(255, 0, 255, 128));
-        let prspect = gen_perspective(&vx);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         assert_swapchain_eq(&mut vx, "setup_and_teardown_custom_clear_color", img);
     }
@@ -1798,21 +1802,19 @@ mod tests {
     fn setup_and_teardown_draw_resize() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let large_triangle = debtri::DebugTriangle::new().scale(3.7);
         vx.debtri().add(large_triangle);
 
-        vx.draw_frame(&prspect);
+        vx.draw_frame();
 
         vx.set_window_size((1500, 1000));
 
-        vx.draw_frame(&prspect);
-        vx.draw_frame(&prspect);
-        vx.draw_frame(&prspect);
+        vx.draw_frame();
+        vx.draw_frame();
+        vx.draw_frame();
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
 
         assert_swapchain_eq(&mut vx, "setup_and_teardown_draw_resize", img);
     }
@@ -1842,7 +1844,6 @@ mod tests {
     fn tearing_test() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let _tri = make_centered_equilateral_triangle();
         vx.debtri().add(debtri::DebugTriangle::default());
@@ -1852,9 +1853,11 @@ mod tests {
             } else {
                 vx.debtri().pop_many(4);
             }
+            let prspect = gen_perspective(&vx);
             let rot =
                 prspect * Matrix4::from_axis_angle(Vector3::new(0.0f32, 0.0, 1.0), Deg(i as f32));
-            vx.draw_frame(&rot);
+            vx.set_perspective(rot);
+            vx.draw_frame();
             // std::thread::sleep(std::time::Duration::new(0, 80_000_000));
         }
     }
@@ -1888,7 +1891,6 @@ mod tests {
     fn strtex_and_dyntex_respect_draw_order() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().add_layer(TESTURE, &options);
@@ -1912,7 +1914,7 @@ mod tests {
             .add(&tex3, dyntex::Sprite::new().rotation(Rad(1.0)));
         vx.strtex().add(&tex4, strtex::Sprite::new().scale(0.5));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "strtex_and_dyntex_respect_draw_order", img);
     }
 
@@ -1937,7 +1939,6 @@ mod tests {
     fn swap_layers() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().add_layer(TESTURE, &options);
@@ -1953,7 +1954,7 @@ mod tests {
             .add(&tex2, strtex::Sprite::new().rotation(Rad(0.5)));
 
         vx.swap_layers(&tex1, &tex2);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swap_layers", img);
     }
 
@@ -1962,7 +1963,6 @@ mod tests {
         use quads::{LayerOptions, Quad};
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let quad1 = vx.quads().add_layer(&LayerOptions::default());
         vx.quads().add(&quad1, Quad::new().scale(0.25));
@@ -1973,7 +1973,7 @@ mod tests {
         vx.dyntex().add(&tex1, dyntex::Sprite::new().scale(0.5));
 
         vx.swap_layers(&tex1, &quad1);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swap_layers_quad", img);
     }
 
@@ -1983,10 +1983,9 @@ mod tests {
     fn clears_per_second(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         b.iter(|| {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 }

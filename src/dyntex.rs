@@ -17,8 +17,7 @@
 //!     let tex = dyntex.add_layer(TESTURE, &LayerOptions::new());
 //!     vx.dyntex().add(&tex, Sprite::new().scale(0.5));
 //!
-//!     let prspect = gen_perspective(&vx);
-//!     vx.draw_frame(&prspect);
+//!     vx.draw_frame();
 //!     #[cfg(not(test))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
@@ -1461,8 +1460,7 @@ mod tests {
         let tex = dyntex.add_layer(LOGO, &&LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new());
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_texture", img);
     }
 
@@ -1473,8 +1471,8 @@ mod tests {
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new());
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        vx.set_perspective(gen_perspective(&vx));
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_texture_adheres_to_view", img);
     }
 
@@ -1485,8 +1483,7 @@ mod tests {
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new().opacity(100));
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "colored_simple_texture", img);
     }
 
@@ -1500,8 +1497,7 @@ mod tests {
         let sprite = dyntex.add(&tex, Sprite::new().opacity(100));
         dyntex.set_translation(&sprite, (0.5, 0.3));
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "colored_simple_texture_set_position", img);
     }
 
@@ -1559,8 +1555,7 @@ mod tests {
         );
         dyntex.translate_all(&tex, |_| (0.25, 0.35));
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "translated_texture", img);
     }
 
@@ -1617,8 +1612,7 @@ mod tests {
         );
         dyntex.rotate_all(&tex, |_| Deg(90.0));
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "rotated_texture", img);
     }
 
@@ -1644,8 +1638,7 @@ mod tests {
             );
         }
 
-        let prspect = gen_perspective(&vx);
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "many_sprites", img);
     }
 
@@ -1653,7 +1646,6 @@ mod tests {
     fn three_layer_scene() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1681,7 +1673,7 @@ mod tests {
             },
         );
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene", img);
     }
 
@@ -1689,7 +1681,6 @@ mod tests {
     fn three_layer_scene_remove_middle() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1719,7 +1710,7 @@ mod tests {
 
         dyntex.remove(middle);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_middle", img);
     }
 
@@ -1727,7 +1718,6 @@ mod tests {
     fn three_layer_scene_remove_middle_texture() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1757,19 +1747,18 @@ mod tests {
 
         dyntex.remove_layer(player);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_middle_texture", img);
 
         vx.dyntex().remove_layer(tree);
 
-        vx.draw_frame(&prspect);
+        vx.draw_frame();
     }
 
     #[test]
     fn three_layer_scene_remove_last_texture() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1800,19 +1789,18 @@ mod tests {
 
         dyntex.remove_layer(tree);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "three_layer_scene_remove_last_texture", img);
 
         vx.dyntex().remove_layer(player);
 
-        vx.draw_frame(&prspect);
+        vx.draw_frame();
     }
 
     #[test]
     fn fixed_perspective() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
-        let prspect = Matrix4::from_scale(0.0) * gen_perspective(&vx);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1823,7 +1811,7 @@ mod tests {
 
         vx.dyntex().add(&forest, Sprite::new());
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "fixed_perspective", img);
     }
 
@@ -1831,7 +1819,6 @@ mod tests {
     fn change_of_uv_works_for_first() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
 
@@ -1845,13 +1832,13 @@ mod tests {
             (2.0 / 3.0, 1.0),
         )));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "change_of_uv_works_for_first", img);
 
         vx.dyntex()
             .set_uv(&sprite, (1.0 / 3.0, 0.0), (2.0 / 3.0, 1.0));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "change_of_uv_works_for_first", img);
     }
 
@@ -1859,7 +1846,6 @@ mod tests {
     fn bunch_of_different_opacity_sprites() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
 
@@ -1875,7 +1861,7 @@ mod tests {
             );
         }
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "bunch_of_different_opacity_sprites", img);
     }
 
@@ -1883,7 +1869,6 @@ mod tests {
     fn set_single_sprite_rotation() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new();
@@ -1891,7 +1876,7 @@ mod tests {
         let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_rotation(&sprite, Rad(0.3));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "set_single_sprite_rotation", img);
     }
 
@@ -1899,7 +1884,6 @@ mod tests {
     fn linear_filtering_mode() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().filter(Filter::Linear);
@@ -1908,7 +1892,7 @@ mod tests {
 
         dyntex.set_rotation(&sprite, Rad(0.3));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "linear_filtering_mode", img);
     }
 
@@ -1916,7 +1900,6 @@ mod tests {
     fn raw_uvs() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new();
@@ -1924,7 +1907,7 @@ mod tests {
         let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_uv_raw(&sprite, [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (0.0, 0.0)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "raw_uvs", img);
     }
 
@@ -1932,7 +1915,6 @@ mod tests {
     fn wrap_mode_clamp() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().wrap_mode(WrapMode::Clamp);
@@ -1940,7 +1922,7 @@ mod tests {
         let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "wrap_mode_clamp", img);
     }
 
@@ -1948,7 +1930,6 @@ mod tests {
     fn wrap_mode_mirror() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().wrap_mode(WrapMode::Mirror);
@@ -1956,7 +1937,7 @@ mod tests {
         let sprite = dyntex.add(&testure, Sprite::new());
         dyntex.set_uv_raw(&sprite, [(-1.0, 0.0), (-1.0, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "wrap_mode_mirror", img);
     }
 
@@ -1964,7 +1945,6 @@ mod tests {
     fn push_and_pop_often_avoid_allocating_out_of_bounds() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = &LayerOptions::new();
         let testure = vx.dyntex().add_layer(TESTURE, options);
@@ -1975,14 +1955,13 @@ mod tests {
             dyntex.remove(sprite);
         }
 
-        vx.draw_frame(&prspect);
+        vx.draw_frame();
     }
 
     #[test]
     fn too_little_data_in_texture_wraps() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let options = &LayerOptions::new();
         #[rustfmt::skip]
@@ -2000,7 +1979,7 @@ mod tests {
         let testure = vx.dyntex().add_layer(&tex, options);
         vx.dyntex().add(&testure, Sprite::new());
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "too_little_data_in_texture_wraps", img);
     }
 
@@ -2020,9 +1999,8 @@ mod tests {
             );
         }
 
-        let prspect = gen_perspective(&vx);
         b.iter(|| {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 
@@ -2048,9 +2026,8 @@ mod tests {
             );
         }
 
-        let prspect = gen_perspective(&vx);
         b.iter(|| {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 
@@ -2058,7 +2035,6 @@ mod tests {
     fn animated_fireballs_20x20_uvs2(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let fireball_texture = vx.dyntex().add_layer(
             FIREBALL,
@@ -2107,7 +2083,7 @@ mod tests {
 
             vx.dyntex()
                 .set_uvs(fireballs.iter().map(|id| (id, uv_begin, uv_end)));
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 

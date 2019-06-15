@@ -11,7 +11,7 @@
 //! # Example - Binary counter using a streaming texture #
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
+//! use cgmath::{prelude::*, Deg};
 //! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
@@ -38,8 +38,8 @@
 //!             );
 //!         }
 //!
-//!         // Draw the frame with the identity matrix transformation (meaning no transformations)
-//!         vx.draw_frame(&Matrix4::identity());
+//!         // Draw the frame
+//!         vx.draw_frame();
 //!
 //!         // Sleep here so we can see some animation
 //!         #[cfg(not(test))]
@@ -1856,14 +1856,13 @@ mod tests {
     fn generate_map_randomly() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::new());
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "generate_map_randomly", img);
     }
 
@@ -1871,14 +1870,13 @@ mod tests {
     fn with_origin_11() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::new().origin((1.0, 1.0)));
         strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "with_origin_11", img);
     }
 
@@ -1886,7 +1884,6 @@ mod tests {
     fn streaming_texture_blocks() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
 
@@ -1898,7 +1895,7 @@ mod tests {
         strtex.set_pixels_block(&id, (0, 500), (500, 500), Color::Rgba(0, 0, 255, 255));
         strtex.set_pixels_block(&id, (500, 500), (500, 500), Color::Rgba(0, 0, 0, 0));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks", img);
     }
 
@@ -1906,7 +1903,6 @@ mod tests {
     fn streaming_texture_blocks_off_by_one() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(10).height(1));
@@ -1916,7 +1912,7 @@ mod tests {
 
         strtex.set_pixels_block(&id, (3, 0), (1, 1), Color::Rgba(0, 0, 255, 255));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks_off_by_one", img);
 
         let mut strtex = vx.strtex();
@@ -1928,7 +1924,7 @@ mod tests {
 
         strtex.set_pixels_block(&id, (30, 0), (800, 0), Color::Rgba(255, 0, 255, 255));
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "streaming_texture_blocks_off_by_one", img);
     }
 
@@ -1945,7 +1941,7 @@ mod tests {
             green_value = arr[3 + 2 * pitch].1;
         });
         assert_ne![123, green_value];
-        vx.draw_frame(&gen_perspective(&vx));
+        vx.draw_frame();
         vx.strtex().read(&id, |arr, pitch| {
             green_value = arr[3 + 2 * pitch].1;
         });
@@ -2015,7 +2011,6 @@ mod tests {
     fn strtex_mass_manip() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let layer = vx
             .strtex()
@@ -2049,7 +2044,7 @@ mod tests {
         }
 
         for _ in 0..vx.buffer_count() {
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         }
 
         vx.strtex().set_translation_all(&layer, |idx| {
@@ -2084,7 +2079,7 @@ mod tests {
         vx.strtex()
             .set_rotation_all(&layer, |idx| if idx < 500 { Deg(0.0) } else { Deg(30.0) });
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "strtex_mass_manip", img);
     }
 
@@ -2092,7 +2087,6 @@ mod tests {
     fn wrap_mode_clamp() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
         let options = &LayerOptions::new()
@@ -2104,7 +2098,7 @@ mod tests {
         let sprite = strtex.add(&testure, Sprite::new());
         strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "wrap_mode_clamp_strtex", img);
     }
 
@@ -2112,7 +2106,6 @@ mod tests {
     fn wrap_mode_mirror() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let mut strtex = vx.strtex();
         let options = &LayerOptions::new()
@@ -2124,7 +2117,7 @@ mod tests {
         let sprite = strtex.add(&testure, Sprite::new());
         strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
-        let img = vx.draw_frame_copy_framebuffer(&prspect);
+        let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "wrap_mode_mirror_strtex", img);
     }
     // ---
@@ -2133,7 +2126,6 @@ mod tests {
     fn bench_streaming_texture_set_single_pixel_while_drawing(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        let prspect = gen_perspective(&vx);
 
         let id = vx
             .strtex()
@@ -2143,7 +2135,7 @@ mod tests {
         b.iter(|| {
             vx.strtex()
                 .set_pixel(&id, black_box(1), black_box(2), Color::Rgba(255, 0, 0, 255));
-            vx.draw_frame(&prspect);
+            vx.draw_frame();
         });
     }
 
