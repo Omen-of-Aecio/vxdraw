@@ -275,12 +275,46 @@ pub(crate) struct QuadsData {
     pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) enum DrawType {
     StreamingTexture { id: usize },
     DynamicTexture { id: usize },
     Quad { id: usize },
     Text { id: usize },
+}
+
+pub(crate) struct LayerHoles {
+    layer_holes: Vec<Vec<DrawType>>,
+}
+
+impl LayerHoles {
+    pub fn new(image_count: usize) -> Self {
+        Self {
+            layer_holes: vec![vec![]; image_count + 1],
+        }
+    }
+
+    pub fn push(&mut self, layer: DrawType) {
+        self.layer_holes.last_mut().unwrap().push(layer);
+    }
+
+    pub fn advance_state(&mut self) {
+        for idx in 0..self.layer_holes.len() - 1 {
+            let mut tmp = vec![];
+            std::mem::swap(&mut self.layer_holes[idx + 1], &mut tmp);
+            self.layer_holes[idx].append(&mut tmp);
+        }
+    }
+
+    pub fn find_available(&mut self, filter: impl Fn(&DrawType) -> bool) -> Option<DrawType> {
+        let idx = self.layer_holes[0].iter().position(filter);
+
+        if let Some(idx) = idx {
+            Some(self.layer_holes[0].swap_remove(idx))
+        } else {
+            None
+        }
+    }
 }
 
 /// Main structure that holds all vulkan draw states
@@ -292,6 +326,8 @@ pub struct VxDraw {
     pub(crate) perspective: Matrix4<f32>,
 
     pub(crate) draw_order: Vec<DrawType>,
+    pub(crate) layer_holes: LayerHoles,
+
     pub(crate) texts: Vec<Text>,
     pub(crate) strtexs: Vec<StreamingTexture>,
     pub(crate) dyntexs: Vec<DynamicTexture>,

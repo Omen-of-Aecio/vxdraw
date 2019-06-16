@@ -829,7 +829,7 @@ impl<'a> Dyntex<'a> {
             .map(|_| super::utils::ResizBufIdx4::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
 
-        s.dyntexs.push(DynamicTexture {
+        let dyntex = DynamicTexture {
             hidden: false,
 
             fixed_perspective: options.fixed_perspective,
@@ -869,11 +869,35 @@ impl<'a> Dyntex<'a> {
             pipeline: ManuallyDrop::new(pipeline),
             pipeline_layout: ManuallyDrop::new(pipeline_layout),
             render_pass: ManuallyDrop::new(render_pass),
+        };
+
+        let prev_layer = s.layer_holes.find_available(|x| match x {
+            DrawType::DynamicTexture { .. } => true,
+            _ => false,
         });
-        s.draw_order.push(DrawType::DynamicTexture {
-            id: s.dyntexs.len() - 1,
-        });
-        Layer(s.dyntexs.len() - 1)
+
+        if let Some(prev_layer) = prev_layer {
+            match prev_layer {
+                DrawType::DynamicTexture { id } => {
+                    let old_dyntex = std::mem::replace(&mut s.dyntexs[id], dyntex);
+                    destroy_texture(s, old_dyntex);
+                    s.draw_order.push(DrawType::DynamicTexture { id });
+                    Layer(id)
+                }
+                _ => panic!["Got a non-dyntex drawtype, should be impossible!"],
+            }
+        } else {
+            s.dyntexs.push(dyntex);
+            s.draw_order.push(DrawType::DynamicTexture {
+                id: s.dyntexs.len() - 1,
+            });
+            Layer(s.dyntexs.len() - 1)
+        }
+    }
+
+    /// Query the amount of layers of this type there are
+    pub fn layer_count(&self) -> usize {
+        self.vx.dyntexs.len()
     }
 
     /// Disable drawing of the sprites at this layer
@@ -904,13 +928,8 @@ impl<'a> Dyntex<'a> {
             }
         }
         if let Some(idx) = index {
-            s.draw_order.remove(idx);
-            // Can't delete here always because other textures may still be referring to later dyntexs,
-            // only when this is the last layer.
-            if s.dyntexs.len() == layer.0 + 1 {
-                let dyntex = s.dyntexs.pop().unwrap();
-                destroy_texture(s, dyntex);
-            }
+            let draw_type = s.draw_order.remove(idx);
+            s.layer_holes.push(draw_type);
         }
     }
 
@@ -1753,6 +1772,27 @@ mod tests {
         vx.dyntex().remove_layer(tree);
 
         vx.draw_frame();
+    }
+
+    #[test]
+    fn rapidly_add_remove_layer() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        let options = &LayerOptions::new();
+
+        for _ in 0..10 {
+            let mut dyntex = vx.dyntex();
+            let layer = dyntex.add_layer(TESTURE, options);
+
+            dyntex.add(&layer, Sprite::new());
+
+            vx.draw_frame();
+
+            vx.dyntex().remove_layer(layer);
+            assert![vx.swapconfig.image_count + 1 >= vx.dyntex().layer_count() as u32];
+            assert![0 < vx.dyntex().layer_count()];
+        }
     }
 
     #[test]

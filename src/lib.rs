@@ -78,7 +78,7 @@
 extern crate test;
 
 pub use crate::data::VxDraw;
-use crate::data::{DrawType, StreamingTextureWrite};
+use crate::data::{DrawType, LayerHoles, StreamingTextureWrite};
 use arrayvec::ArrayVec;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -599,6 +599,7 @@ impl VxDraw {
             command_pool: ManuallyDrop::new(command_pool),
             current_frame: 0,
             draw_order: vec![],
+            layer_holes: LayerHoles::new(image_count as usize),
             max_frames_in_flight,
             device,
             // device_limits: phys_dev_limits,
@@ -1749,6 +1750,7 @@ impl VxDraw {
         for strtex in self.strtexs.iter_mut() {
             strtex.circular_writes[self.current_frame].clear();
         }
+        self.layer_holes.advance_state();
         postproc_res
     }
 }

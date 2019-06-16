@@ -773,7 +773,7 @@ impl<'a> Strtex<'a> {
             .map(|_| super::utils::ResizBufIdx4::new(&s.device, &s.adapter))
             .collect::<Vec<_>>();
 
-        s.strtexs.push(StreamingTexture {
+        let strtex = StreamingTexture {
             hidden: false,
             removed: vec![],
 
@@ -817,13 +817,37 @@ impl<'a> Strtex<'a> {
             pipeline: ManuallyDrop::new(pipeline),
             pipeline_layout: ManuallyDrop::new(pipeline_layout),
             render_pass: ManuallyDrop::new(render_pass),
+        };
+
+        let prev_layer = s.layer_holes.find_available(|x| match x {
+            DrawType::StreamingTexture { .. } => true,
+            _ => false,
         });
-        s.draw_order.push(DrawType::StreamingTexture {
-            id: s.strtexs.len() - 1,
-        });
-        let layer = Layer(s.strtexs.len() - 1);
+
+        let layer = if let Some(prev_layer) = prev_layer {
+            match prev_layer {
+                DrawType::StreamingTexture { id } => {
+                    let old_strtex = std::mem::replace(&mut s.strtexs[id], strtex);
+                    self.destroy_texture(old_strtex);
+                    self.vx.draw_order.push(DrawType::StreamingTexture { id });
+                    Layer(id)
+                }
+                _ => panic!["Got a non-strtex drawtype, should be impossible!"],
+            }
+        } else {
+            s.strtexs.push(strtex);
+            s.draw_order.push(DrawType::StreamingTexture {
+                id: s.strtexs.len() - 1,
+            });
+            Layer(s.strtexs.len() - 1)
+        };
         self.vx.strtex().write_all(&layer, (0, 0, 0, 0));
         layer
+    }
+
+    /// Query the amount of layers of this type there are
+    pub fn layer_count(&self) -> usize {
+        self.vx.strtexs.len()
     }
 
     /// Disable drawing of the sprites at this layer
@@ -853,13 +877,8 @@ impl<'a> Strtex<'a> {
             }
         }
         if let Some(idx) = index {
-            s.draw_order.remove(idx);
-            // Can't delete here always because other textures may still be referring to later strtexs,
-            // only when this is the last texture.
-            if s.strtexs.len() == texture.0 + 1 {
-                let strtex = s.strtexs.pop().unwrap();
-                self.destroy_texture(strtex);
-            }
+            let draw_type = s.draw_order.remove(idx);
+            s.layer_holes.push(draw_type);
         }
     }
 
@@ -1065,11 +1084,6 @@ impl<'a> Strtex<'a> {
             strtex.tranbuffer.clear();
             strtex.uvbuffer.clear();
         }
-    }
-
-    /// Get the current number of layers of strtex
-    pub fn layer_count(&mut self) -> usize {
-        self.vx.strtexs.len()
     }
 
     /// Get the current number of sprites
@@ -2120,6 +2134,28 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "wrap_mode_mirror_strtex", img);
     }
+
+    #[test]
+    fn rapidly_add_remove_layer() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        let options = &LayerOptions::new();
+
+        for _ in 0..10 {
+            let mut strtex = vx.strtex();
+            let layer = strtex.add_layer(options);
+
+            strtex.add(&layer, Sprite::new());
+
+            vx.draw_frame();
+
+            vx.strtex().remove_layer(layer);
+            assert![vx.swapconfig.image_count + 1 >= vx.strtex().layer_count() as u32];
+            assert![0 < vx.strtex().layer_count()];
+        }
+    }
+
     // ---
 
     #[bench]

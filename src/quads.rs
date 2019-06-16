@@ -642,11 +642,34 @@ impl<'a> Quads<'a> {
             pipeline_layout: ManuallyDrop::new(quad_pipeline_layout),
             render_pass: ManuallyDrop::new(quad_render_pass),
         };
-        s.quads.push(quads);
-        s.draw_order.push(DrawType::Quad {
-            id: s.quads.len() - 1,
+
+        let prev_layer = s.layer_holes.find_available(|x| match x {
+            DrawType::Quad { .. } => true,
+            _ => false,
         });
-        Layer(s.quads.len() - 1)
+
+        if let Some(prev_layer) = prev_layer {
+            match prev_layer {
+                DrawType::Quad { id } => {
+                    let old_quad = std::mem::replace(&mut s.quads[id], quads);
+                    destroy_layer(s, old_quad);
+                    s.draw_order.push(DrawType::Quad { id });
+                    Layer(id)
+                }
+                _ => panic!["Got a non-quads drawtype, should be impossible!"],
+            }
+        } else {
+            s.quads.push(quads);
+            s.draw_order.push(DrawType::Quad {
+                id: s.quads.len() - 1,
+            });
+            Layer(s.quads.len() - 1)
+        }
+    }
+
+    /// Query the amount of layers of this type there are
+    pub fn layer_count(&self) -> usize {
+        self.vx.quads.len()
     }
 
     /// Disable drawing of the quads at this layer
@@ -799,13 +822,8 @@ impl<'a> Quads<'a> {
             }
         }
         if let Some(idx) = index {
-            s.draw_order.remove(idx);
-            // Can't delete here always because other textures may still be referring to later dyntexs,
-            // only when this is the last texture.
-            if s.quads.len() == layer.0 + 1 {
-                let quads = s.quads.pop().unwrap();
-                destroy_layer(s, quads);
-            }
+            let draw_type = s.draw_order.remove(idx);
+            s.layer_holes.push(draw_type);
         }
     }
 
@@ -1521,4 +1539,26 @@ mod tests {
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "quad_mass_manip", img);
     }
+
+    #[test]
+    fn rapidly_add_remove_layer() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        let options = &LayerOptions::new();
+
+        for _ in 0..10 {
+            let mut quads = vx.quads();
+            let layer = quads.add_layer(options);
+
+            quads.add(&layer, Quad::new());
+
+            vx.draw_frame();
+
+            vx.quads().remove_layer(layer);
+            assert![vx.swapconfig.image_count + 1 >= vx.quads().layer_count() as u32];
+            assert![0 < vx.quads().layer_count()];
+        }
+    }
+
 }

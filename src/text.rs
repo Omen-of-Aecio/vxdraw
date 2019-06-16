@@ -271,6 +271,11 @@ impl<'a> Texts<'a> {
         self.vx.texts[layer.0].glyph_brush.texture_dimensions()
     }
 
+    /// Query the amount of layers of this type there are
+    pub fn layer_count(&self) -> usize {
+        self.vx.texts.len()
+    }
+
     /// Add a text layer to the system
     pub fn add_layer(&mut self, font: &'static [u8], options: LayerOptions) -> Layer {
         let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(font);
@@ -719,7 +724,7 @@ impl<'a> Texts<'a> {
             self.vx.device.destroy_fence(barrier_fence);
         }
 
-        self.vx.texts.push(Text {
+        let text = Text {
             hidden: false,
             removed: vec![],
             glyph_brush,
@@ -768,12 +773,47 @@ impl<'a> Texts<'a> {
             pipeline: ManuallyDrop::new(pipeline),
             pipeline_layout: ManuallyDrop::new(pipeline_layout),
             render_pass: ManuallyDrop::new(render_pass),
+        };
+        let prev_layer = self.vx.layer_holes.find_available(|x| match x {
+            DrawType::Text { .. } => true,
+            _ => false,
         });
+        if let Some(prev_layer) = prev_layer {
+            match prev_layer {
+                DrawType::Text { id } => {
+                    let old_text = std::mem::replace(&mut self.vx.texts[id], text);
+                    old_text.destroy(&self.vx.device);
+                    self.vx.draw_order.push(DrawType::Text { id });
+                    Layer(id)
+                }
+                _ => panic!["Got a non-text drawtype, should be impossible!"],
+            }
+        } else {
+            self.vx.texts.push(text);
+            self.vx.draw_order.push(DrawType::Text {
+                id: self.vx.texts.len() - 1,
+            });
+            Layer(self.vx.texts.len() - 1)
+        }
+    }
 
-        self.vx.draw_order.push(DrawType::Text {
-            id: self.vx.texts.len() - 1,
-        });
-        Layer(self.vx.texts.len() - 1)
+    /// Remove a layer
+    pub fn remove_layer(&mut self, layer: Layer) {
+        let s = &mut *self.vx;
+        let mut index = None;
+        for (idx, x) in s.draw_order.iter().enumerate() {
+            match x {
+                DrawType::Text { id } if *id == layer.0 => {
+                    index = Some(idx);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if let Some(idx) = index {
+            let draw_type = s.draw_order.remove(idx);
+            s.layer_holes.push(draw_type);
+        }
     }
 
     /// Add text to this layer
@@ -1546,6 +1586,25 @@ mod tests {
             "do_not_resize_texture_when_making_the_same_text",
             img,
         );
+    }
+
+    #[test]
+    fn rapidly_add_remove_layer() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        for _ in 0..10 {
+            let mut text = vx.text();
+            let layer = text.add_layer(DEJAVU, text::LayerOptions::new());
+
+            text.add(&layer, "Abc", text::TextOptions::new());
+
+            vx.draw_frame();
+
+            vx.text().remove_layer(layer);
+            assert![vx.swapconfig.image_count + 1 >= vx.text().layer_count() as u32];
+            assert![0 < vx.text().layer_count()];
+        }
     }
 
     #[bench]
