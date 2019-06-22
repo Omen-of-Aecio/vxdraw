@@ -1753,6 +1753,23 @@ impl VxDraw {
         self.layer_holes.advance_state();
         postproc_res
     }
+
+    /// Generate the perspective projection so that the window's size does not stretch its
+    /// elements. This perspective clamps the shorter axis to -1..1 and the longer axis to whatever
+    /// its aspect ratio is.
+    ///
+    /// This means that a window wider than tall will show a little more on the left and right edges
+    /// instead of stretching the image to fill the window.
+    pub fn perspective_projection(&self) -> Matrix4<f32> {
+        let size = self.swapconfig.extent;
+        let w_over_h = size.width as f32 / size.height as f32;
+        let h_over_w = size.height as f32 / size.width as f32;
+        if w_over_h >= 1.0 {
+            Matrix4::from_nonuniform_scale(1.0 / w_over_h, 1.0, 1.0)
+        } else {
+            Matrix4::from_nonuniform_scale(1.0, 1.0 / h_over_w, 1.0)
+        }
+    }
 }
 
 // ---
@@ -1855,7 +1872,7 @@ mod tests {
             } else {
                 vx.debtri().pop_many(4);
             }
-            let prspect = gen_perspective(&vx);
+            let prspect = vx.perspective_projection();
             let rot =
                 prspect * Matrix4::from_axis_angle(Vector3::new(0.0f32, 0.0, 1.0), Deg(i as f32));
             vx.set_perspective(rot);
@@ -1869,14 +1886,14 @@ mod tests {
         {
             let logger = Logger::<Generic>::spawn_void().to_compatibility();
             let vx = VxDraw::new(logger, ShowWindow::Headless1k);
-            assert_eq![Matrix4::identity(), gen_perspective(&vx)];
+            assert_eq![Matrix4::identity(), vx.perspective_projection()];
         }
         {
             let logger = Logger::<Generic>::spawn_void().to_compatibility();
             let vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
-                gen_perspective(&vx)
+                vx.perspective_projection()
             ];
         }
         {
@@ -1884,7 +1901,7 @@ mod tests {
             let vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
-                gen_perspective(&vx)
+                vx.perspective_projection(),
             ];
         }
     }

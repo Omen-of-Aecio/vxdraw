@@ -516,21 +516,6 @@ pub(crate) fn make_centered_equilateral_triangle() -> [f32; 6] {
     tri
 }
 
-/// Generate a perspective that scales the view according to the window
-///
-/// This means that a window wider than tall will show a little more on the left and right edges
-/// instead of stretching the image to fill the window.
-pub fn gen_perspective(s: &VxDraw) -> Matrix4<f32> {
-    let size = s.swapconfig.extent;
-    let w_over_h = size.width as f32 / size.height as f32;
-    let h_over_w = size.height as f32 / size.width as f32;
-    if w_over_h >= 1.0 {
-        Matrix4::from_nonuniform_scale(1.0 / w_over_h, 1.0, 1.0)
-    } else {
-        Matrix4::from_nonuniform_scale(1.0, 1.0 / h_over_w, 1.0)
-    }
-}
-
 pub(crate) fn copy_image_to_rgb(
     s: &mut VxDraw,
     image_index: gfx_hal::window::SwapImageIndex,

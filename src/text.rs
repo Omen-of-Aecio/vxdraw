@@ -3,7 +3,7 @@
 //! # Example - Drawing centered text #
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{text, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
+//! use vxdraw::{text, void_logger, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //! fn main() {
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
@@ -34,7 +34,7 @@
 //! onto the text.
 //! ```
 //! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, utils::gen_perspective, ShowWindow, VxDraw};
+//! use vxdraw::{blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, ShowWindow, VxDraw};
 //! fn main() {
 //!     static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //!     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];

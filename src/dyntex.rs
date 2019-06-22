@@ -1490,7 +1490,7 @@ mod tests {
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new());
 
-        vx.set_perspective(gen_perspective(&vx));
+        vx.set_perspective(vx.perspective_projection());
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "simple_texture_adheres_to_view", img);
     }
