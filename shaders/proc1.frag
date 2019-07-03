@@ -1,13 +1,10 @@
 #version 450
 
-layout(constant_id = 0) const int NUM_COLORS = 2;
-
 layout (location = 0) in vec2 texpos;
 layout (location = 0) out vec4 Color;
 
 layout(push_constant) uniform PushConstant {
     layout (offset = 0) vec4 rand_seed;
-    layout (offset = 16) vec4 colors[NUM_COLORS];
 } push;
 
 // Hash function: http://amindforeverprogramming.blogspot.com/2013/07/random-floats-in-glsl-330.html
@@ -101,8 +98,9 @@ float FBM(vec3 pos, int octaves) {
     const float power = 3;  // Higher -> lower frequencies dominate. Normally 2.
     float pos_factor = 1.f;
     float strength_factor = 1.f / pow(power, octaves);
-    for (int idx = 0; idx < octaves; ++idx) {
-        p = perlin(pos * pos_factor, a, b, c);
+    for (int i = 0; i < octaves; i ++)
+    {
+        p = perlin(pos * pos_factor, a, b, c );
         result += (power - 1) * strength_factor * p;
 
         pos_factor *= 0.5f;
@@ -115,19 +113,8 @@ float FBM(vec3 pos, int octaves) {
 void main()
 {
     int octaves = 8;
-
-    float r = 0.0;
-    int candidate = 0;
-    float local_seed = random(push.rand_seed.yzw);
-
-    for (int idx = 0; idx < NUM_COLORS; ++idx) {
-        float generated = FBM(vec3(texpos, 0) + local_seed, octaves);
-        if (generated > r) {
-            r = generated;
-            candidate = idx;
-        }
-        local_seed += random(push.rand_seed.yzw);
-    }
-
-    Color = push.colors[candidate];
+    float r;
+    r = FBM(vec3(texpos,0) + push.rand_seed.yzw, octaves);
+    r = step(0.5, r);
+    Color = vec4(vec3(r), 1);
 }
