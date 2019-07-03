@@ -69,7 +69,6 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use std::borrow::Cow;
 use std::iter::once;
 use std::mem::ManuallyDrop;
 
@@ -1504,7 +1503,7 @@ impl<'a> Strtex<'a> {
     }
 
     /// Fills the streaming texture with perlin noise generated from an input seed
-    pub fn fill_with_perlin_noise(&mut self, blitid: &Layer, seed: [f32; 3], colors: &[Color]) {
+    pub fn fill_with_perlin_noise(&mut self, blitid: &Layer, seed: [f32; 3]) {
         let s = &mut *self.vx;
         for circ in &mut s.strtexs[blitid.0].circular_writes {
             circ.clear();
@@ -1517,12 +1516,6 @@ impl<'a> Strtex<'a> {
         let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
         const ENTRY_NAME: &str = "main";
         let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
-        let cols = &[
-            (colors.len() as i32 >> 0) as u8,
-            (colors.len() as i32 >> 8) as u8,
-            (colors.len() as i32 >> 16) as u8,
-            (colors.len() as i32 >> 24) as u8,
-        ];
         let (vs_entry, fs_entry) = (
             pso::EntryPoint {
                 entry: ENTRY_NAME,
@@ -1532,11 +1525,7 @@ impl<'a> Strtex<'a> {
             pso::EntryPoint {
                 entry: ENTRY_NAME,
                 module: &fs_module,
-                // specialization: pso::Specialization::default(),
-                specialization: pso::Specialization {
-                    constants: Cow::Borrowed(&[pso::SpecializationConstant { id: 0, range: 0..4 }]),
-                    data: unsafe { Cow::Borrowed(cols) },
-                },
+                specialization: pso::Specialization::default(),
             },
         );
 
@@ -1649,10 +1638,7 @@ impl<'a> Strtex<'a> {
                 .expect("Couldn't make a DescriptorSetLayout")
         }];
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-        push_constants.push((
-            pso::ShaderStageFlags::FRAGMENT,
-            0..4 + colors.len() as u32 * 4,
-        ));
+        push_constants.push((pso::ShaderStageFlags::FRAGMENT, 0..4));
 
         let mapgen_pipeline_layout = unsafe {
             s.device
@@ -1790,23 +1776,13 @@ impl<'a> Strtex<'a> {
                     clear_values.iter(),
                 );
                 enc.bind_graphics_pipeline(&mapgen_pipeline);
-
-                let mut push_constants = vec![w as f32, seed[0], seed[1], seed[2]];
-                for color in colors {
-                    let Color::Rgba(r, g, b, a) = color;
-                    push_constants.extend(&[
-                        *r as f32 / 255.0,
-                        *g as f32 / 255.0,
-                        *b as f32 / 255.0,
-                        *a as f32 / 255.0,
-                    ]);
-                }
-
                 enc.push_graphics_constants(
                     &mapgen_pipeline_layout,
                     pso::ShaderStageFlags::FRAGMENT,
                     0,
-                    &*(&push_constants[..] as *const [f32] as *const [u32]),
+                    &(std::mem::transmute::<[f32; 4], [u32; 4]>([
+                        w as f32, seed[0], seed[1], seed[2],
+                    ])),
                 );
                 let buffers: ArrayVec<[_; 1]> = [(&pt_buffer, 0)].into();
                 enc.bind_vertex_buffers(0, buffers);
@@ -1898,11 +1874,7 @@ mod tests {
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::new());
-        strtex.fill_with_perlin_noise(
-            &id,
-            [1.0, 2.0, 3.0],
-            &[Color::Rgba(0, 0, 0, 255), Color::Rgba(255, 255, 255, 255)],
-        );
+        strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "generate_map_randomly", img);
@@ -1916,11 +1888,7 @@ mod tests {
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
         strtex.add(&id, Sprite::new().origin((1.0, 1.0)));
-        strtex.fill_with_perlin_noise(
-            &id,
-            [1.0, 2.0, 3.0],
-            &[Color::Rgba(0, 0, 0, 255), Color::Rgba(255, 255, 255, 255)],
-        );
+        strtex.fill_with_perlin_noise(&id, [0.0, 0.0, 0.0]);
 
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "with_origin_11", img);
@@ -2140,11 +2108,7 @@ mod tests {
             .height(1000)
             .wrap_mode(WrapMode::Clamp);
         let testure = strtex.add_layer(options);
-        strtex.fill_with_perlin_noise(
-            &testure,
-            [1.0, 2.0, 3.0],
-            &[Color::Rgba(0, 0, 0, 255), Color::Rgba(255, 255, 255, 255)],
-        );
+        strtex.fill_with_perlin_noise(&testure, [1.0, 2.0, 3.0]);
         let sprite = strtex.add(&testure, Sprite::new());
         strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
@@ -2163,11 +2127,7 @@ mod tests {
             .height(1000)
             .wrap_mode(WrapMode::Mirror);
         let testure = strtex.add_layer(options);
-        strtex.fill_with_perlin_noise(
-            &testure,
-            [1.0, 2.0, 3.0],
-            &[Color::Rgba(0, 0, 0, 255), Color::Rgba(255, 255, 255, 255)],
-        );
+        strtex.fill_with_perlin_noise(&testure, [1.0, 2.0, 3.0]);
         let sprite = strtex.add(&testure, Sprite::new());
         strtex.set_uv_raw(&sprite, [(-0.5, 0.0), (-0.5, 1.0), (1.0, 1.0), (1.0, 0.0)]);
 
@@ -2293,11 +2253,7 @@ mod tests {
             .add_layer(&LayerOptions::new().width(1000).height(1000));
 
         b.iter(|| {
-            vx.strtex().fill_with_perlin_noise(
-                &layer,
-                [1.0, 2.0, 3.0],
-                &[Color::Rgba(0, 0, 0, 255), Color::Rgba(255, 255, 255, 255)],
-            );
+            vx.strtex().fill_with_perlin_noise(&layer, [1.0, 2.0, 3.0]);
         });
     }
 }
