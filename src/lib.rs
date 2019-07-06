@@ -647,9 +647,16 @@ impl VxDraw {
     /// Translate a pixel to the world coordinates according to the current perspective
     ///
     /// To set the current perspective see [VxDraw::set_perspective].
-    pub fn to_world_coords(&mut self, screen_coord: (f32, f32)) -> (f32, f32) {
+    pub fn to_world_coords(&self, screen_coord: (f32, f32)) -> (f32, f32) {
         if let Some(inverse) = self.perspective.invert() {
-            let vec4 = inverse * cgmath::vec4(screen_coord.0, screen_coord.1, 0.0, 1.0);
+            let size = self.get_window_size_in_pixels_float();
+            let pos = cgmath::vec4(
+                (screen_coord.0 / (size.0 / 2.0) - 1.0),
+                (screen_coord.1 / (size.1 / 2.0) - 1.0),
+                0.0,
+                1.0,
+            );
+            let vec4 = inverse * pos;
             (vec4.x, vec4.y)
         } else {
             (0.0, 0.0)
@@ -697,13 +704,7 @@ impl VxDraw {
     #[cfg(feature = "gl")]
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
         let dpi_factor = self.surf.get_window().get_hidpi_factor();
-        let (w, h): (u32, u32) = self
-            .surf
-            .get_window()
-            .get_inner_size()
-            .unwrap()
-            .to_physical(dpi_factor)
-            .into();
+        let (w, h): (u32, u32) = self.surf.get_window().get_inner_size().unwrap().into();
         (w, h)
     }
 
@@ -711,12 +712,7 @@ impl VxDraw {
     #[cfg(feature = "vulkan")]
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
         let dpi_factor = self.window.get_hidpi_factor();
-        let (w, h): (u32, u32) = self
-            .window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(dpi_factor)
-            .into();
+        let (w, h): (u32, u32) = self.window.get_inner_size().unwrap().into();
         (w, h)
     }
 
@@ -1867,15 +1863,15 @@ mod tests {
     #[test]
     fn check_world_coord_conversion() {
         let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-        assert_eq![(0.0, 0.0), vx.to_world_coords((0.0, 0.0))];
+        assert_eq![(-1.0, -1.0), vx.to_world_coords((0.0, 0.0))];
 
         vx.set_perspective(Matrix4::from_translation(Vector3::new(1.0, 2.0, 0.0)));
-        assert_eq![(-1.0, -2.0), vx.to_world_coords((0.0, 0.0))];
+        assert_eq![(-2.0, -3.0), vx.to_world_coords((0.0, 0.0))];
 
         vx.set_perspective(
             Matrix4::from_translation(Vector3::new(1.0, 2.0, 0.0)) * Matrix4::from_scale(0.5),
         );
-        assert_eq![(-2.0, -4.0), vx.to_world_coords((0.0, 0.0))];
+        assert_eq![(-4.0, -6.0), vx.to_world_coords((0.0, 0.0))];
     }
 
     #[test]
