@@ -351,7 +351,7 @@ pub(crate) fn make_transfer_img_of_size(
             .is_none()
         {
             const MSG: &str = "Device does not support VK_FORMAT_R8G8B8A8_UNORM transfer image";
-            error![s.log, "vxdraw", "{}", MSG];
+            error![s.log, "{}", MSG];
             panic![MSG];
         }
         if !s
@@ -363,7 +363,7 @@ pub(crate) fn make_transfer_img_of_size(
         {
             const MSG: &str =
                 "Device does not support VK_FORMAT_R8G8B8A8_UNORM as blit destination";
-            error![s.log, "vxdraw", "{}", MSG];
+            error![s.log, "{}", MSG];
             panic![MSG];
         }
         let mut buffer = device
