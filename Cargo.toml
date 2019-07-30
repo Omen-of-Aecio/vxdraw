@@ -24,7 +24,7 @@ rand_pcg = "0.1.2"
 winit = "0.19"
 
 [build-dependencies]
-shaderc = "0.5"
+shaderc = { version = "0.6", features = ["build-from-source"] }
 
 [dev-dependencies]
 itertools = "0.8"
