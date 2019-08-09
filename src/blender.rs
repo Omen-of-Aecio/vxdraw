@@ -157,7 +157,7 @@ pub struct BlendState {
 
 impl BlendState {
     fn to_gfx_blend_state(self) -> pso::BlendState {
-        pso::BlendState::On {
+        pso::BlendState {
             color: self.color.to_gfx_blend_op(),
             alpha: self.alpha.to_gfx_blend_op(),
         }
@@ -197,7 +197,10 @@ impl Blender {
     }
 
     fn add_blend_state(&mut self, state: BlendState, mask: pso::ColorMask) {
-        let state = pso::ColorBlendDesc(mask, state.to_gfx_blend_state());
+        let state = pso::ColorBlendDesc {
+            mask,
+            blend: Some(state.to_gfx_blend_state()),
+        };
         if self.is_default {
             self.targets = vec![state];
             self.is_default = false;
@@ -274,17 +277,17 @@ impl Blender {
 
     /// Turn the color blender off
     pub fn none(mut self) -> Self {
-        self.targets = vec![pso::ColorBlendDesc(
-            pso::ColorMask::NONE,
-            pso::BlendState::Off,
-        )];
+        self.targets = vec![pso::ColorBlendDesc {
+            mask: pso::ColorMask::NONE,
+            blend: None,
+        }];
         self
     }
 }
 
 impl Default for Blender {
     fn default() -> Self {
-        let blend_state = pso::BlendState::On {
+        let blend_state = pso::BlendState {
             color: pso::BlendOp::Add {
                 src: pso::Factor::SrcAlpha,
                 dst: pso::Factor::OneMinusSrcAlpha,
@@ -293,7 +296,10 @@ impl Default for Blender {
         };
         Self {
             logic_op: None,
-            targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
+            targets: vec![pso::ColorBlendDesc {
+                mask: pso::ColorMask::ALL,
+                blend: Some(blend_state),
+            }],
             is_default: true,
         }
     }

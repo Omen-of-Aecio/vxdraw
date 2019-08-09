@@ -20,7 +20,7 @@ use gfx_hal::{
 };
 use std::f32::consts::PI;
 use std::iter::once;
-use std::mem::ManuallyDrop;
+use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
 
@@ -489,7 +489,7 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
         let upload_fence = device
             .create_fence(false)
             .expect("Couldn't create an upload fence!");
-        s.queue_group.queues[0].submit_nosemaphores(Some(&cmd_buffer), Some(&upload_fence));
+        s.queue_group.queues[0].submit_without_semaphores(Some(&cmd_buffer), Some(&upload_fence));
         device
             .wait_for_fence(&upload_fence, core::u64::MAX)
             .expect("Couldn't wait for the fence!");
@@ -626,7 +626,7 @@ pub(crate) fn copy_image_to_rgb(
             .device
             .create_fence(false)
             .expect("Unable to create fence");
-        the_command_queue.submit_nosemaphores(once(&cmd_buffer), Some(&fence));
+        the_command_queue.submit_without_semaphores(once(&cmd_buffer), Some(&fence));
         s.device
             .wait_for_fence(&fence, u64::max_value())
             .expect("unable to wait for fence");
@@ -683,7 +683,7 @@ pub(crate) fn copy_image_to_rgb(
             .device
             .create_fence(false)
             .expect("Unable to create fence");
-        the_command_queue.submit_nosemaphores(once(&cmd_buffer), Some(&fence));
+        the_command_queue.submit_without_semaphores(once(&cmd_buffer), Some(&fence));
         s.device
             .wait_for_fence(&fence, u64::max_value())
             .expect("unable to wait for fence");

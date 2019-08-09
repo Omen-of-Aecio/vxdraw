@@ -41,7 +41,7 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Adapter, Backend, Primitive};
-use std::mem::ManuallyDrop;
+use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
 
@@ -662,8 +662,11 @@ pub(crate) fn create_debug_triangle(
     pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
     pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.frag.spirv"];
 
-    let vs_module = { unsafe { device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
-    let fs_module = { unsafe { device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
+    let vertex_source = pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap();
+    let fragment_source = pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap();
+
+    let vs_module = { unsafe { device.create_shader_module(&vertex_source) }.unwrap() };
+    let fs_module = { unsafe { device.create_shader_module(&fragment_source) }.unwrap() };
 
     const ENTRY_NAME: &str = "main";
     let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
@@ -771,13 +774,13 @@ pub(crate) fn create_debug_triangle(
     };
 
     let depth_stencil = pso::DepthStencilDesc {
-        depth: pso::DepthTest::Off,
+        depth: None,
         depth_bounds: false,
-        stencil: pso::StencilTest::Off,
+        stencil: None,
     };
 
     let blender = {
-        let blend_state = pso::BlendState::On {
+        let blend_state = pso::BlendState {
             color: pso::BlendOp::Add {
                 src: pso::Factor::One,
                 dst: pso::Factor::Zero,
@@ -789,7 +792,10 @@ pub(crate) fn create_debug_triangle(
         };
         pso::BlendDesc {
             logic_op: Some(pso::LogicOp::Copy),
-            targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
+            targets: vec![pso::ColorBlendDesc {
+                mask: pso::ColorMask::ALL,
+                blend: Some(blend_state),
+            }],
         }
     };
 

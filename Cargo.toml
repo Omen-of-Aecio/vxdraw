@@ -11,11 +11,11 @@ build = "build.rs"
 arrayvec = "0.4"
 cgmath = "0.17"
 fast-logger = "0.3"
-gfx-backend-dx12 = { version = "0.2", optional = true }
-gfx-backend-gl = { version = "0.2", optional = true }
-gfx-backend-metal = { version = "0.2", optional = true }
-gfx-backend-vulkan = { version = "0.2", optional = true }
-gfx-hal = "0.2"
+gfx-backend-dx12 = { version = "0.3", optional = true }
+gfx-backend-gl = { version = "0.3", optional = true }
+gfx-backend-metal = { version = "0.3", optional = true }
+gfx-backend-vulkan = { features = ["winit", "x11"], version = "0.3", optional = true }
+gfx-hal = "0.3"
 glutin = { version = "0.20", optional = true }
 glyph_brush = "0.5"
 image = "0.21"

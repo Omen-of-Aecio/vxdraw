@@ -128,7 +128,7 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
-use std::mem::ManuallyDrop;
+use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
 
@@ -380,8 +380,11 @@ impl<'a> Quads<'a> {
 
         pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.frag.spirv"];
 
-        let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
-        let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
+        let vertex_source = pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap();
+        let fragment_source = pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap();
+
+        let vs_module = { unsafe { s.device.create_shader_module(&vertex_source) }.unwrap() };
+        let fs_module = { unsafe { s.device.create_shader_module(&fragment_source) }.unwrap() };
 
         // Describe the shaders
         const ENTRY_NAME: &str = "main";
@@ -488,15 +491,15 @@ impl<'a> Quads<'a> {
 
         let depth_stencil = pso::DepthStencilDesc {
             depth: if options.depth_test {
-                pso::DepthTest::On {
+                Some(pso::DepthTest {
                     fun: pso::Comparison::LessEqual,
                     write: true,
-                }
+                })
             } else {
-                pso::DepthTest::Off
+                None
             },
             depth_bounds: false,
-            stencil: pso::StencilTest::Off,
+            stencil: None,
         };
         let blender = options.blend.clone().into_gfx_blender();
         let quad_render_pass = {

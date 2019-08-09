@@ -102,7 +102,7 @@ use gfx_hal::{
     Backend, Primitive,
 };
 use glyph_brush::{BrushAction, BrushError, GlyphBrushBuilder};
-use std::mem::ManuallyDrop;
+use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
 
@@ -365,13 +365,17 @@ impl<'a> Texts<'a> {
         const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/text.vert.spirv"];
         const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/text.frag.spirv"];
 
+        let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
+        let fragment_source_texture =
+            pso::read_spirv(Cursor::new(FRAGMENT_SOURCE_TEXTURE)).unwrap();
+
         let vs_module =
-            { unsafe { self.vx.device.create_shader_module(&VERTEX_SOURCE_TEXTURE) }.unwrap() };
+            { unsafe { self.vx.device.create_shader_module(&vertex_source_texture) }.unwrap() };
         let fs_module = {
             unsafe {
                 self.vx
                     .device
-                    .create_shader_module(&FRAGMENT_SOURCE_TEXTURE)
+                    .create_shader_module(&fragment_source_texture)
             }
             .unwrap()
         };
@@ -496,9 +500,9 @@ impl<'a> Texts<'a> {
         };
 
         let depth_stencil = pso::DepthStencilDesc {
-            depth: pso::DepthTest::Off,
+            depth: None,
             depth_bounds: false,
-            stencil: pso::StencilTest::Off,
+            stencil: None,
         };
 
         let blender = options.blend.clone().into_gfx_blender();
@@ -716,7 +720,8 @@ impl<'a> Texts<'a> {
                 &[image_barrier],
             );
             buffer.finish();
-            self.vx.queue_group.queues[0].submit_nosemaphores(Some(&*buffer), Some(&barrier_fence));
+            self.vx.queue_group.queues[0]
+                .submit_without_semaphores(Some(&*buffer), Some(&barrier_fence));
             self.vx
                 .device
                 .wait_for_fence(&barrier_fence, u64::max_value())
@@ -1255,7 +1260,8 @@ impl<'a> Texts<'a> {
                 &[image_barrier],
             );
             buffer.finish();
-            self.vx.queue_group.queues[0].submit_nosemaphores(Some(&*buffer), Some(&barrier_fence));
+            self.vx.queue_group.queues[0]
+                .submit_without_semaphores(Some(&*buffer), Some(&barrier_fence));
             self.vx
                 .device
                 .wait_for_fence(&barrier_fence, u64::max_value())

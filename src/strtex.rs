@@ -70,7 +70,7 @@ use gfx_hal::{
     Backend, Primitive,
 };
 use std::iter::once;
-use std::mem::ManuallyDrop;
+use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
 
@@ -421,10 +421,14 @@ impl<'a> Strtex<'a> {
         const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.vert.spirv"];
         const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.frag.spirv"];
 
+        let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
+        let fragment_source_texture =
+            pso::read_spirv(Cursor::new(FRAGMENT_SOURCE_TEXTURE)).unwrap();
+
         let vs_module =
-            { unsafe { s.device.create_shader_module(&VERTEX_SOURCE_TEXTURE) }.unwrap() };
+            { unsafe { s.device.create_shader_module(&vertex_source_texture) }.unwrap() };
         let fs_module =
-            { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE_TEXTURE) }.unwrap() };
+            { unsafe { s.device.create_shader_module(&fragment_source_texture) }.unwrap() };
 
         // Describe the shaders
         const ENTRY_NAME: &str = "main";
@@ -545,15 +549,15 @@ impl<'a> Strtex<'a> {
 
         let depth_stencil = pso::DepthStencilDesc {
             depth: if options.depth_test {
-                pso::DepthTest::On {
+                Some(pso::DepthTest {
                     fun: pso::Comparison::Less,
                     write: true,
-                }
+                })
             } else {
-                pso::DepthTest::Off
+                None
             },
             depth_bounds: false,
-            stencil: pso::StencilTest::Off,
+            stencil: None,
         };
         let blender = options.blend.clone().into_gfx_blender();
         let render_pass = {
@@ -742,7 +746,7 @@ impl<'a> Strtex<'a> {
                 );
             }
             buffer.finish();
-            s.queue_group.queues[0].submit_nosemaphores(Some(&*buffer), Some(&barrier_fence));
+            s.queue_group.queues[0].submit_without_semaphores(Some(&*buffer), Some(&barrier_fence));
             s.device
                 .wait_for_fence(&barrier_fence, u64::max_value())
                 .unwrap();
@@ -1512,8 +1516,12 @@ impl<'a> Strtex<'a> {
         static FRAGMENT_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.frag.spirv");
         let w = s.strtexs[blitid.0].width;
         let h = s.strtexs[blitid.0].height;
-        let vs_module = { unsafe { s.device.create_shader_module(&VERTEX_SOURCE) }.unwrap() };
-        let fs_module = { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE) }.unwrap() };
+
+        let vertex_source = pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap();
+        let fragment_source = pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap();
+
+        let vs_module = { unsafe { s.device.create_shader_module(&vertex_source) }.unwrap() };
+        let fs_module = { unsafe { s.device.create_shader_module(&fragment_source) }.unwrap() };
         const ENTRY_NAME: &str = "main";
         let vs_module: <back::Backend as Backend>::ShaderModule = vs_module;
         let (vs_entry, fs_entry) = (
@@ -1564,13 +1572,13 @@ impl<'a> Strtex<'a> {
         };
 
         let depth_stencil = pso::DepthStencilDesc {
-            depth: pso::DepthTest::Off,
+            depth: None,
             depth_bounds: false,
-            stencil: pso::StencilTest::Off,
+            stencil: None,
         };
 
         let blender = {
-            let blend_state = pso::BlendState::On {
+            let blend_state = pso::BlendState {
                 color: pso::BlendOp::Add {
                     src: pso::Factor::One,
                     dst: pso::Factor::Zero,
@@ -1582,7 +1590,10 @@ impl<'a> Strtex<'a> {
             };
             pso::BlendDesc {
                 logic_op: Some(pso::LogicOp::Copy),
-                targets: vec![pso::ColorBlendDesc(pso::ColorMask::ALL, blend_state)],
+                targets: vec![pso::ColorBlendDesc {
+                    mask: pso::ColorMask::ALL,
+                    blend: Some(blend_state),
+                }],
             }
         };
 
@@ -1748,7 +1759,7 @@ impl<'a> Strtex<'a> {
             );
 
             let mut cmd_buffer = s.command_pool.acquire_command_buffer::<command::OneShot>();
-            let clear_values = [command::ClearValue::Color(command::ClearColor::Float([
+            let clear_values = [command::ClearValue::Color(command::ClearColor::Sfloat([
                 1.0f32, 0.25, 0.5, 0.75,
             ]))];
             cmd_buffer.begin();
@@ -1793,7 +1804,8 @@ impl<'a> Strtex<'a> {
                 .device
                 .create_fence(false)
                 .expect("Couldn't create an upload fence!");
-            s.queue_group.queues[0].submit_nosemaphores(Some(&cmd_buffer), Some(&upload_fence));
+            s.queue_group.queues[0]
+                .submit_without_semaphores(Some(&cmd_buffer), Some(&upload_fence));
             s.device
                 .wait_for_fence(&upload_fence, u64::max_value())
                 .expect("Unable to wait for fence");
@@ -1830,7 +1842,8 @@ impl<'a> Strtex<'a> {
                 );
             }
             cmd_buffer.finish();
-            s.queue_group.queues[0].submit_nosemaphores(Some(&cmd_buffer), Some(&upload_fence));
+            s.queue_group.queues[0]
+                .submit_without_semaphores(Some(&cmd_buffer), Some(&upload_fence));
             s.device
                 .wait_for_fence(&upload_fence, u64::max_value())
                 .expect("Unable to wait for fence");

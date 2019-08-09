@@ -45,7 +45,7 @@ use gfx_hal::{
     pso::{self, DescriptorPool},
     Backend, Primitive,
 };
-use std::mem::ManuallyDrop;
+use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
 
@@ -507,7 +507,8 @@ impl<'a> Dyntex<'a> {
                 .device
                 .create_fence(false)
                 .expect("Couldn't create an upload fence!");
-            s.queue_group.queues[0].submit_nosemaphores(Some(&cmd_buffer), Some(&upload_fence));
+            s.queue_group.queues[0]
+                .submit_without_semaphores(Some(&cmd_buffer), Some(&upload_fence));
             s.device
                 .wait_for_fence(&upload_fence, u64::max_value())
                 .expect("Couldn't wait for the fence!");
@@ -523,10 +524,14 @@ impl<'a> Dyntex<'a> {
 
         const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/dyntex.frag.spirv"];
 
+        let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
+        let fragment_source_texture =
+            pso::read_spirv(Cursor::new(FRAGMENT_SOURCE_TEXTURE)).unwrap();
+
         let vs_module =
-            { unsafe { s.device.create_shader_module(&VERTEX_SOURCE_TEXTURE) }.unwrap() };
+            { unsafe { s.device.create_shader_module(&vertex_source_texture) }.unwrap() };
         let fs_module =
-            { unsafe { s.device.create_shader_module(&FRAGMENT_SOURCE_TEXTURE) }.unwrap() };
+            { unsafe { s.device.create_shader_module(&fragment_source_texture) }.unwrap() };
 
         // Describe the shaders
         const ENTRY_NAME: &str = "main";
@@ -646,15 +651,15 @@ impl<'a> Dyntex<'a> {
 
         let depth_stencil = pso::DepthStencilDesc {
             depth: if options.depth_test {
-                pso::DepthTest::On {
+                Some(pso::DepthTest {
                     fun: pso::Comparison::LessEqual,
                     write: true,
-                }
+                })
             } else {
-                pso::DepthTest::Off
+                None
             },
             depth_bounds: false,
-            stencil: pso::StencilTest::Off,
+            stencil: None,
         };
         let blender = options.blend.clone().into_gfx_blender();
         let render_pass = {

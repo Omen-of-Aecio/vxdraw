@@ -367,13 +367,13 @@ impl VxDraw {
         debug![log, "Using best possible present mode"; "mode" => InDebug(&present_mode)];
 
         let image_count = if present_mode == Mailbox {
-            (caps.image_count.end - 1)
+            (caps.image_count.end() - 1)
                 .min(3)
-                .max(caps.image_count.start)
+                .max(*caps.image_count.start())
         } else {
-            (caps.image_count.end - 1)
+            (caps.image_count.end() - 1)
                 .min(2)
-                .max(caps.image_count.start)
+                .max(*caps.image_count.start())
         };
         debug![log, "Using swapchain images"; "count" => image_count];
 
@@ -634,7 +634,7 @@ impl VxDraw {
             log,
             debtris,
 
-            clear_color: ClearColor::Float([1.0f32, 0.25, 0.5, 0.0]),
+            clear_color: ClearColor::Sfloat([1.0f32, 0.25, 0.5, 0.0]),
         }
     }
 
@@ -677,7 +677,7 @@ impl VxDraw {
     /// Set the clear color when clearing a frame
     pub fn set_clear_color(&mut self, color: Color) {
         let (r, g, b, a) = color.into();
-        self.clear_color = ClearColor::Float([
+        self.clear_color = ClearColor::Sfloat([
             f32::from(r) / 255.0,
             f32::from(g) / 255.0,
             f32::from(b) / 255.0,
@@ -848,13 +848,13 @@ impl VxDraw {
         debug![self.log, "Using best possible present mode"; "mode" => InDebug(&present_mode)];
 
         let image_count = if present_mode == Mailbox {
-            (caps.image_count.end - 1)
+            (caps.image_count.end() - 1)
                 .min(3)
-                .max(caps.image_count.start)
+                .max(*caps.image_count.start())
         } else {
-            (caps.image_count.end - 1)
+            (caps.image_count.end() - 1)
                 .min(2)
-                .max(caps.image_count.start)
+                .max(*caps.image_count.start())
         };
         debug![self.log, "Using swapchain images"; "count" => image_count];
 
