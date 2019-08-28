@@ -10,7 +10,7 @@ build = "build.rs"
 [dependencies]
 arrayvec = "0.4"
 cgmath = "0.17"
-fast-logger = "0.3"
+fast-logger = "0.4"
 gfx-backend-dx12 = { version = "0.3", optional = true }
 gfx-backend-gl = { version = "0.3", optional = true }
 gfx-backend-metal = { version = "0.3", optional = true }
