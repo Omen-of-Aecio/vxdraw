@@ -6,7 +6,10 @@
 //! use vxdraw::{text, void_logger, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     // Create a new layer. A layer consists of a font file and some options
 //!     let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
@@ -23,7 +26,7 @@
 //!
 //!     vx.draw_frame();
 //!
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -39,7 +42,10 @@
 //!     static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //!     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //!
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     let clear_alpha = vx.quads().add_layer(&quads::LayerOptions::new().blend(|x| {
 //!         x.alpha(blender::BlendOp::Add {
@@ -74,7 +80,7 @@
 //!     vx.dyntex().add(&texture, Sprite::new().scale(1.0));
 //!
 //!     vx.draw_frame();
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```

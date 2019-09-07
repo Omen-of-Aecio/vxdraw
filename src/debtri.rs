@@ -12,7 +12,10 @@
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!
@@ -26,7 +29,7 @@
 //!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 use super::{utils::*, Color};

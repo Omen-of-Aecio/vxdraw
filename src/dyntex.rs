@@ -10,7 +10,10 @@
 //! use vxdraw::{dyntex::{ImgData, LayerOptions, Sprite}, void_logger, ShowWindow, VxDraw};
 //! fn main() {
 //!     static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!
 //!     let mut dyntex = vx.dyntex();
@@ -18,7 +21,7 @@
 //!     vx.dyntex().add(&tex, Sprite::new().scale(0.5));
 //!
 //!     vx.draw_frame();
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```

@@ -14,7 +14,10 @@
 //! use cgmath::{prelude::*, Deg};
 //! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
 //!     let clock = vx.strtex().add_layer(&LayerOptions::new().width(8));
@@ -42,7 +45,7 @@
 //!         vx.draw_frame();
 //!
 //!         // Sleep here so we can see some animation
-//!         #[cfg(not(test))]
+//!         #[cfg(not(feature = "doctest-headless"))]
 //!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
 //!     }
 //! }

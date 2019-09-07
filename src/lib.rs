@@ -6,13 +6,16 @@
 //! use cgmath::{prelude::*, Matrix4};
 //! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     vx.debtri().add(DebugTriangle::default());
 //!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -22,7 +25,10 @@
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
 //!     let handle = vx.debtri().add(DebugTriangle::default());
@@ -35,7 +41,7 @@
 //!         vx.draw_frame();
 //!
 //!         // Wait 10 milliseconds
-//!         #[cfg(not(test))]
+//!         #[cfg(not(feature = "doctest-headless"))]
 //!         std::thread::sleep(std::time::Duration::new(0, 10_000_000));
 //!     }
 //! }
@@ -62,14 +68,17 @@
 //!         }
 //!         println!["{} @ {}", lvl, Adapter { msg }];
 //!     });
-//!     let mut vx = VxDraw::new(log, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     vx.debtri().add(debtri::DebugTriangle::default());
 //!
 //!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -1968,7 +1977,7 @@ mod tests {
             println!["{} @ {}", lvl, LogAdapter { msg }];
         });
 
-        VxDraw::new(log, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+        VxDraw::new(log, ShowWindow::Headless1k);
     }
 
     #[test]

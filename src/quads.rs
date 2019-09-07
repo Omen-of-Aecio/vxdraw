@@ -12,7 +12,10 @@
 //! use cgmath::{prelude::*, Deg};
 //! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     // Create a new layer of quads
 //!     let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::new());
@@ -33,7 +36,7 @@
 //!     vx.draw_frame();
 //!
 //!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(test))]
+//!     #[cfg(not(feature = "doctest-headless"))]
 //!     std::thread::sleep(std::time::Duration::new(3, 0));
 //! }
 //! ```
@@ -45,7 +48,10 @@
 //! use vxdraw::{quads::*, void_logger, ShowWindow, VxDraw};
 //!
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(feature = "doctest-headless")]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!     // Create a new layer of quads
 //!     let layer = vx.quads().add_layer(&LayerOptions::new());
@@ -107,7 +113,7 @@
 //!         vx.draw_frame();
 //!
 //!         // Sleep so we can see some animation
-//!         #[cfg(not(test))]
+//!         #[cfg(not(feature = "doctest-headless"))]
 //!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
 //!     }
 //! }

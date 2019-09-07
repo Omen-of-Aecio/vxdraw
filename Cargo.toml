@@ -28,7 +28,7 @@ shaderc = { version = "0.6", features = ["build-from-source"] }
 itertools = "0.8"
 
 [features]
-default = ["vulkan"]
+default = ["vulkan", "doctest-headless"]
 dev = []
 dx12 = ["gfx-backend-dx12"]
 exact = []
@@ -36,6 +36,7 @@ no-test-preview = []
 gl = ["gfx-backend-gl", "glutin"]
 metal = ["gfx-backend-metal"]
 vulkan = ["gfx-backend-vulkan"]
+doctest-headless = []
 
 [profile.bench]
 debug = true
