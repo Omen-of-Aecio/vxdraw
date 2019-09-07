@@ -780,12 +780,7 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
         "Both images MUST have the RGB(8) format"
     ];
 
-    let correct_bytes = dec
-        .into_reader()
-        .expect("Unable to read file")
-        .bytes()
-        .map(|x| x.expect("Unable to read byte"))
-        .collect::<Vec<u8>>();
+    let correct_bytes = dec.read_image().expect("Unable to read image");
 
     fn absdiff(lhs: u8, rhs: u8) -> u8 {
         if let Some(newbyte) = lhs.checked_sub(rhs) {

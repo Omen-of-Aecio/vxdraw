@@ -5,20 +5,18 @@ authors = ["Kevin Robert Stravers <macocio@gmail.com>"]
 edition = "2018"
 build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-arrayvec = "0.4"
-cgmath = "0.17"
-fast-logger = "0.4"
+arrayvec = "0.4.11"
+cgmath = "0.17.0"
+fast-logger = "0.4.0"
 gfx-backend-dx12 = { version = "0.3", optional = true }
 gfx-backend-gl = { version = "0.3", optional = true }
 gfx-backend-metal = { version = "0.3", optional = true }
-gfx-backend-vulkan = { features = ["winit", "x11"], version = "0.3", optional = true }
-gfx-hal = "0.3"
+gfx-backend-vulkan = { features = ["winit", "x11"], version = "0.3.3", optional = true }
+gfx-hal = "0.3.1"
 glutin = { version = "0.20", optional = true }
-glyph_brush = "0.5"
-image = "0.21"
+glyph_brush = "0.5.3"
+image = "0.22.0"
 rand = "0.6.1"
 rand_pcg = "0.1.2"
 winit = "0.19"

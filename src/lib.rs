@@ -57,7 +57,7 @@
 //! use vxdraw::*;
 //!
 //! fn main() {
-//!     let log = Box::new(|lvl, msg| {
+//!     let log = Box::new(|lvl: u8, msg| {
 //!         struct Adapter {
 //!             pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
 //!         }
