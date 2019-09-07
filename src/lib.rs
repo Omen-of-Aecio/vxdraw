@@ -659,8 +659,8 @@ impl VxDraw {
         if let Some(inverse) = self.perspective.invert() {
             let size = self.get_window_size_in_pixels_float();
             let pos = cgmath::vec4(
-                (screen_coord.0 / (size.0 / 2.0) - 1.0),
-                (screen_coord.1 / (size.1 / 2.0) - 1.0),
+                screen_coord.0 / (size.0 / 2.0) - 1.0,
+                screen_coord.1 / (size.1 / 2.0) - 1.0,
                 0.0,
                 1.0,
             );
