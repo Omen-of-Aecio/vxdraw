@@ -1563,5 +1563,4 @@ mod tests {
             assert![0 < vx.quads().layer_count()];
         }
     }
-
 }
