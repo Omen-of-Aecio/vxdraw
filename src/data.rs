@@ -393,6 +393,7 @@ pub struct VxDraw {
 // ---
 
 impl Drop for VxDraw {
+    #[allow(clippy::cognitive_complexity)]
     fn drop(&mut self) {
         let _ = self.device.wait_idle();
 

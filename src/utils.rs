@@ -1,6 +1,5 @@
 //! Various utilities and helpers for vxdraw
 use crate::data::VxDraw;
-use cgmath::Matrix4;
 use fast_logger::error;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -20,7 +19,7 @@ use gfx_hal::{
 };
 use std::f32::consts::PI;
 use std::iter::once;
-use std::{io::Cursor, mem::ManuallyDrop};
+use std::mem::ManuallyDrop;
 
 // ---
 

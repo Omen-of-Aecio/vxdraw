@@ -711,7 +711,6 @@ impl VxDraw {
     /// Get the size of the display window in floats
     #[cfg(feature = "gl")]
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
-        let dpi_factor = self.surf.get_window().get_hidpi_factor();
         let (w, h): (u32, u32) = self.surf.get_window().get_inner_size().unwrap().into();
         (w, h)
     }
@@ -719,7 +718,6 @@ impl VxDraw {
     /// Get the size of the display window in floats
     #[cfg(feature = "vulkan")]
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
-        let dpi_factor = self.window.get_hidpi_factor();
         let (w, h): (u32, u32) = self.window.get_inner_size().unwrap().into();
         (w, h)
     }
@@ -1044,6 +1042,7 @@ impl VxDraw {
     }
 
     /// Internal drawing routine
+    #[allow(clippy::cognitive_complexity)]
     fn draw_frame_internal<T>(
         &mut self,
         postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
