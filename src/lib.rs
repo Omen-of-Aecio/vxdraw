@@ -6,10 +6,7 @@
 //! use cgmath::{prelude::*, Matrix4};
 //! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     #[cfg(not(test))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
-//!     #[cfg(test)]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     vx.debtri().add(DebugTriangle::default());
 //!     vx.draw_frame();
@@ -25,10 +22,7 @@
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
 //! fn main() {
-//!     #[cfg(not(test))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
-//!     #[cfg(test)]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     // Spawn a debug triangle, the handle is used to refer to it later
 //!     let handle = vx.debtri().add(DebugTriangle::default());
@@ -68,10 +62,7 @@
 //!         }
 //!         println!["{} @ {}", lvl, Adapter { msg }];
 //!     });
-//!     #[cfg(not(test))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
-//!     #[cfg(test)]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//!     let mut vx = VxDraw::new(log, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
 //!
 //!     vx.debtri().add(debtri::DebugTriangle::default());
 //!
@@ -1977,7 +1968,7 @@ mod tests {
             println!["{} @ {}", lvl, LogAdapter { msg }];
         });
 
-        VxDraw::new(log, ShowWindow::Headless1k);
+        VxDraw::new(log, ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
     }
 
     #[test]
