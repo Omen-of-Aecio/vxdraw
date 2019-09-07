@@ -14,7 +14,10 @@
 //! use cgmath::{prelude::*, Deg};
 //! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(not(test))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     #[cfg(test)]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
 //!
 //!     // Create a new layer/streaming texture, each streaming texture is on its own layer
 //!     let clock = vx.strtex().add_layer(&LayerOptions::new().width(8));

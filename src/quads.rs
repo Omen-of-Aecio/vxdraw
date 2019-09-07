@@ -12,7 +12,10 @@
 //! use cgmath::{prelude::*, Deg};
 //! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(not(test))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     #[cfg(test)]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
 //!
 //!     // Create a new layer of quads
 //!     let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::new());
@@ -45,7 +48,10 @@
 //! use vxdraw::{quads::*, void_logger, ShowWindow, VxDraw};
 //!
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(not(test))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     #[cfg(test)]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
 //!
 //!     // Create a new layer of quads
 //!     let layer = vx.quads().add_layer(&LayerOptions::new());
@@ -1563,5 +1569,4 @@ mod tests {
             assert![0 < vx.quads().layer_count()];
         }
     }
-
 }

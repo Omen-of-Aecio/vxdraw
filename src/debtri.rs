@@ -12,7 +12,10 @@
 //! use cgmath::{prelude::*, Deg, Matrix4};
 //! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(not(test))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     #[cfg(test)]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
 //!
 //!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!

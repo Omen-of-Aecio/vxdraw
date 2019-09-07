@@ -6,7 +6,10 @@
 //! use vxdraw::{text, void_logger, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //! fn main() {
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(not(test))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     #[cfg(test)]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
 //!
 //!     // Create a new layer. A layer consists of a font file and some options
 //!     let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
@@ -39,7 +42,10 @@
 //!     static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //!     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //!
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k); // Change this to ShowWindow::Enable to show the window
+//!     #[cfg(not(test))]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     #[cfg(test)]
+//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
 //!
 //!     let clear_alpha = vx.quads().add_layer(&quads::LayerOptions::new().blend(|x| {
 //!         x.alpha(blender::BlendOp::Add {
