@@ -382,9 +382,9 @@ impl<'a> Quads<'a> {
     /// drawn on top of this layer, and so on.
     pub fn add_layer(&mut self, options: &LayerOptions) -> Layer {
         let s = &mut *self.vx;
-        pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.vert.spirv"];
+        pub const VERTEX_SOURCE: &[u8] = include_bytes!["../target/spirv/quads.vert.spirv"];
 
-        pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/quads.frag.spirv"];
+        pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../target/spirv/quads.frag.spirv"];
 
         let vertex_source = pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap();
         let fragment_source = pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap();

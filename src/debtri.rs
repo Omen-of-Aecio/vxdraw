@@ -662,8 +662,8 @@ pub(crate) fn create_debug_triangle(
     format: format::Format,
     image_count: usize,
 ) -> DebugTriangleData {
-    pub const VERTEX_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.vert.spirv"];
-    pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../_build/spirv/debtri.frag.spirv"];
+    pub const VERTEX_SOURCE: &[u8] = include_bytes!["../target/spirv/debtri.vert.spirv"];
+    pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../target/spirv/debtri.frag.spirv"];
 
     let vertex_source = pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap();
     let fragment_source = pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap();

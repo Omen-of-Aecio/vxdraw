@@ -421,8 +421,8 @@ impl<'a> Strtex<'a> {
                 .expect("Couldn't create the sampler!")
         };
 
-        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.vert.spirv"];
-        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/strtex.frag.spirv"];
+        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/strtex.vert.spirv"];
+        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/strtex.frag.spirv"];
 
         let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
         let fragment_source_texture =
@@ -1515,8 +1515,8 @@ impl<'a> Strtex<'a> {
         for circ in &mut s.strtexs[blitid.0].circular_writes {
             circ.clear();
         }
-        static VERTEX_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.vert.spirv");
-        static FRAGMENT_SOURCE: &[u8] = include_bytes!("../_build/spirv/proc1.frag.spirv");
+        static VERTEX_SOURCE: &[u8] = include_bytes!("../target/spirv/proc1.vert.spirv");
+        static FRAGMENT_SOURCE: &[u8] = include_bytes!("../target/spirv/proc1.frag.spirv");
         let w = s.strtexs[blitid.0].width;
         let h = s.strtexs[blitid.0].height;
 

@@ -368,8 +368,8 @@ impl<'a> Texts<'a> {
         };
 
         /// Add shader
-        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/text.vert.spirv"];
-        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/text.frag.spirv"];
+        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/text.vert.spirv"];
+        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/text.frag.spirv"];
 
         let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
         let fragment_source_texture =

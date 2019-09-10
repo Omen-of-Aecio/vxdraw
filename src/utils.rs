@@ -722,12 +722,12 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
         tmp
     };
 
-    std::fs::create_dir_all("_build/vxdraw_results").expect("Unable to create directories");
+    std::fs::create_dir_all("target/vxdraw_results").expect("Unable to create directories");
 
-    let genname = String::from("_build/vxdraw_results/") + name + ".png";
+    let genname = String::from("target/vxdraw_results/") + name + ".png";
     let correctname = String::from("tests/vxdraw/") + name + ".png";
-    let diffname = String::from("_build/vxdraw_results/") + name + "#diff.png";
-    let appendname = String::from("_build/vxdraw_results/") + name + "#sum.png";
+    let diffname = String::from("target/vxdraw_results/") + name + "#diff.png";
+    let appendname = String::from("target/vxdraw_results/") + name + "#sum.png";
 
     let store_generated_image = || {
         let file = std::fs::File::create(&genname).expect("Unable to create file");

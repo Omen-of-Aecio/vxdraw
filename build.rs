@@ -2,7 +2,7 @@ use shaderc;
 use std::path::PathBuf;
 
 fn main() {
-    std::fs::create_dir_all("_build/spirv").expect("Unable to create directories");
+    std::fs::create_dir_all("target/spirv").expect("Unable to create directories");
 
     for shader in std::fs::read_dir("shaders").expect("Unable to read shaders directory") {
         let shader = shader.expect("Unable to access file in shaders directory");
@@ -35,7 +35,7 @@ fn main() {
         println!["Warning: {}", spirv.get_warning_messages()];
         assert_eq![0, spirv.get_num_warnings()];
 
-        let dest: PathBuf = ["_build", "spirv", &(filename.to_string() + ".spirv")]
+        let dest: PathBuf = ["target", "spirv", &(filename.to_string() + ".spirv")]
             .iter()
             .collect();
         std::fs::write(dest, spirv.as_binary_u8()).expect("Unable to write SPIRV output");

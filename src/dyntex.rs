@@ -523,9 +523,9 @@ impl<'a> Dyntex<'a> {
             device.free_memory(image_upload_memory);
         }
 
-        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/dyntex.vert.spirv"];
+        const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/dyntex.vert.spirv"];
 
-        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../_build/spirv/dyntex.frag.spirv"];
+        const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/dyntex.frag.spirv"];
 
         let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
         let fragment_source_texture =
