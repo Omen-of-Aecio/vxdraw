@@ -5,7 +5,7 @@
 
 `vxdraw` is a rendering library for drawing sprites, text, and streaming textures to a window. It is not an engine, just a library, and has no runtime.
 
-Note: This software is in its early stages and has only been built to satisfy the requirements of a work in progress. There will be some rough edges. Any contributions are very much welcome.
+Note: This software is in its early stages and has only been built to satisfy the requirements of a work in progress. There will be some rough edges. Any contributions are very much welcome. Currently only Vulkan is supported as a back-end.
 
 ## Features and Motivation ##
 
