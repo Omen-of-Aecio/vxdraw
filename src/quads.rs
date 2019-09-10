@@ -160,6 +160,24 @@ impl Layerable for Layer {
     }
 }
 
+/// Enum describing which vertex shader to use
+#[derive(Clone, Debug)]
+pub enum VertexShader {
+    /// Use the given SPIRV code
+    Spirv(Vec<u8>),
+    /// Use the shader provided by `vxdraw`
+    Standard,
+}
+
+/// Enum describing which fragment shader to use
+#[derive(Clone, Debug)]
+pub enum FragmentShader {
+    /// Use the given SPIRV code
+    Spirv(Vec<u8>),
+    /// Use the shader provided by `vxdraw`
+    Standard,
+}
+
 /// Options for creating a layer of quads
 #[derive(Debug)]
 pub struct LayerOptions {
@@ -167,6 +185,8 @@ pub struct LayerOptions {
     hide: bool,
     blend: blender::Blender,
     fixed_perspective: Option<Matrix4<f32>>,
+    vertex_shader: VertexShader,
+    fragment_shader: FragmentShader,
 }
 
 impl Default for LayerOptions {
@@ -176,6 +196,8 @@ impl Default for LayerOptions {
             hide: false,
             blend: blender::Blender::default(),
             fixed_perspective: None,
+            vertex_shader: VertexShader::Standard,
+            fragment_shader: FragmentShader::Standard,
         }
     }
 }
@@ -184,6 +206,18 @@ impl LayerOptions {
     /// Same as default
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the vertex shader
+    pub fn vertex_shader(mut self, shader: VertexShader) -> Self {
+        self.vertex_shader = shader;
+        self
+    }
+
+    /// Set the fragment shader
+    pub fn fragment_shader(mut self, shader: FragmentShader) -> Self {
+        self.fragment_shader = shader;
+        self
     }
 
     /// Hide this layer
@@ -386,8 +420,14 @@ impl<'a> Quads<'a> {
 
         pub const FRAGMENT_SOURCE: &[u8] = include_bytes!["../target/spirv/quads.frag.spirv"];
 
-        let vertex_source = pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap();
-        let fragment_source = pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap();
+        let vertex_source = match options.vertex_shader {
+            VertexShader::Standard => pso::read_spirv(Cursor::new(VERTEX_SOURCE)).unwrap(),
+            VertexShader::Spirv(ref data) => pso::read_spirv(Cursor::new(data)).unwrap(),
+        };
+        let fragment_source = match options.fragment_shader {
+            FragmentShader::Standard => pso::read_spirv(Cursor::new(FRAGMENT_SOURCE)).unwrap(),
+            FragmentShader::Spirv(ref data) => pso::read_spirv(Cursor::new(data)).unwrap(),
+        };
 
         let vs_module = { unsafe { s.device.create_shader_module(&vertex_source) }.unwrap() };
         let fs_module = { unsafe { s.device.create_shader_module(&fragment_source) }.unwrap() };

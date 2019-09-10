@@ -97,6 +97,24 @@ impl Layerable for Layer {
     }
 }
 
+/// Enum describing which vertex shader to use
+#[derive(Clone, Debug)]
+pub enum VertexShader {
+    /// Use the given SPIRV code
+    Spirv(Vec<u8>),
+    /// Use the shader provided by `vxdraw`
+    Standard,
+}
+
+/// Enum describing which fragment shader to use
+#[derive(Clone, Debug)]
+pub enum FragmentShader {
+    /// Use the given SPIRV code
+    Spirv(Vec<u8>),
+    /// Use the shader provided by `vxdraw`
+    Standard,
+}
+
 /// Specify filter options
 #[derive(Clone, Copy)]
 pub enum Filter {
@@ -136,12 +154,26 @@ pub struct LayerOptions {
     wrap_mode: WrapMode,
     /// Blending mode for this layer
     blend: blender::Blender,
+    vertex_shader: VertexShader,
+    fragment_shader: FragmentShader,
 }
 
 impl LayerOptions {
     /// Create a default layer
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the vertex shader
+    pub fn vertex_shader(mut self, shader: VertexShader) -> Self {
+        self.vertex_shader = shader;
+        self
+    }
+
+    /// Set the fragment shader
+    pub fn fragment_shader(mut self, shader: FragmentShader) -> Self {
+        self.fragment_shader = shader;
+        self
     }
 
     /// Set the sampling filter mode for the texture
@@ -197,6 +229,8 @@ impl Default for LayerOptions {
             height: 1,
             wrap_mode: WrapMode::Tile,
             blend: blender::Blender::default(),
+            vertex_shader: VertexShader::Standard,
+            fragment_shader: FragmentShader::Standard,
         }
     }
 }
@@ -424,9 +458,16 @@ impl<'a> Strtex<'a> {
         const VERTEX_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/strtex.vert.spirv"];
         const FRAGMENT_SOURCE_TEXTURE: &[u8] = include_bytes!["../target/spirv/strtex.frag.spirv"];
 
-        let vertex_source_texture = pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap();
-        let fragment_source_texture =
-            pso::read_spirv(Cursor::new(FRAGMENT_SOURCE_TEXTURE)).unwrap();
+        let vertex_source_texture = match options.vertex_shader {
+            VertexShader::Standard => pso::read_spirv(Cursor::new(VERTEX_SOURCE_TEXTURE)).unwrap(),
+            VertexShader::Spirv(ref data) => pso::read_spirv(Cursor::new(data)).unwrap(),
+        };
+        let fragment_source_texture = match options.fragment_shader {
+            FragmentShader::Standard => {
+                pso::read_spirv(Cursor::new(FRAGMENT_SOURCE_TEXTURE)).unwrap()
+            }
+            FragmentShader::Spirv(ref data) => pso::read_spirv(Cursor::new(data)).unwrap(),
+        };
 
         let vs_module =
             { unsafe { s.device.create_shader_module(&vertex_source_texture) }.unwrap() };
