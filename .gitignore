@@ -1,6 +1,7 @@
 /*
 !.gitignore
 !Cargo.toml
+!README.md
 !build.rs
 !fonts/
 !images/
