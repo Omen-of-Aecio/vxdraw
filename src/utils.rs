@@ -713,7 +713,6 @@ pub(crate) fn copy_image_to_rgb(
 pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     use ::image as load_image;
     use load_image::ImageDecoder;
-    use std::io::Read;
 
     let rgb = {
         let mut tmp = vec![];
