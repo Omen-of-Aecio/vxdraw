@@ -33,6 +33,30 @@ Further features:
 ### Snapshot Testing ###
 `vxdraw` allows for snapshot testing by retrieving the full frame data.
 
+### Benchmark Results ###
+
+Here are benchmark results running `cargo bench` on an AMD Vega 56 video card:
+
+    test debtri::tests::bench_rotating_windmills_no_render                      ... bench:         855 ns/iter (+/- 77)
+    test debtri::tests::bench_rotating_windmills_only                           ... bench:      57,253 ns/iter (+/- 8,600)
+    test debtri::tests::bench_rotating_windmills_set_color                      ... bench:      64,500 ns/iter (+/- 25,971)
+    test debtri::tests::bench_simple_triangle                                   ... bench:      50,443 ns/iter (+/- 5,055)
+    test debtri::tests::bench_still_windmills                                   ... bench:      52,454 ns/iter (+/- 5,280)
+    test debtri::tests::bench_windmills_set_color                               ... bench:           8 ns/iter (+/- 2)
+    test dyntex::tests::animated_fireballs_20x20_uvs2                           ... bench:     114,045 ns/iter (+/- 31,969)
+    test dyntex::tests::bench_many_particles                                    ... bench:      58,473 ns/iter (+/- 12,086)
+    test dyntex::tests::bench_many_sprites                                      ... bench:   3,250,726 ns/iter (+/- 119,911)
+    test dyntex::tests::bench_push_and_pop_sprite                               ... bench:          31 ns/iter (+/- 4)
+    test dyntex::tests::bench_push_and_pop_texture                              ... bench:  55,676,043 ns/iter (+/- 56,986,205)
+    test strtex::tests::adding_sprites                                          ... bench:          23 ns/iter (+/- 2)
+    test strtex::tests::bench_streaming_texture_set_500x500_area                ... bench:          10 ns/iter (+/- 1)
+    test strtex::tests::bench_streaming_texture_set_500x500_area_using_iterator ... bench:   2,636,501 ns/iter (+/- 374,451)
+    test strtex::tests::bench_streaming_texture_set_single_pixel                ... bench:          10 ns/iter (+/- 1)
+    test strtex::tests::bench_streaming_texture_set_single_pixel_while_drawing  ... bench:      65,817 ns/iter (+/- 10,654)
+    test strtex::tests::generate_perlin_noise                                   ... bench:   1,895,628 ns/iter (+/- 820,344)
+    test tests::clears_per_second                                               ... bench:      48,371 ns/iter (+/- 8,677)
+    test text::tests::text_flag                                                 ... bench:      75,114 ns/iter (+/- 28,652)
+
 ## Example Outputs ##
 
 * Multiple sprites of the same texture with different opacity settings
