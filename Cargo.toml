@@ -1,7 +1,7 @@
 [package]
 name = "vxdraw"
-version = "0.1.0"
-authors = ["Kevin Robert Stravers <macocio@gmail.com>", "Erlend Langseth <3rlendhl@gmail.com"]
+version = "0.1.1"
+authors = ["Kevin Robert Stravers <macocio@gmail.com>", "Erlend Langseth <3rlendhl@gmail.com>"]
 edition = "2018"
 description = "Simple 2D rendering library"
 homepage = "https://github.com/Omen-of-Aecio/vxdraw"
