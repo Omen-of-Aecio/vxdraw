@@ -1,5 +1,10 @@
 # VxDraw - Simple 2D rendering for Rust #
+[![Latest Version][s1]][l1] [![docs.rs][s4]][l4]
 
+[s1]: https://img.shields.io/crates/v/vxdraw.svg
+[l1]: https://crates.io/crates/vxdraw
+[s4]: https://docs.rs/vxdraw/badge.svg
+[l4]: https://docs.rs/vxdraw/
 
 ## Introduction ##
 
