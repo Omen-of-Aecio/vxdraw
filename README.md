@@ -29,6 +29,7 @@ Further features:
  * Custom blend modes (per-layer)
  * Filter mode (per-layer)
  * Fixed or dynamic perspective matrices (per-layer)
+ * User-supplied vertex/fragment shaders for quads, text, dyntex, and strtex (per-layer)
 
 ### Snapshot Testing ###
 `vxdraw` allows for snapshot testing by retrieving the full frame data.
