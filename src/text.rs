@@ -302,7 +302,7 @@ impl<'a> Texts<'a> {
     ///
     /// You're not supposed to use this function directly (although you can).
     /// The recommended way of spawning a text is via [VxDraw::text()].
-    pub fn new(vx: &'a mut VxDraw) -> Self {
+    pub(crate) fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
 

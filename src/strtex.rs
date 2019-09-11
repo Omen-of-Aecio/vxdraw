@@ -347,7 +347,7 @@ impl<'a> Strtex<'a> {
     ///
     /// You're not supposed to use this function directly (although you can).
     /// The recommended way of spawning a strtex is via [VxDraw::strtex()].
-    pub fn new(vx: &'a mut VxDraw) -> Self {
+    pub(crate) fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
 

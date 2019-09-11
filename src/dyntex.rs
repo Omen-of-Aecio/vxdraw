@@ -331,7 +331,7 @@ impl<'a> Dyntex<'a> {
     ///
     /// You're not supposed to use this function directly (although you can).
     /// The recommended way of spawning a dyntex is via [VxDraw::dyntex()].
-    pub fn new(s: &'a mut VxDraw) -> Self {
+    pub(crate) fn new(s: &'a mut VxDraw) -> Self {
         Self { vx: s }
     }
 

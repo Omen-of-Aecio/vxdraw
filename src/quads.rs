@@ -342,7 +342,7 @@ impl<'a> Quads<'a> {
     /// Spawn the accessor object from [VxDraw].
     ///
     /// This is a very cheap operation.
-    pub fn new(vx: &'a mut VxDraw) -> Self {
+    pub(crate) fn new(vx: &'a mut VxDraw) -> Self {
         Self { vx }
     }
 
