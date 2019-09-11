@@ -777,6 +777,15 @@ impl VxDraw {
         text::Texts::new(self)
     }
 
+    /// Return the events loop of the window
+    pub fn events_loop(&mut self) -> &mut EventsLoop {
+        &mut self.events_loop
+    }
+
+    #[deprecated(
+        since = "0.2.0",
+        note = "Please use the `events_loop` function instead"
+    )]
     /// Collect all pending input events to this window
     pub fn collect_input(&mut self) -> Vec<Event> {
         let mut inputs = vec![];
