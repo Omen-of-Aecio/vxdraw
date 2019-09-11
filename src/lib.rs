@@ -1890,7 +1890,7 @@ mod tests {
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        vx.collect_input();
+        vx.events_loop();
     }
 
     #[test]
