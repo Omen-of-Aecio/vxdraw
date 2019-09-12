@@ -612,7 +612,7 @@ impl VxDraw {
             device,
             // device_limits: phys_dev_limits,
             texts: vec![],
-            events_loop,
+            events_loop: Some(events_loop),
             frames_in_flight_fences,
             framebuffers,
             format,
@@ -778,8 +778,8 @@ impl VxDraw {
     }
 
     /// Return the events loop of the window
-    pub fn events_loop(&mut self) -> &mut EventsLoop {
-        &mut self.events_loop
+    pub fn events_loop(&mut self) -> Option<EventsLoop> {
+        self.events_loop.take()
     }
 
     #[deprecated(
@@ -790,7 +790,7 @@ impl VxDraw {
     pub fn collect_input(&mut self) -> Vec<Event> {
         let mut inputs = vec![];
         let log = &mut self.log;
-        self.events_loop.poll_events(|evt| match evt {
+        self.events_loop.as_mut().unwrap().poll_events(|evt| match evt {
             winit::Event::WindowEvent { ref event, .. } => match event {
                 winit::WindowEvent::Resized(dims) => {
                     info![log, "Window resized event"; "dimensions" => InDebug(&dims); clone dims];
@@ -1890,7 +1890,11 @@ mod tests {
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        vx.events_loop();
+        vx.events_loop().unwrap().run_forever(|_evt| -> winit::ControlFlow {
+            vx.debtri().add(debtri::DebugTriangle::default());
+            winit::ControlFlow::Break
+        });
+        assert![vx.events_loop().is_none()];
     }
 
     #[test]

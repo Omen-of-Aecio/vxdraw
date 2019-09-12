@@ -387,7 +387,7 @@ pub struct VxDraw {
     #[cfg(not(feature = "gl"))]
     pub(crate) window: winit::Window,
 
-    pub(crate) events_loop: winit::EventsLoop,
+    pub(crate) events_loop: Option<winit::EventsLoop>,
 }
 
 // ---
