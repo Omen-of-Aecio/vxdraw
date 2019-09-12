@@ -177,6 +177,8 @@ pub enum ShowWindow {
     Headless1x2k,
     /// Runs vulkan with a visible window
     Enable,
+    /// Custom size
+    Custom(u32, u32),
 }
 
 #[cfg(not(feature = "gl"))]
@@ -209,6 +211,13 @@ fn set_window_size(window: &mut winit::Window, show: ShowWindow) -> Extent2D {
             .unwrap()
             .to_physical(dpi_factor)
             .into(),
+        ShowWindow::Custom(width, height) => {
+            window.set_inner_size(LogicalSize {
+                width: width as f64 * dpi_factor,
+                height: height as f64 * dpi_factor,
+            });
+            (1000, 2000)
+        }
     };
     Extent2D {
         width: w,
@@ -246,6 +255,13 @@ fn set_window_size(window: &glutin::Window, show: ShowWindow) -> Extent2D {
             .unwrap()
             .to_physical(dpi_factor)
             .into(),
+        ShowWindow::Custom(width, height) => {
+            window.set_inner_size(LogicalSize {
+                width: width as f64 / dpi_factor,
+                height: height as f64 / dpi_factor,
+            });
+            (1000, 2000)
+        }
     };
     Extent2D {
         width: w,
@@ -272,7 +288,10 @@ impl VxDraw {
         info![log, "Initializing rendering"; "show" => InDebug(&show), "backend" => BACKEND];
 
         let events_loop = EventsLoop::new();
-        let window_builder = WindowBuilder::new().with_visibility(show == ShowWindow::Enable);
+        let window_builder = WindowBuilder::new().with_visibility(match show {
+            ShowWindow::Enable | ShowWindow::Custom(..) => true,
+            _ => false,
+        });
 
         #[cfg(feature = "gl")]
         let (mut adapters, mut surf, dims) = {
@@ -307,9 +326,13 @@ impl VxDraw {
             (adapters, surface, dims)
         };
 
+        use winit::os::unix::WindowBuilderExt;
         #[cfg(not(feature = "gl"))]
         let (window, vk_inst, mut adapters, mut surf, dims) = {
-            let mut window = window_builder.build(&events_loop).unwrap();
+            let mut window = window_builder
+                .with_x11_window_type(winit::os::unix::XWindowType::Dialog)
+                .build(&events_loop)
+                .unwrap();
             let version = 1;
             let vk_inst = back::Instance::create("renderer", version);
             let surf: <back::Backend as Backend>::Surface = vk_inst.create_surface(&window);
@@ -594,7 +617,7 @@ impl VxDraw {
 
         let debtris = debtri::create_debug_triangle(&device, &adapter, format, images.len());
 
-        VxDraw {
+        let mut vx = VxDraw {
             acquire_image_semaphores,
             acquire_image_semaphore_free: ManuallyDrop::new(
                 device
@@ -644,7 +667,9 @@ impl VxDraw {
             debtris,
 
             clear_color: ClearColor::Sfloat([1.0f32, 0.25, 0.5, 0.0]),
-        }
+        };
+        vx.window_resized_recreate_swapchain();
+        vx
     }
 
     /// Set the perspective to be used when drawing geometry
@@ -743,8 +768,8 @@ impl VxDraw {
     pub fn set_window_size(&mut self, size: (u32, u32)) {
         let dpi_factor = self.window.get_hidpi_factor();
         self.window.set_inner_size(LogicalSize {
-            width: f64::from(size.0) / dpi_factor,
-            height: f64::from(size.1) / dpi_factor,
+            width: f64::from(size.0) * dpi_factor,
+            height: f64::from(size.1) * dpi_factor,
         });
     }
 
@@ -1890,10 +1915,12 @@ mod tests {
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        vx.events_loop().unwrap().run_forever(|_evt| -> winit::ControlFlow {
-            vx.debtri().add(debtri::DebugTriangle::default());
-            winit::ControlFlow::Break
-        });
+        vx.events_loop()
+            .unwrap()
+            .run_forever(|_evt| -> winit::ControlFlow {
+                vx.debtri().add(debtri::DebugTriangle::default());
+                winit::ControlFlow::Break
+            });
         assert![vx.events_loop().is_none()];
     }
 

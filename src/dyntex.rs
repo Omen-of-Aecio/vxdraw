@@ -1527,7 +1527,7 @@ mod tests {
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
 
         let mut dyntex = vx.dyntex();
-        let tex = dyntex.add_layer(LOGO, &&LayerOptions::new());
+        let tex = dyntex.add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new());
 
         let img = vx.draw_frame_copy_framebuffer();

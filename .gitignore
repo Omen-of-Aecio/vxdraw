@@ -2,6 +2,7 @@
 !.gitignore
 !Cargo.toml
 !README.md
+!benches/
 !build.rs
 !fonts/
 !images/

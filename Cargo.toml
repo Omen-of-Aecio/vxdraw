@@ -30,6 +30,8 @@ winit = "0.19"
 shaderc = { version = "0.6", features = ["build-from-source"] }
 
 [dev-dependencies]
+criterion = "0.3.0"
+ggez = "0.5.1"
 itertools = "0.8"
 
 [features]
@@ -48,3 +50,7 @@ debug = true
 lto = true
 opt-level = 3
 overflow-checks = false
+
+[[bench]]
+name = "ggez_and_vxdraw"
+harness = false
