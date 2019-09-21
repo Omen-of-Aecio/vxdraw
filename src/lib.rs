@@ -89,8 +89,8 @@ extern crate test;
 pub use crate::data::VxDraw;
 use crate::data::{DrawType, LayerHoles, StreamingTextureWrite};
 use arrayvec::ArrayVec;
-pub use cgmath::prelude::*;
-pub use cgmath::Matrix4;
+use cgmath::prelude::*;
+pub use cgmath::{Deg, Matrix4, Rad};
 use fast_logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;

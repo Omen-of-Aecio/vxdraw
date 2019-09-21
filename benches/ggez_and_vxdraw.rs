@@ -10,7 +10,6 @@ criterion_main!(benches);
 // function which also handles GPU upload.
 
 fn benchmark_vxdraw(c: &mut Criterion) {
-    use cgmath::{prelude::*, Deg};
     use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 
