@@ -6,8 +6,7 @@
 //! their form.
 //! # Example - Drawing a sprite #
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{dyntex::{ImgData, LayerOptions, Sprite}, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{dyntex::{ImgData, LayerOptions, Sprite}, prelude::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! fn main() {
 //!     static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //!     #[cfg(feature = "doctest-headless")]

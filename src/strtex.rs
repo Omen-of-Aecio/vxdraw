@@ -11,8 +11,7 @@
 //! # Example - Binary counter using a streaming texture #
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
-//! use cgmath::{prelude::*, Deg};
-//! use vxdraw::{strtex::{LayerOptions, Sprite}, void_logger, Color, ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, strtex::{LayerOptions, Sprite}, void_logger, Color, Deg, Matrix4 ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);

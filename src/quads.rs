@@ -9,8 +9,7 @@
 //! # Example - Simple quad and some operations #
 //! A showcase of basic operations on a quad.
 //! ```
-//! use cgmath::{prelude::*, Deg};
-//! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, void_logger, Deg, Color, ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
@@ -44,8 +43,7 @@
 //! # Example - Curtain-like fade based on 4 quads #
 //! This example moves 4 quads from the sides to "close" the scene as curtains would do.
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{quads::*, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, quads::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //!
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]

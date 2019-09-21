@@ -3,8 +3,7 @@
 //! # Example - Hello Triangle #
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
-//! use cgmath::{prelude::*, Matrix4};
-//! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Matrix4, ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
@@ -22,8 +21,7 @@
 //! ## Animation: Rotating triangle ##
 //! Here's a more interesting example:
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{debtri::DebugTriangle, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Deg, Matrix4 ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
@@ -53,8 +51,7 @@
 //! that only depends on the standard library. You can build your own "logger bridge" using this.
 //!
 //! ```
-//! use cgmath::{prelude::*, Matrix4};
-//! use vxdraw::*;
+//! use vxdraw::{prelude::*, Matrix4, *};
 //!
 //! fn main() {
 //!     let log = Box::new(|lvl: u8, msg| {
@@ -89,6 +86,7 @@ extern crate test;
 pub use crate::data::VxDraw;
 use crate::data::{DrawType, LayerHoles, StreamingTextureWrite};
 use arrayvec::ArrayVec;
+pub use cgmath::prelude as prelude;
 use cgmath::prelude::*;
 pub use cgmath::{Deg, Matrix4, Rad};
 use fast_logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};

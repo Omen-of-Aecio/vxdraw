@@ -2,8 +2,7 @@
 //!
 //! # Example - Drawing centered text #
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{text, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, text, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
@@ -36,8 +35,7 @@
 //! Text itself does not directly support textures, but by using blending modes we can overlay a texture
 //! onto the text.
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! fn main() {
 //!     static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //!     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];

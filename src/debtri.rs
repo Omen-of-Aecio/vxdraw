@@ -9,8 +9,7 @@
 //!
 //! See [debtri::Debtri] for all operations supported on debug triangles.
 //! ```
-//! use cgmath::{prelude::*, Deg, Matrix4};
-//! use vxdraw::{void_logger, Color, ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, void_logger, Color, Deg, Matrix4, ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
