@@ -88,7 +88,7 @@ use crate::{
     blender,
     data::{DrawType, SData, Text, VxDraw},
 };
-use cgmath::Rad;
+use cgmath::{Matrix4, Rad};
 use core::ptr::read;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -123,6 +123,7 @@ pub struct LayerOptions {
     blend: blender::Blender,
     vertex_shader: VertexShader,
     fragment_shader: FragmentShader,
+    fixed_perspective: Option<Matrix4<f32>>,
 }
 
 impl Default for LayerOptions {
@@ -132,6 +133,7 @@ impl Default for LayerOptions {
             blend: blender::Blender::default(),
             vertex_shader: VertexShader::Standard,
             fragment_shader: FragmentShader::Standard,
+            fixed_perspective: None,
         }
     }
 }
@@ -181,6 +183,12 @@ impl LayerOptions {
     /// Set the blender of this layer (see [blender])
     pub fn blend(mut self, blend_setter: impl Fn(blender::Blender) -> blender::Blender) -> Self {
         self.blend = blend_setter(self.blend);
+        self
+    }
+
+    /// Set a fixed perspective for this layer
+    pub fn fixed_perspective(mut self, mat: Matrix4<f32>) -> Self {
+        self.fixed_perspective = Some(mat);
         self
     }
 }
@@ -786,7 +794,7 @@ impl<'a> Texts<'a> {
             width: vec![],
             height: vec![],
 
-            fixed_perspective: None,
+            fixed_perspective: options.fixed_perspective,
 
             posbuf_touch: 0,
             opacbuf_touch: 0,
@@ -1463,6 +1471,29 @@ mod tests {
 
         let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(&mut vx, "centered_text_rotates_around_origin", img);
+    }
+
+    #[test]
+    fn fixed_perspective_text() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        let mut layer = vx.text().add_layer(
+            DEJAVU,
+            text::LayerOptions::new().fixed_perspective(Matrix4::from_angle_z(Deg(45.0))),
+        );
+
+        vx.text().add(
+            &mut layer,
+            "This text shall be\nrotated, as a whole,\nbecause of a fixed perspective",
+            text::TextOptions::new()
+                .font_size(40.0)
+                .origin((0.5, 0.5))
+                .rotation(0.3),
+        );
+
+        let img = vx.draw_frame_copy_framebuffer();
+        assert_swapchain_eq(&mut vx, "fixed_perspective_text", img);
     }
 
     #[test]
