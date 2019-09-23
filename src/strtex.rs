@@ -824,6 +824,8 @@ impl<'a> Strtex<'a> {
             hidden: false,
             removed: vec![],
 
+            fixed_perspective: options.fixed_perspective,
+
             width: options.width as u32,
             height: options.height as u32,
 

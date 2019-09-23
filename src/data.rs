@@ -124,6 +124,8 @@ pub(crate) struct StreamingTexture {
     pub(crate) hidden: bool,
     pub(crate) removed: Vec<usize>,
 
+    pub(crate) fixed_perspective: Option<Matrix4<f32>>,
+
     pub(crate) width: u32,
     pub(crate) height: u32,
 

@@ -86,7 +86,7 @@ extern crate test;
 pub use crate::data::VxDraw;
 use crate::data::{DrawType, LayerHoles, StreamingTextureWrite};
 use arrayvec::ArrayVec;
-pub use cgmath::prelude as prelude;
+pub use cgmath::prelude;
 use cgmath::prelude::*;
 pub use cgmath::{Deg, Matrix4, Rad};
 use fast_logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
@@ -1308,12 +1308,21 @@ impl VxDraw {
                                         (text.opacbuf[self.current_frame].buffer(), 0),
                                     ]
                                     .into();
-                                    enc.push_graphics_constants(
-                                        &text.pipeline_layout,
-                                        pso::ShaderStageFlags::VERTEX,
-                                        0,
-                                        &*(view.as_ptr() as *const [u32; 16]),
-                                    );
+                                    if let Some(persp) = text.fixed_perspective {
+                                        enc.push_graphics_constants(
+                                            &text.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(persp.as_ptr() as *const [u32; 16]),
+                                        );
+                                    } else {
+                                        enc.push_graphics_constants(
+                                            &text.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(view.as_ptr() as *const [u32; 16]),
+                                        );
+                                    }
                                     enc.bind_graphics_descriptor_sets(
                                         &text.pipeline_layout,
                                         0,
@@ -1452,12 +1461,21 @@ impl VxDraw {
                                         (strtex.opacbuf[self.current_frame].buffer(), 0),
                                     ]
                                     .into();
-                                    enc.push_graphics_constants(
-                                        &strtex.pipeline_layout,
-                                        pso::ShaderStageFlags::VERTEX,
-                                        0,
-                                        &*(view.as_ptr() as *const [u32; 16]),
-                                    );
+                                    if let Some(persp) = strtex.fixed_perspective {
+                                        enc.push_graphics_constants(
+                                            &strtex.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(persp.as_ptr() as *const [u32; 16]),
+                                        );
+                                    } else {
+                                        enc.push_graphics_constants(
+                                            &strtex.pipeline_layout,
+                                            pso::ShaderStageFlags::VERTEX,
+                                            0,
+                                            &*(view.as_ptr() as *const [u32; 16]),
+                                        );
+                                    }
                                     enc.bind_graphics_descriptor_sets(
                                         &strtex.pipeline_layout,
                                         0,
