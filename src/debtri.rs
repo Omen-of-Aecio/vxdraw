@@ -162,11 +162,11 @@ impl<'a> Debtri<'a> {
     /// Check if invariants are held for this object
     fn check_health(&self) {
         let imgcnt = self.vx.swapconfig.image_count as usize;
-        debug_assert![self.vx.debtris.posbuf.len() == imgcnt];
-        debug_assert![self.vx.debtris.colbuf.len() == imgcnt];
-        debug_assert![self.vx.debtris.tranbuf.len() == imgcnt];
-        debug_assert![self.vx.debtris.rotbuf.len() == imgcnt];
-        debug_assert![self.vx.debtris.scalebuf.len() == imgcnt];
+        debug_assert_eq![self.vx.debtris.posbuf.len(), imgcnt];
+        debug_assert_eq![self.vx.debtris.colbuf.len(), imgcnt];
+        debug_assert_eq![self.vx.debtris.tranbuf.len(), imgcnt];
+        debug_assert_eq![self.vx.debtris.rotbuf.len(), imgcnt];
+        debug_assert_eq![self.vx.debtris.scalebuf.len(), imgcnt];
 
         let imgcnt = self.vx.swapconfig.image_count;
         debug_assert![self.vx.debtris.posbuf_touch <= imgcnt];

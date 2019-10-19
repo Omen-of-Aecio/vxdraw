@@ -431,6 +431,9 @@ impl VxDraw {
         let images_string = format!["{:#?}", images];
         debug![log, "Image information"; "images" => images_string];
 
+        swap_config.image_count = images.len() as u32;
+        let image_count = images.len();
+
         // NOTE: for curious people, the render_pass, used in both framebuffer creation AND command
         // buffer when drawing, only need to be _compatible_, which means the SAMPLE count and the
         // FORMAT is _the exact same_.
@@ -927,6 +930,7 @@ impl VxDraw {
         }
         .expect("Unable to create swapchain");
 
+        self.swapconfig.image_count = images.len() as u32;
         self.swapchain = ManuallyDrop::new(swapchain);
 
         // unsafe {
