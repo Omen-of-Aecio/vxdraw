@@ -371,6 +371,7 @@ pub struct VxDraw {
 
     pub(crate) queue_group: gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>,
     pub(crate) clear_color: ClearColor,
+    pub(crate) resized_since_last_render: bool,
 
     ////////////////////////////////////////////////////////////
     // WARNING: ORDER SENSITIVE CODE

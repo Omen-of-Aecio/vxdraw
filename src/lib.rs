@@ -648,6 +648,7 @@ impl VxDraw {
                 h: dims.height as i16,
             },
             render_pass: ManuallyDrop::new(render_pass),
+            resized_since_last_render: false,
             surf,
             swapchain: ManuallyDrop::new(swapchain),
             swapconfig: swap_config,
@@ -667,6 +668,7 @@ impl VxDraw {
             clear_color: ClearColor::Sfloat([1.0f32, 0.25, 0.5, 0.0]),
         };
         vx.window_resized_recreate_swapchain();
+        vx.resized_since_last_render = false;
         vx
     }
 
@@ -838,8 +840,14 @@ impl VxDraw {
         self.draw_frame_internal(|_, _| {});
     }
 
+    /// Check if the window has been resized since the last rendering
+    pub fn resized_since_last_render(&self) -> bool {
+        self.resized_since_last_render
+    }
+
     /// Recreate the swapchain, must be called after a window resize
     fn window_resized_recreate_swapchain(&mut self) {
+        self.resized_since_last_render = true;
         self.device.wait_idle().unwrap();
 
         let (caps, formats, present_modes) = self.surf.compatibility(&self.adapter.physical_device);
@@ -1079,6 +1087,8 @@ impl VxDraw {
         &mut self,
         postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
     ) -> T {
+        self.resized_since_last_render = false;
+
         let view = self.perspective;
         let postproc_res = unsafe {
             let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match self
