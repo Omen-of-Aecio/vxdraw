@@ -1,6 +1,6 @@
 [package]
 name = "vxdraw"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Kevin Robert Stravers <macocio@gmail.com>", "Erlend Langseth <3rlendhl@gmail.com>"]
 edition = "2018"
 description = "Simple 2D rendering library"

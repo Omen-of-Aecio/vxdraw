@@ -714,6 +714,11 @@ impl<'a> Quads<'a> {
         }
     }
 
+    /// Set the fixed perspective of a layer. `None` uses the vxdraw perspective.
+    pub fn set_perspective(&mut self, layer: &Layer, perspective: Option<Matrix4<f32>>) {
+        self.vx.quads[layer.0].fixed_perspective = perspective;
+    }
+
     /// Query the amount of layers of this type there are
     pub fn layer_count(&self) -> usize {
         self.vx.quads.len()
