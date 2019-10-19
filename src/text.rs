@@ -1485,7 +1485,7 @@ mod tests {
 
         let mut layer = vx.text().add_layer(
             DEJAVU,
-            text::LayerOptions::new().fixed_perspective(Matrix4::from_angle_z(Deg(45.0))),
+            text::LayerOptions::new().fixed_perspective(Matrix4::from_angle_z(Deg(-17.188))),
         );
 
         vx.text().add(
@@ -1494,7 +1494,6 @@ mod tests {
             text::TextOptions::new()
                 .font_size(40.0)
                 .origin((0.5, 0.5))
-                .rotation(0.3),
         );
 
         let img = vx.draw_frame_copy_framebuffer();
