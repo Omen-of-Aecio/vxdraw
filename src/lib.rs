@@ -1144,12 +1144,53 @@ impl VxDraw {
             }
 
             {
-                let buffer = &mut self.command_buffers[self.current_frame];
+                let buffer = &mut self.command_buffers[self.current_frame as usize];
+
                 let clear_values = [
                     ClearValue::Color(self.clear_color),
                     ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0)),
                 ];
                 buffer.begin(false);
+
+                let image_barrier = memory::Barrier::Image {
+                    states: (image::Access::empty(), image::Layout::Undefined)
+                        ..(
+                            image::Access::empty(),
+                            image::Layout::ColorAttachmentOptimal,
+                        ),
+                    target: &self.images[swap_image.0 as usize],
+                    families: None,
+                    range: image::SubresourceRange {
+                        aspects: format::Aspects::COLOR,
+                        levels: 0..1,
+                        layers: 0..1,
+                    },
+                };
+                buffer.pipeline_barrier(
+                    pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                    memory::Dependencies::empty(),
+                    &[image_barrier],
+                );
+
+                let image_barrier = memory::Barrier::Image {
+                    states: (
+                        image::Access::empty(),
+                        image::Layout::ColorAttachmentOptimal,
+                    )..(image::Access::empty(), image::Layout::Present),
+                    target: &self.images[swap_image.0 as usize],
+                    families: None,
+                    range: image::SubresourceRange {
+                        aspects: format::Aspects::COLOR,
+                        levels: 0..1,
+                        layers: 0..1,
+                    },
+                };
+                buffer.pipeline_barrier(
+                    pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::BOTTOM_OF_PIPE,
+                    memory::Dependencies::empty(),
+                    &[image_barrier],
+                );
+
                 let rect = pso::Rect {
                     x: 0,
                     y: 0,
@@ -1240,6 +1281,7 @@ impl VxDraw {
                         &[image_barrier],
                     );
                 }
+
                 {
                     let mut enc = buffer.begin_render_pass_inline(
                         &self.render_pass,
@@ -1770,6 +1812,7 @@ impl VxDraw {
                         enc.draw(0..(count * 3) as u32, 0..1);
                     }
                 }
+
                 buffer.finish();
             }
 

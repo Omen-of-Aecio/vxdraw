@@ -568,7 +568,7 @@ pub(crate) fn copy_image_to_rgb(
             },
         };
         cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::TRANSFER,
+            pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::TRANSFER,
             gfx_hal::memory::Dependencies::empty(),
             &[image_barrier, dstbarrier],
         );
@@ -615,7 +615,7 @@ pub(crate) fn copy_image_to_rgb(
             },
         };
         cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::TRANSFER..pso::PipelineStage::BOTTOM_OF_PIPE,
+            pso::PipelineStage::TRANSFER..pso::PipelineStage::TOP_OF_PIPE,
             gfx_hal::memory::Dependencies::empty(),
             &[image_barrier],
         );

@@ -88,7 +88,7 @@ use crate::{
     blender,
     data::{DrawType, SData, Text, VxDraw},
 };
-use cgmath::{Matrix4, Rad};
+use cgmath::{Matrix4, Rad, Vector4};
 use core::ptr::read;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
@@ -1351,6 +1351,43 @@ impl<'a> Texts<'a> {
         self.vx.texts[handle.layer].height[handle.id] as f32 / PIX_WIDTH_DIVISOR
     }
 
+    /// Get the size of the model in object coordinates.
+    pub fn get_model_size(&self, handle: &Handle) -> (f32, f32) {
+        (self.get_width(handle), self.get_height(handle))
+    }
+
+    /// Get the width and height after the shader would've performed its transformations to
+    /// the text.
+    ///
+    /// The result is given in -1..1 coordinates that are mapped fully to the window.
+    /// Note that this depends on the perspective set on either [VxDraw] or the specific text
+    /// layer.
+    pub fn get_world_size(&self, handle: &Handle) -> (f32, f32) {
+        let (w, h) = self.get_model_size(handle);
+        let scale = self.vx.texts[handle.layer].scalebuffer[handle.vertices.start][0];
+        let rotation = self.vx.texts[handle.layer].rotbuffer[handle.vertices.start][0];
+
+        let size = Vector4::new(w, h, 0.0, 0.0);
+        let angle = Matrix4::from_angle_z(Rad(rotation));
+
+        let world = if let Some(prspect) = self.vx.texts[handle.layer].fixed_perspective {
+            prspect * angle * scale * size
+        } else {
+            self.vx.perspective * angle * scale * size
+        };
+        (world.x.abs(), world.y.abs())
+    }
+
+    /// Get the width and height after the shader would've performed its transformations to
+    /// the text.
+    ///
+    /// The result is given in pixel values
+    pub fn get_world_size_in_pixels(&self, handle: &Handle) -> (f32, f32) {
+        let (w, h) = self.get_world_size(handle);
+        let (ww, wh) = self.vx.get_window_size_in_pixels_float();
+        (w * ww / 2.0, h * wh / 2.0)
+    }
+
     /// Get the amount of glyphs for this handle
     pub fn get_glyph_count(&self, handle: &Handle) -> usize {
         handle.vertices.end - handle.vertices.start
@@ -1459,6 +1496,54 @@ mod tests {
     }
 
     #[test]
+    fn text_world_size() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+
+        let handle = vx.text().add(
+            &mut layer,
+            "text that spans to end of the screen",
+            text::TextOptions::new().font_size(32.0),
+        );
+
+        assert_eq![
+            (454.116, 29.536001),
+            vx.text().get_world_size_in_pixels(&handle)
+        ];
+
+        vx.text().set_rotation(&handle, Deg(90.0));
+
+        assert_eq![
+            (29.536022, 454.116),
+            vx.text().get_world_size_in_pixels(&handle)
+        ];
+
+        vx.set_perspective(Matrix4::from_angle_z(Deg(-90.0)));
+
+        assert_eq![
+            (454.116, 29.536001),
+            vx.text().get_world_size_in_pixels(&handle)
+        ];
+
+        vx.text().set_scale(&handle, 2.0);
+
+        assert_eq![
+            (908.232, 59.072002),
+            vx.text().get_world_size_in_pixels(&handle)
+        ];
+        assert_eq![(1.968, 0.128), vx.text().get_world_size(&handle)];
+
+        vx.set_perspective(Matrix4::from_angle_z(Deg(45.0)));
+
+        assert_eq![
+            (683.9873, 600.4468),
+            vx.text().get_world_size_in_pixels(&handle)
+        ];
+    }
+
+    #[test]
     fn centered_text_rotates_around_origin() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
@@ -1491,9 +1576,7 @@ mod tests {
         vx.text().add(
             &mut layer,
             "This text shall be\nrotated, as a whole,\nbecause of a fixed perspective",
-            text::TextOptions::new()
-                .font_size(40.0)
-                .origin((0.5, 0.5))
+            text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
         );
 
         let img = vx.draw_frame_copy_framebuffer();
