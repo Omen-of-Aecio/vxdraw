@@ -1352,8 +1352,26 @@ impl<'a> Texts<'a> {
     }
 
     /// Get the size of the model in object coordinates.
+    ///
+    /// Returns the bounding box of the text that takes into account scale and rotation
+    /// The perspective used during rendering does not factor into the model size.
     pub fn get_model_size(&self, handle: &Handle) -> (f32, f32) {
-        (self.get_width(handle), self.get_height(handle))
+        let (w, h) = (self.get_width(handle), self.get_height(handle));
+        let scale = self.vx.texts[handle.layer].scalebuffer[handle.vertices.start][0];
+        let rotation = self.vx.texts[handle.layer].rotbuffer[handle.vertices.start][0];
+
+        let size = Vector4::new(w, h, 0.0, 0.0);
+        let angle = Matrix4::from_angle_z(Rad(rotation));
+
+        let model_space = angle * scale * size;
+        (model_space.x.abs(), model_space.y.abs())
+    }
+
+    /// Get the size of the model in pixels
+    pub fn get_model_size_in_pixels(&self, handle: &Handle) -> (f32, f32) {
+        let (w, h) = self.get_model_size(handle);
+        let (ww, wh) = self.vx.get_window_size_in_pixels_float();
+        (w * ww / 2.0, h * wh / 2.0)
     }
 
     /// Get the width and height after the shader would've performed its transformations to
@@ -1363,7 +1381,7 @@ impl<'a> Texts<'a> {
     /// Note that this depends on the perspective set on either [VxDraw] or the specific text
     /// layer.
     pub fn get_world_size(&self, handle: &Handle) -> (f32, f32) {
-        let (w, h) = self.get_model_size(handle);
+        let (w, h) = (self.get_width(handle), self.get_height(handle));
         let scale = self.vx.texts[handle.layer].scalebuffer[handle.vertices.start][0];
         let rotation = self.vx.texts[handle.layer].rotbuffer[handle.vertices.start][0];
 
@@ -1541,6 +1559,16 @@ mod tests {
             (683.9873, 600.4468),
             vx.text().get_world_size_in_pixels(&handle)
         ];
+
+        assert_eq![(0.1280001, 1.968), vx.text().get_model_size(&handle)];
+
+        vx.text().set_scale(&handle, 0.5);
+
+        assert_eq![(0.032000024, 0.492), vx.text().get_model_size(&handle)];
+
+        vx.set_perspective(Matrix4::identity());
+
+        assert_eq![(0.032000024, 0.492), vx.text().get_model_size(&handle)];
     }
 
     #[test]
