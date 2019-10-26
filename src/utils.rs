@@ -521,14 +521,14 @@ pub(crate) fn copy_image_to_rgb(
         make_transfer_buffer_of_size(s, u64::from(width * height * 4));
     let (imgbuf, imgmem, _imgreq) = make_transfer_img_of_size(s, width, height);
     let images = &s.images;
-    unsafe {
-        s.device
-            .wait_for_fence(
-                &s.frames_in_flight_fences[s.current_frame],
-                u64::max_value(),
-            )
-            .expect("Unable to wait for fence");
-    }
+    // unsafe {
+    //     s.device
+    //         .wait_for_fence(
+    //             &s.frames_in_flight_fences[s.current_frame],
+    //             u64::max_value(),
+    //         )
+    //         .expect("Unable to wait for fence");
+    // }
     unsafe {
         let mut cmd_buffer = s.command_pool.allocate_one(command::Level::Primary);
         cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);

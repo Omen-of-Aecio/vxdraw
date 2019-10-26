@@ -1177,62 +1177,6 @@ impl VxDraw {
                 ];
                 buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
 
-                // let image_barrier = memory::Barrier::Image {
-                //     states: (image::Access::empty(), image::Layout::Undefined)
-                //         ..(
-                //             image::Access::empty(),
-                //             image::Layout::ColorAttachmentOptimal,
-                //         ),
-                //     target: &self.images[swap_image.0 as usize],
-                //     families: None,
-                //     range: image::SubresourceRange {
-                //         aspects: format::Aspects::COLOR,
-                //         levels: 0..1,
-                //         layers: 0..1,
-                //     },
-                // };
-                // buffer.pipeline_barrier(
-                //     pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-                //     memory::Dependencies::empty(),
-                //     &[image_barrier],
-                // );
-
-                // let image_barrier = memory::Barrier::Image {
-                //     states: (
-                //         image::Access::empty(),
-                //         image::Layout::ColorAttachmentOptimal,
-                //     )..(image::Access::empty(), image::Layout::Present),
-                //     target: &self.images[swap_image.0 as usize],
-                //     families: None,
-                //     range: image::SubresourceRange {
-                //         aspects: format::Aspects::COLOR,
-                //         levels: 0..1,
-                //         layers: 0..1,
-                //     },
-                // };
-                // buffer.pipeline_barrier(
-                //     pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::BOTTOM_OF_PIPE,
-                //     memory::Dependencies::empty(),
-                //     &[image_barrier],
-                // );
-
-                let image_barrier = memory::Barrier::Image {
-                    states: (image::Access::empty(), image::Layout::Undefined)
-                        ..(image::Access::empty(), image::Layout::Present),
-                    target: &self.images[swap_image.0 as usize],
-                    families: None,
-                    range: image::SubresourceRange {
-                        aspects: format::Aspects::COLOR,
-                        levels: 0..1,
-                        layers: 0..1,
-                    },
-                };
-                buffer.pipeline_barrier(
-                    pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::BOTTOM_OF_PIPE,
-                    memory::Dependencies::empty(),
-                    &[image_barrier],
-                );
-
                 let rect = pso::Rect {
                     x: 0,
                     y: 0,
@@ -1323,6 +1267,23 @@ impl VxDraw {
                         &[image_barrier],
                     );
                 }
+
+                let image_barrier = memory::Barrier::Image {
+                    states: (image::Access::empty(), image::Layout::Undefined)
+                        ..(image::Access::empty(), image::Layout::Present),
+                    target: &self.images[swap_image.0 as usize],
+                    families: None,
+                    range: image::SubresourceRange {
+                        aspects: format::Aspects::COLOR,
+                        levels: 0..1,
+                        layers: 0..1,
+                    },
+                };
+                buffer.pipeline_barrier(
+                    pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::BOTTOM_OF_PIPE,
+                    memory::Dependencies::empty(),
+                    &[image_barrier],
+                );
 
                 {
                     buffer.begin_render_pass(
