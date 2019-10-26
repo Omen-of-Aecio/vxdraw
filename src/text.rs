@@ -4,30 +4,28 @@
 //! ```
 //! use vxdraw::{prelude::*, text, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     // Create a new layer. A layer consists of a font file and some options
-//!     let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+//! // Create a new layer. A layer consists of a font file and some options
+//! let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 //!
-//!     // Create a new piece of text. We use the origin to center the text. The origin spans
-//!     // between 0 and 1, where 0 is the left-most side of the entire text section, and 1 the
-//!     // right-most. The same goes for the top and bottom respectively. Note that values outside
-//!     // of 0 to 1 are allowed, and define the origin of transformations on that text.
-//!     vx.text().add(
-//!         &mut layer,
-//!         "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
-//!         text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
-//!     );
+//! // Create a new piece of text. We use the origin to center the text. The origin spans
+//! // between 0 and 1, where 0 is the left-most side of the entire text section, and 1 the
+//! // right-most. The same goes for the top and bottom respectively. Note that values outside
+//! // of 0 to 1 are allowed, and define the origin of transformations on that text.
+//! vx.text().add(
+//!     &mut layer,
+//!     "This text shall be\ncentered, as a whole,\nbut each line is not centered individually",
+//!     text::TextOptions::new().font_size(40.0).origin((0.5, 0.5)),
+//! );
 //!
-//!     vx.draw_frame();
+//! vx.draw_frame();
 //!
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
 //! ```
 //!
 //! # Example - Textured text #
@@ -36,51 +34,49 @@
 //! onto the text.
 //! ```
 //! use vxdraw::{prelude::*, blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
-//! fn main() {
-//!     static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
-//!     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+//! static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
+//! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //!
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     let clear_alpha = vx.quads().add_layer(&quads::LayerOptions::new().blend(|x| {
-//!         x.alpha(blender::BlendOp::Add {
-//!             src: blender::BlendFactor::Zero,
-//!             dst: blender::BlendFactor::Zero,
+//! let clear_alpha = vx.quads().add_layer(&quads::LayerOptions::new().blend(|x| {
+//!     x.alpha(blender::BlendOp::Add {
+//!         src: blender::BlendFactor::Zero,
+//!         dst: blender::BlendFactor::Zero,
+//!     })
+//! })
+//! .fixed_perspective(Matrix4::identity()));
+//!
+//! let text =  vx.text().add_layer(DEJAVU, text::LayerOptions::new().blend(|x| {
+//!     x.alpha(blender::BlendOp::Add {
+//!         src: blender::BlendFactor::One,
+//!         dst: blender::BlendFactor::Zero,
+//!     })
+//! }));
+//!
+//! let texture = vx.dyntex().add_layer(
+//!     FOREST,
+//!     &LayerOptions::new().blend(|x| {
+//!         x.colors(blender::BlendOp::Add {
+//!             src: blender::BlendFactor::DstAlpha,
+//!             dst: blender::BlendFactor::OneMinusDstAlpha,
 //!         })
 //!     })
-//!     .fixed_perspective(Matrix4::identity()));
+//!     .filter(Filter::Linear),
+//! );
 //!
-//!     let text =  vx.text().add_layer(DEJAVU, text::LayerOptions::new().blend(|x| {
-//!         x.alpha(blender::BlendOp::Add {
-//!             src: blender::BlendFactor::One,
-//!             dst: blender::BlendFactor::Zero,
-//!         })
-//!     }));
+//! vx.quads().add(&clear_alpha, quads::Quad::new());
+//! vx.text().add(&text, "This is\ntextured text", text::TextOptions::new()
+//!     .origin((0.5, 0.5))
+//!     .font_size(120.0));
+//! vx.dyntex().add(&texture, Sprite::new().scale(1.0));
 //!
-//!     let texture = vx.dyntex().add_layer(
-//!         FOREST,
-//!         &LayerOptions::new().blend(|x| {
-//!             x.colors(blender::BlendOp::Add {
-//!                 src: blender::BlendFactor::DstAlpha,
-//!                 dst: blender::BlendFactor::OneMinusDstAlpha,
-//!             })
-//!         })
-//!         .filter(Filter::Linear),
-//!     );
-//!
-//!     vx.quads().add(&clear_alpha, quads::Quad::new());
-//!     vx.text().add(&text, "This is\ntextured text", text::TextOptions::new()
-//!         .origin((0.5, 0.5))
-//!         .font_size(120.0));
-//!     vx.dyntex().add(&texture, Sprite::new().scale(1.0));
-//!
-//!     vx.draw_frame();
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! vx.draw_frame();
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
 //! ```
 ////!     #[cfg(not(test))]
 use super::utils::*;

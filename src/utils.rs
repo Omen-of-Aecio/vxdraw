@@ -271,7 +271,7 @@ impl ResizBuf {
                 let data_target = device
                     .map_memory(&self.memory, 0..self.requirements.size)
                     .expect("Failed to acquire a memory writer!");
-                let data_target = std::mem::transmute::<_, *mut T>(data_target);
+                let data_target = data_target as *mut T;
                 std::slice::from_raw_parts_mut(
                     data_target,
                     self.requirements.size as usize / std::mem::size_of::<T>(),

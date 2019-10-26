@@ -4,44 +4,40 @@
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
 //! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Matrix4, ShowWindow, VxDraw};
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     vx.debtri().add(DebugTriangle::default());
-//!     vx.draw_frame();
+//! vx.debtri().add(DebugTriangle::default());
+//! vx.draw_frame();
 //!
-//!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! // Sleep here so the window does not instantly disappear
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
 //! ```
 //! ## Animation: Rotating triangle ##
 //! Here's a more interesting example:
 //! ```
 //! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!
+//! // Spawn a debug triangle, the handle is used to refer to it later
+//! let handle = vx.debtri().add(DebugTriangle::default());
+//!
+//! for _ in 0..360 {
+//!     // Rotate the triangle by 1 degree
+//!     vx.debtri().rotate(&handle, Deg(1.0));
+//!
+//!     // Draw the scene
+//!     vx.draw_frame();
+//!
+//!     // Wait 10 milliseconds
 //!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
-//!
-//!     // Spawn a debug triangle, the handle is used to refer to it later
-//!     let handle = vx.debtri().add(DebugTriangle::default());
-//!
-//!     for _ in 0..360 {
-//!         // Rotate the triangle by 1 degree
-//!         vx.debtri().rotate(&handle, Deg(1.0));
-//!
-//!         // Draw the scene
-//!         vx.draw_frame();
-//!
-//!         // Wait 10 milliseconds
-//!         #[cfg(not(feature = "doctest-headless"))]
-//!         std::thread::sleep(std::time::Duration::new(0, 10_000_000));
-//!     }
+//!     std::thread::sleep(std::time::Duration::new(0, 10_000_000));
 //! }
 //! ```
 //!
@@ -53,31 +49,29 @@
 //! ```
 //! use vxdraw::{prelude::*, Matrix4, *};
 //!
-//! fn main() {
-//!     let log = Box::new(|lvl: u8, msg| {
-//!         struct Adapter {
-//!             pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
+//! let log = Box::new(|lvl: u8, msg| {
+//!     struct Adapter {
+//!         pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
+//!     }
+//!     impl std::fmt::Display for Adapter {
+//!         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//!             (self.msg)(f)
 //!         }
-//!         impl std::fmt::Display for Adapter {
-//!             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!                 (self.msg)(f)
-//!             }
-//!         }
-//!         println!["{} @ {}", lvl, Adapter { msg }];
-//!     });
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!     }
+//!     println!["{} @ {}", lvl, Adapter { msg }];
+//! });
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     vx.debtri().add(debtri::DebugTriangle::default());
+//! vx.debtri().add(debtri::DebugTriangle::default());
 //!
-//!     vx.draw_frame();
+//! vx.draw_frame();
 //!
-//!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! // Sleep here so the window does not instantly disappear
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
 //! ```
 #![feature(test)]
 #![deny(missing_docs)]

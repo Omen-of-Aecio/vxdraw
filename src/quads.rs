@@ -10,34 +10,32 @@
 //! A showcase of basic operations on a quad.
 //! ```
 //! use vxdraw::{prelude::*, void_logger, Deg, Color, ShowWindow, VxDraw};
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     // Create a new layer of quads
-//!     let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::new());
+//! // Create a new layer of quads
+//! let quad = vx.quads().add_layer(&vxdraw::quads::LayerOptions::new());
 //!
-//!     // Create a new quad
-//!     let handle = vx.quads().add(&quad, vxdraw::quads::Quad::new());
+//! // Create a new quad
+//! let handle = vx.quads().add(&quad, vxdraw::quads::Quad::new());
 //!
-//!     // Turn the quad white
-//!     vx.quads().set_solid_color(&handle, Color::Rgba(255, 255, 255, 255));
+//! // Turn the quad white
+//! vx.quads().set_solid_color(&handle, Color::Rgba(255, 255, 255, 255));
 //!
-//!     // Rotate the quad 45 degrees (counter clockwise)
-//!     vx.quads().set_rotation(&handle, Deg(45.0));
+//! // Rotate the quad 45 degrees (counter clockwise)
+//! vx.quads().set_rotation(&handle, Deg(45.0));
 //!
-//!     // Scale the quad to half its current size
-//!     vx.quads().scale(&handle, 0.5);
+//! // Scale the quad to half its current size
+//! vx.quads().scale(&handle, 0.5);
 //!
-//!     // Draw the frame
-//!     vx.draw_frame();
+//! // Draw the frame
+//! vx.draw_frame();
 //!
-//!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! // Sleep here so the window does not instantly disappear
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
 //! ```
 //!
 //! # Example - Curtain-like fade based on 4 quads #
@@ -45,75 +43,73 @@
 //! ```
 //! use vxdraw::{prelude::*, quads::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //!
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//!
+//! // Create a new layer of quads
+//! let layer = vx.quads().add_layer(&LayerOptions::new());
+//!
+//! // The width of the faded quad, try changing this to 2.0, or 1.0 and observe
+//! let fade_width = 0.5;
+//!
+//! // The left quad data, has the right vertices completely transparent
+//! let quad_data = Quad::new()
+//!     .width(fade_width)
+//!     .colors([
+//!         (0, 0, 0, 255),
+//!         (0, 0, 0, 255),
+//!         (0, 0, 0, 0),
+//!         (0, 0, 0, 0),
+//!     ])
+//!     .translation((- 1.0 - fade_width / 2.0, 0.0));
+//!
+//! // Create a new quad
+//! let left_quad_fade = vx.quads().add(&layer, quad_data);
+//!
+//! // The right quad data, has the left vertices completely transparent
+//! let quad_data = Quad::new()
+//!     .width(fade_width)
+//!     .colors([
+//!         (0, 0, 0, 0),
+//!         (0, 0, 0, 0),
+//!         (0, 0, 0, 255),
+//!         (0, 0, 0, 255),
+//!     ])
+//!     .translation((1.0 + fade_width / 2.0, 0.0));
+//!
+//! // Create a new quad
+//! let right_quad_fade = vx.quads().add(&layer, quad_data);
+//!
+//! // Now create the completely black quads
+//! let quad_data = Quad::new();
+//! let left_quad = vx.quads().add(&layer, quad_data);
+//! let right_quad = vx.quads().add(&layer, quad_data);
+//!
+//! // Some math to ensure the faded quad and the solid quads move at the same rate, and that
+//! // both solid quads cover half the screen on the last frame.
+//! let fade_width_offscreen = 1.0 + fade_width / 2.0;
+//! let fade_pos_solid = 2.0 + fade_width;
+//! let nlscale = (1.0 + fade_width) / (1.0 + fade_width / 2.0);
+//!
+//! // How many frames the entire animation takes, try making it shorter or longer
+//! let frames = 50;
+//!
+//! for idx in 0..frames {
+//!
+//!     let perc = idx as f32 * nlscale;
+//!     // Move the quads
+//!     vx.quads().set_translation(&left_quad_fade, (-fade_width_offscreen + (fade_width_offscreen / frames as f32) * perc, 0.0));
+//!     vx.quads().set_translation(&right_quad_fade, (fade_width_offscreen - (fade_width_offscreen / frames as f32) * perc, 0.0));
+//!     vx.quads().set_translation(&left_quad, (-fade_pos_solid + (fade_width_offscreen / frames as f32) * perc, 0.0));
+//!     vx.quads().set_translation(&right_quad, (fade_pos_solid - (fade_width_offscreen / frames as f32) * perc, 0.0));
+//!
+//!     vx.draw_frame();
+//!
+//!     // Sleep so we can see some animation
 //!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
-//!
-//!     // Create a new layer of quads
-//!     let layer = vx.quads().add_layer(&LayerOptions::new());
-//!
-//!     // The width of the faded quad, try changing this to 2.0, or 1.0 and observe
-//!     let fade_width = 0.5;
-//!
-//!     // The left quad data, has the right vertices completely transparent
-//!     let quad_data = Quad::new()
-//!         .width(fade_width)
-//!         .colors([
-//!             (0, 0, 0, 255),
-//!             (0, 0, 0, 255),
-//!             (0, 0, 0, 0),
-//!             (0, 0, 0, 0),
-//!         ])
-//!         .translation((- 1.0 - fade_width / 2.0, 0.0));
-//!
-//!     // Create a new quad
-//!     let left_quad_fade = vx.quads().add(&layer, quad_data);
-//!
-//!     // The right quad data, has the left vertices completely transparent
-//!     let quad_data = Quad::new()
-//!         .width(fade_width)
-//!         .colors([
-//!             (0, 0, 0, 0),
-//!             (0, 0, 0, 0),
-//!             (0, 0, 0, 255),
-//!             (0, 0, 0, 255),
-//!         ])
-//!         .translation((1.0 + fade_width / 2.0, 0.0));
-//!
-//!     // Create a new quad
-//!     let right_quad_fade = vx.quads().add(&layer, quad_data);
-//!
-//!     // Now create the completely black quads
-//!     let quad_data = Quad::new();
-//!     let left_quad = vx.quads().add(&layer, quad_data);
-//!     let right_quad = vx.quads().add(&layer, quad_data);
-//!
-//!     // Some math to ensure the faded quad and the solid quads move at the same rate, and that
-//!     // both solid quads cover half the screen on the last frame.
-//!     let fade_width_offscreen = 1.0 + fade_width / 2.0;
-//!     let fade_pos_solid = 2.0 + fade_width;
-//!     let nlscale = (1.0 + fade_width) / (1.0 + fade_width / 2.0);
-//!
-//!     // How many frames the entire animation takes, try making it shorter or longer
-//!     let frames = 50;
-//!
-//!     for idx in 0..frames {
-//!
-//!         let perc = idx as f32 * nlscale;
-//!         // Move the quads
-//!         vx.quads().set_translation(&left_quad_fade, (-fade_width_offscreen + (fade_width_offscreen / frames as f32) * perc, 0.0));
-//!         vx.quads().set_translation(&right_quad_fade, (fade_width_offscreen - (fade_width_offscreen / frames as f32) * perc, 0.0));
-//!         vx.quads().set_translation(&left_quad, (-fade_pos_solid + (fade_width_offscreen / frames as f32) * perc, 0.0));
-//!         vx.quads().set_translation(&right_quad, (fade_pos_solid - (fade_width_offscreen / frames as f32) * perc, 0.0));
-//!
-//!         vx.draw_frame();
-//!
-//!         // Sleep so we can see some animation
-//!         #[cfg(not(feature = "doctest-headless"))]
-//!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
-//!     }
+//!     std::thread::sleep(std::time::Duration::new(0, 16_000_000));
 //! }
 //! ```
 //!

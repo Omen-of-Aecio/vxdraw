@@ -12,41 +12,39 @@
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
 //! use vxdraw::{prelude::*, strtex::{LayerOptions, Sprite}, void_logger, Color, Deg, Matrix4, ShowWindow, VxDraw};
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     // Create a new layer/streaming texture, each streaming texture is on its own layer
-//!     let clock = vx.strtex().add_layer(&LayerOptions::new().width(8));
+//! // Create a new layer/streaming texture, each streaming texture is on its own layer
+//! let clock = vx.strtex().add_layer(&LayerOptions::new().width(8));
 //!
-//!     // Create a new sprite view into this streaming texture
-//!     let handle = vx.strtex().add(&clock, Sprite::new());
+//! // Create a new sprite view into this streaming texture
+//! let handle = vx.strtex().add(&clock, Sprite::new());
 //!
-//!     for cnt in 0..=255 {
+//! for cnt in 0..=255 {
 //!
-//!         // Set all pixels accoring to the current count (cnt)
-//!         for idx in 0..8 {
-//!             let bit_set = cnt >> idx & 1 == 1;
-//!             vx.strtex().set_pixel(&clock,
-//!                 idx,
-//!                 0,
-//!                 if bit_set {
-//!                     Color::Rgba(0, (256 / 8 * idx) as u8, 0, 255)
-//!                 } else {
-//!                     Color::Rgba(0, 0, 0, 128)
-//!                 }
-//!             );
-//!         }
-//!
-//!         // Draw the frame
-//!         vx.draw_frame();
-//!
-//!         // Sleep here so we can see some animation
-//!         #[cfg(not(feature = "doctest-headless"))]
-//!         std::thread::sleep(std::time::Duration::new(0, 16_000_000));
+//!     // Set all pixels accoring to the current count (cnt)
+//!     for idx in 0..8 {
+//!         let bit_set = cnt >> idx & 1 == 1;
+//!         vx.strtex().set_pixel(&clock,
+//!             idx,
+//!             0,
+//!             if bit_set {
+//!                 Color::Rgba(0, (256 / 8 * idx) as u8, 0, 255)
+//!             } else {
+//!                 Color::Rgba(0, 0, 0, 128)
+//!             }
+//!         );
 //!     }
+//!
+//!     // Draw the frame
+//!     vx.draw_frame();
+//!
+//!     // Sleep here so we can see some animation
+//!     #[cfg(not(feature = "doctest-headless"))]
+//!     std::thread::sleep(std::time::Duration::new(0, 16_000_000));
 //! }
 //! ```
 use super::{blender, utils::*, Color};
@@ -1505,14 +1503,13 @@ impl<'a> Strtex<'a> {
                     )
                     .expect("unable to acquire mapping writer");
 
+                let target = target as *mut (u8, u8, u8, u8);
+
                 let slice = std::slice::from_raw_parts(
                     target,
-                    strtex.image_requirements[frame_number].size as usize,
+                    strtex.image_requirements[frame_number].size as usize / 4,
                 );
-                map(
-                    std::mem::transmute::<_, &[(u8, u8, u8, u8)]>(slice),
-                    (subres.row_pitch / 4) as usize,
-                );
+                map(slice, (subres.row_pitch / 4) as usize);
 
                 s.device.unmap_memory(&strtex.image_memory[frame_number]);
             }
@@ -1543,7 +1540,7 @@ impl<'a> Strtex<'a> {
                         )
                         .expect("unable to acquire mapping writer");
 
-                    let target = std::mem::transmute::<_, *mut (u8, u8, u8, u8)>(target);
+                    let target = target as *mut (u8, u8, u8, u8);
                     let slice = std::slice::from_raw_parts_mut(
                         target,
                         strtex.image_requirements[frame].size as usize / 4,

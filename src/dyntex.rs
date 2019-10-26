@@ -7,22 +7,20 @@
 //! # Example - Drawing a sprite #
 //! ```
 //! use vxdraw::{dyntex::{ImgData, LayerOptions, Sprite}, prelude::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
-//! fn main() {
-//!     static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
 //!
-//!     let mut dyntex = vx.dyntex();
-//!     let tex = dyntex.add_layer(TESTURE, &LayerOptions::new());
-//!     vx.dyntex().add(&tex, Sprite::new().scale(0.5));
+//! let mut dyntex = vx.dyntex();
+//! let tex = dyntex.add_layer(TESTURE, &LayerOptions::new());
+//! vx.dyntex().add(&tex, Sprite::new().scale(0.5));
 //!
-//!     vx.draw_frame();
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! vx.draw_frame();
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
 //! ```
 use super::{blender, utils::*, Color};
 use crate::data::{DrawType, DynamicTexture, VxDraw};

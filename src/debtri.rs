@@ -10,27 +10,26 @@
 //! See [debtri::Debtri] for all operations supported on debug triangles.
 //! ```
 //! use vxdraw::{prelude::*, void_logger, Color, Deg, Matrix4, ShowWindow, VxDraw};
-//! fn main() {
-//!     #[cfg(feature = "doctest-headless")]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! #[cfg(feature = "doctest-headless")]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! #[cfg(not(feature = "doctest-headless"))]
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
 //!
-//!     let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
+//! let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!
-//!     // Turn the triangle white
-//!     vx.debtri().set_color(&tri, Color::Rgba(255, 255, 255, 255));
+//! // Turn the triangle white
+//! vx.debtri().set_color(&tri, Color::Rgba(255, 255, 255, 255));
 //!
-//!     // Rotate the triangle 90 degrees (counter clockwise)
-//!     vx.debtri().set_rotation(&tri, Deg(90.0));
+//! // Rotate the triangle 90 degrees (counter clockwise)
+//! vx.debtri().set_rotation(&tri, Deg(90.0));
 //!
-//!     // Draw the frame with the identity matrix transformation (meaning no transformations)
-//!     vx.draw_frame();
+//! // Draw the frame with the identity matrix transformation (meaning no transformations)
+//! vx.draw_frame();
 //!
-//!     // Sleep here so the window does not instantly disappear
-//!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(3, 0));
-//! }
+//! // Sleep here so the window does not instantly disappear
+//! #[cfg(not(feature = "doctest-headless"))]
+//! std::thread::sleep(std::time::Duration::new(3, 0));
+//! ```
 use super::{utils::*, Color};
 use crate::data::{DebugTriangleData, VxDraw};
 use cgmath::Rad;
@@ -361,7 +360,7 @@ impl<'a> Debtri<'a> {
     /// wil be removed.
     pub fn pop_many(&mut self, n: usize) {
         let end = self.vx.debtris.posbuffer.len();
-        let begin = end.checked_sub(n).unwrap_or(0);
+        let begin = end.saturating_sub(n);
 
         let debtris = &mut self.vx.debtris;
         debtris.posbuffer.drain(begin..end);
