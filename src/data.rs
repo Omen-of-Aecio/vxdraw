@@ -9,7 +9,8 @@ use gfx_backend_gl as back;
 use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
-use gfx_hal::{command::ClearColor, device::Device, Adapter, Backend};
+use gfx_hal::{adapter::Adapter, command::ClearColor, device::Device, Backend, Instance};
+use smallvec::SmallVec;
 use std::mem::ManuallyDrop;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -156,7 +157,7 @@ pub(crate) struct StreamingTexture {
     pub(crate) image_memory: Vec<<back::Backend as Backend>::Memory>,
     pub(crate) image_requirements: Vec<gfx_hal::memory::Requirements>,
     pub(crate) image_view: Vec<<back::Backend as Backend>::ImageView>,
-    pub(crate) descriptor_sets: Vec<<back::Backend as Backend>::DescriptorSet>,
+    pub(crate) descriptor_sets: SmallVec<[<back::Backend as Backend>::DescriptorSet; 1]>,
 
     pub(crate) circular_writes: Vec<Vec<StreamingTextureWrite>>,
 
@@ -349,17 +350,9 @@ pub struct VxDraw {
     pub(crate) acquire_image_semaphore_free: ManuallyDrop<<back::Backend as Backend>::Semaphore>,
     pub(crate) acquire_image_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
     pub(crate) present_wait_semaphores: Vec<<back::Backend as Backend>::Semaphore>,
-    pub(crate) command_pool:
-        ManuallyDrop<gfx_hal::pool::CommandPool<back::Backend, gfx_hal::Graphics>>,
+    pub(crate) command_pool: ManuallyDrop<<back::Backend as Backend>::CommandPool>,
     pub(crate) framebuffers: Vec<<back::Backend as Backend>::Framebuffer>,
-    pub(crate) command_buffers: Vec<
-        gfx_hal::command::CommandBuffer<
-            back::Backend,
-            gfx_hal::Graphics,
-            gfx_hal::command::MultiShot,
-            gfx_hal::command::Primary,
-        >,
-    >,
+    pub(crate) command_buffers: Vec<<back::Backend as Backend>::CommandBuffer>,
     pub(crate) images: Vec<<back::Backend as Backend>::Image>,
     pub(crate) image_views: Vec<<back::Backend as Backend>::ImageView>,
     pub(crate) render_pass: ManuallyDrop<<back::Backend as Backend>::RenderPass>,
@@ -369,7 +362,7 @@ pub struct VxDraw {
 
     pub(crate) log: Logpass,
 
-    pub(crate) queue_group: gfx_hal::QueueGroup<back::Backend, gfx_hal::Graphics>,
+    pub(crate) queue_group: gfx_hal::queue::QueueGroup<back::Backend>,
     pub(crate) clear_color: ClearColor,
     pub(crate) resized_since_last_render: bool,
 
@@ -383,14 +376,14 @@ pub struct VxDraw {
     pub(crate) device: back::Device,
     pub(crate) adapter: Adapter<back::Backend>,
 
-    pub(crate) surf: <back::Backend as Backend>::Surface,
+    pub(crate) surf: ManuallyDrop<<back::Backend as Backend>::Surface>,
     #[allow(dead_code)]
     #[cfg(not(feature = "gl"))]
     pub(crate) vk_inst: back::Instance,
     #[cfg(not(feature = "gl"))]
-    pub(crate) window: winit::Window,
+    pub(crate) window: winit::window::Window,
 
-    pub(crate) events_loop: Option<winit::EventsLoop>,
+    pub(crate) events_loop: Option<winit::event_loop::EventLoop<()>>,
 }
 
 // ---
@@ -492,9 +485,8 @@ impl Drop for VxDraw {
                     .destroy_render_pass(ManuallyDrop::into_inner(read(&quad.render_pass)));
             }
 
-            self.device.destroy_command_pool(
-                ManuallyDrop::into_inner(read(&self.command_pool)).into_raw(),
-            );
+            self.device
+                .destroy_command_pool(ManuallyDrop::into_inner(read(&self.command_pool)));
             self.device
                 .destroy_render_pass(ManuallyDrop::into_inner(read(&self.render_pass)));
             self.device
@@ -604,6 +596,9 @@ impl Drop for VxDraw {
             for text in self.texts.drain(..) {
                 text.destroy(&self.device);
             }
+
+            self.vk_inst
+                .destroy_surface(ManuallyDrop::into_inner(read(&self.surf)));
         }
     }
 }

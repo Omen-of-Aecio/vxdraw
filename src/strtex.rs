@@ -11,7 +11,7 @@
 //! # Example - Binary counter using a streaming texture #
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
-//! use vxdraw::{prelude::*, strtex::{LayerOptions, Sprite}, void_logger, Color, Deg, Matrix4 ShowWindow, VxDraw};
+//! use vxdraw::{prelude::*, strtex::{LayerOptions, Sprite}, void_logger, Color, Deg, Matrix4, ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
@@ -65,12 +65,15 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::PhysicalDevice,
-    command,
+    command::{self, CommandBuffer, CommandBufferFlags},
     device::Device,
     format, image, memory, pass,
-    pso::{self, DescriptorPool},
-    Backend, Primitive,
+    pool::CommandPool,
+    pso::{self, DescriptorPool, Primitive},
+    queue::CommandQueue,
+    Backend,
 };
+use smallvec::SmallVec;
 use std::iter::once;
 use std::{io::Cursor, mem::ManuallyDrop};
 
@@ -440,7 +443,7 @@ impl<'a> Strtex<'a> {
 
         let sampler = unsafe {
             s.device
-                .create_sampler(image::SamplerInfo::new(
+                .create_sampler(&image::SamplerDesc::new(
                     match options.filtering {
                         Filter::Nearest => image::Filter::Nearest,
                         Filter::Linear => image::Filter::Linear,
@@ -690,7 +693,7 @@ impl<'a> Strtex<'a> {
                 .expect("Couldn't create a descriptor pool!")
         };
 
-        let mut descriptor_sets = vec![];
+        let mut descriptor_sets = SmallVec::new();
 
         unsafe {
             descriptor_pool
@@ -723,7 +726,7 @@ impl<'a> Strtex<'a> {
         }
 
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
+        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..64));
         let pipeline_layout = unsafe {
             s.device
                 .create_pipeline_layout(&descriptor_set_layouts, push_constants)
@@ -765,7 +768,7 @@ impl<'a> Strtex<'a> {
             // TODO Use a proper command buffer here
             s.device.wait_idle().unwrap();
             let buffer = &mut s.command_buffers[s.current_frame];
-            buffer.begin(false);
+            buffer.begin_primary(CommandBufferFlags::EMPTY);
             for the_image in &the_images {
                 let image_barrier = memory::Barrier::Image {
                     states: (image::Access::empty(), image::Layout::Undefined)
@@ -1496,15 +1499,22 @@ impl<'a> Strtex<'a> {
 
                 let target = s
                     .device
-                    .acquire_mapping_reader::<(u8, u8, u8, u8)>(
+                    .map_memory(
                         &strtex.image_memory[frame_number],
                         0..strtex.image_requirements[frame_number].size,
                     )
                     .expect("unable to acquire mapping writer");
 
-                map(&target, (subres.row_pitch / 4) as usize);
+                let slice = std::slice::from_raw_parts(
+                    target,
+                    strtex.image_requirements[frame_number].size as usize,
+                );
+                map(
+                    std::mem::transmute::<_, &[(u8, u8, u8, u8)]>(slice),
+                    (subres.row_pitch / 4) as usize,
+                );
 
-                s.device.release_mapping_reader(target);
+                s.device.unmap_memory(&strtex.image_memory[frame_number]);
             }
         }
     }
@@ -1525,19 +1535,22 @@ impl<'a> Strtex<'a> {
                         },
                     );
 
-                    let mut target = s
+                    let target = s
                         .device
-                        .acquire_mapping_writer::<(u8, u8, u8, u8)>(
+                        .map_memory(
                             &strtex.image_memory[frame],
                             0..strtex.image_requirements[frame].size,
                         )
                         .expect("unable to acquire mapping writer");
 
-                    map(&mut target, (subres.row_pitch / 4) as usize);
+                    let target = std::mem::transmute::<_, *mut (u8, u8, u8, u8)>(target);
+                    let slice = std::slice::from_raw_parts_mut(
+                        target,
+                        strtex.image_requirements[frame].size as usize / 4,
+                    );
+                    map(slice, (subres.row_pitch / 4) as usize);
 
-                    s.device
-                        .release_mapping_writer(target)
-                        .expect("Unable to release mapping writer");
+                    s.device.unmap_memory(&strtex.image_memory[frame]);
                 }
             }
         }
@@ -1699,7 +1712,7 @@ impl<'a> Strtex<'a> {
                 .expect("Couldn't make a DescriptorSetLayout")
         }];
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-        push_constants.push((pso::ShaderStageFlags::FRAGMENT, 0..4));
+        push_constants.push((pso::ShaderStageFlags::FRAGMENT, 0..16));
 
         let mapgen_pipeline_layout = unsafe {
             s.device
@@ -1808,11 +1821,15 @@ impl<'a> Strtex<'a> {
                 ],
             );
 
-            let mut cmd_buffer = s.command_pool.acquire_command_buffer::<command::OneShot>();
-            let clear_values = [command::ClearValue::Color(command::ClearColor::Sfloat([
-                1.0f32, 0.25, 0.5, 0.75,
-            ]))];
-            cmd_buffer.begin();
+            let mut cmd_buffer = s
+                .command_pool
+                .allocate_one(gfx_hal::command::Level::Primary);
+            let clear_values = [command::ClearValue {
+                color: command::ClearColor {
+                    float32: [1.0f32, 0.25, 0.5, 0.75],
+                },
+            }];
+            cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
             {
                 let image_barrier = memory::Barrier::Image {
                     states: (image::Access::empty(), image::Layout::Undefined)
@@ -1830,14 +1847,15 @@ impl<'a> Strtex<'a> {
                     memory::Dependencies::empty(),
                     &[image_barrier],
                 );
-                let mut enc = cmd_buffer.begin_render_pass_inline(
+                cmd_buffer.begin_render_pass(
                     &mapgen_render_pass,
                     &framebuffer,
                     extent,
                     clear_values.iter(),
+                    command::SubpassContents::Inline,
                 );
-                enc.bind_graphics_pipeline(&mapgen_pipeline);
-                enc.push_graphics_constants(
+                cmd_buffer.bind_graphics_pipeline(&mapgen_pipeline);
+                cmd_buffer.push_graphics_constants(
                     &mapgen_pipeline_layout,
                     pso::ShaderStageFlags::FRAGMENT,
                     0,
@@ -1846,9 +1864,10 @@ impl<'a> Strtex<'a> {
                     ])),
                 );
                 let buffers: ArrayVec<[_; 1]> = [(&pt_buffer, 0)].into();
-                enc.bind_vertex_buffers(0, buffers);
-                enc.draw(0..6, 0..1);
+                cmd_buffer.bind_vertex_buffers(0, buffers);
+                cmd_buffer.draw(0..6, 0..1);
             }
+            cmd_buffer.end_render_pass();
             cmd_buffer.finish();
             let upload_fence = s
                 .device
@@ -1863,7 +1882,7 @@ impl<'a> Strtex<'a> {
                 .reset_fence(&upload_fence)
                 .expect("Unable to wait for fence");
 
-            cmd_buffer.begin();
+            cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
             for image_buffer in &s.strtexs[blitid.0].image_buffer {
                 cmd_buffer.copy_image(
                     &image,

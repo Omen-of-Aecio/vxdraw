@@ -100,10 +100,12 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::PhysicalDevice,
+    command::{CommandBuffer, CommandBufferFlags},
     device::Device,
     format, image, memory, pass,
-    pso::{self, DescriptorPool},
-    Backend, Primitive,
+    pso::{self, DescriptorPool, Primitive},
+    queue::CommandQueue,
+    Backend,
 };
 use glyph_brush::{BrushAction, BrushError, GlyphBrushBuilder};
 use std::{io::Cursor, mem::ManuallyDrop};
@@ -402,7 +404,7 @@ impl<'a> Texts<'a> {
         let sampler = unsafe {
             self.vx
                 .device
-                .create_sampler(image::SamplerInfo::new(
+                .create_sampler(&image::SamplerDesc::new(
                     match options.filtering {
                         Filter::Nearest => image::Filter::Nearest,
                         Filter::Linear => image::Filter::Linear,
@@ -680,7 +682,7 @@ impl<'a> Texts<'a> {
 
         // Push constants
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
+        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..64));
 
         let pipeline_layout = unsafe {
             self.vx
@@ -756,7 +758,7 @@ impl<'a> Texts<'a> {
             // TODO Use a proper command buffer here
             self.vx.device.wait_idle().unwrap();
             let buffer = &mut self.vx.command_buffers[self.vx.current_frame];
-            buffer.begin(false);
+            buffer.begin_primary(CommandBufferFlags::EMPTY);
             let image_barrier = memory::Barrier::Image {
                 states: (image::Access::empty(), image::Layout::Undefined)
                     ..(
@@ -1032,10 +1034,10 @@ impl<'a> Texts<'a> {
                         layer: 0,
                     },
                 );
-                let mut target = self
+                let target = self
                     .vx
                     .device
-                    .acquire_mapping_writer(
+                    .map_memory(
                         &self.vx.texts[layer.0].image_memory,
                         0..self.vx.texts[layer.0].image_requirements.size,
                     )
@@ -1047,13 +1049,15 @@ impl<'a> Texts<'a> {
                     let x = rect.min.x + idx % width;
                     let y = rect.min.y + idx / width;
                     let access = foot.row_pitch * u64::from(y) + u64::from(x * 4);
-                    target[access as usize..(access + 4) as usize]
+                    std::slice::from_raw_parts_mut(
+                        target,
+                        self.vx.texts[layer.0].image_requirements.size as usize,
+                    )[access as usize..(access + 4) as usize]
                         .copy_from_slice(&[255, 255, 255, *alpha]);
                 }
                 self.vx
                     .device
-                    .release_mapping_writer(target)
-                    .expect("Unable to release mapping writer");
+                    .unmap_memory(&self.vx.texts[layer.0].image_memory);
             }
         }
         Handle {
@@ -1165,10 +1169,10 @@ impl<'a> Texts<'a> {
                             layer: 0,
                         },
                     );
-                    let mut target = self
+                    let target = self
                         .vx
                         .device
-                        .acquire_mapping_writer(
+                        .map_memory(
                             &this_layer.image_memory,
                             0..this_layer.image_requirements.size,
                         )
@@ -1180,13 +1184,13 @@ impl<'a> Texts<'a> {
                         let x = rect.min.x + idx % width;
                         let y = rect.min.y + idx / width;
                         let access = foot.row_pitch * u64::from(y) + u64::from(x * 4);
-                        target[access as usize..(access + 4) as usize]
+                        std::slice::from_raw_parts_mut(
+                            target,
+                            this_layer.image_requirements.size as usize,
+                        )[access as usize..(access + 4) as usize]
                             .copy_from_slice(&[255, 255, 255, *alpha]);
                     }
-                    self.vx
-                        .device
-                        .release_mapping_writer(target)
-                        .expect("Unable to release mapping writer");
+                    self.vx.device.unmap_memory(&this_layer.image_memory);
                 }
             }
 
@@ -1296,7 +1300,7 @@ impl<'a> Texts<'a> {
             // TODO Use a proper command buffer here
             self.vx.device.wait_idle().unwrap();
             let buffer = &mut self.vx.command_buffers[self.vx.current_frame];
-            buffer.begin(false);
+            buffer.begin_primary(CommandBufferFlags::EMPTY);
             let image_barrier = memory::Barrier::Image {
                 states: (image::Access::empty(), image::Layout::Undefined)
                     ..(

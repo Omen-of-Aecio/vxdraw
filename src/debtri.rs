@@ -42,7 +42,9 @@ use gfx_backend_gl as back;
 use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
-use gfx_hal::{device::Device, format, image, pass, pso, Adapter, Backend, Primitive};
+use gfx_hal::{
+    adapter::Adapter, device::Device, format, image, pass, pso, pso::Primitive, Backend,
+};
 use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
@@ -851,7 +853,7 @@ pub(crate) fn create_debug_triangle(
                 .expect("Couldn't make a DescriptorSetLayout")
         }];
     let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-    push_constants.push((pso::ShaderStageFlags::VERTEX, 0..1));
+    push_constants.push((pso::ShaderStageFlags::VERTEX, 0..4));
 
     let triangle_pipeline_layout = unsafe {
         device

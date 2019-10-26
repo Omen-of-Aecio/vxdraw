@@ -10,12 +10,16 @@ use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
 use gfx_hal::{
-    adapter::{MemoryTypeId, PhysicalDevice},
-    command,
+    adapter::Adapter,
+    adapter::PhysicalDevice,
+    command::{self, CommandBuffer, CommandBufferFlags},
     device::Device,
     format, image, memory,
     memory::Properties,
-    pso, Adapter, Backend,
+    pool::CommandPool,
+    pso,
+    queue::CommandQueue,
+    Backend, MemoryTypeId,
 };
 use std::f32::consts::PI;
 use std::iter::once;
@@ -77,13 +81,13 @@ pub(crate) fn make_vertex_buffer_with_data(
         (buffer, memory, requirements)
     };
     unsafe {
-        let mut data_target = device
-            .acquire_mapping_writer(&memory, 0..requirements.size)
+        let data_target = device
+            .map_memory(&memory, 0..requirements.size)
             .expect("Failed to acquire a memory writer!");
-        data_target[..data.len()].copy_from_slice(data);
-        device
-            .release_mapping_writer(data_target)
-            .expect("Couldn't release the mapping writer!");
+        let data_target = std::mem::transmute::<_, *mut f32>(data_target);
+        std::slice::from_raw_parts_mut(data_target, requirements.size as usize / 4)[..data.len()]
+            .copy_from_slice(data);
+        device.unmap_memory(&memory);
     }
     (buffer, memory, requirements)
 }
@@ -126,24 +130,18 @@ impl ResizBufIdx4 {
             (buffer, memory, requirements)
         };
         unsafe {
-            let mut data_target = device
-                .acquire_mapping_writer(&memory, 0..requirements.size)
+            let data_target = device
+                .map_memory(&memory, 0..requirements.size)
                 .expect("Failed to acquire a memory writer!");
+            let data_target = std::mem::transmute::<_, *mut u32>(data_target);
             for index in 0..capacity {
                 let ver = (index * 6) as u32;
                 let ind = (index * 4) as u32;
-                data_target[ver as usize..(ver + 6) as usize].copy_from_slice(&[
-                    ind,
-                    ind + 1,
-                    ind + 2,
-                    ind + 2,
-                    ind + 3,
-                    ind,
-                ]);
+                std::slice::from_raw_parts_mut(data_target, requirements.size as usize)
+                    [ver as usize..(ver + 6) as usize]
+                    .copy_from_slice(&[ind, ind + 1, ind + 2, ind + 2, ind + 3, ind]);
             }
-            device
-                .release_mapping_writer(data_target)
-                .expect("Couldn't release the mapping writer!");
+            device.unmap_memory(&memory);
         }
         Self {
             buffer: ManuallyDrop::new(buffer),
@@ -270,13 +268,16 @@ impl ResizBuf {
             self.copy_from_slice_and_maybe_resize(device, adapter, slice);
         } else if self.capacity_in_bytes as u64 >= bytes_in_slice {
             unsafe {
-                let mut data_target = device
-                    .acquire_mapping_writer(&self.memory, 0..self.requirements.size)
+                let data_target = device
+                    .map_memory(&self.memory, 0..self.requirements.size)
                     .expect("Failed to acquire a memory writer!");
-                data_target[..slice.len()].copy_from_slice(slice);
-                device
-                    .release_mapping_writer(data_target)
-                    .expect("Couldn't release the mapping writer!");
+                let data_target = std::mem::transmute::<_, *mut T>(data_target);
+                std::slice::from_raw_parts_mut(
+                    data_target,
+                    self.requirements.size as usize / std::mem::size_of::<T>(),
+                )[..slice.len()]
+                    .copy_from_slice(slice);
+                device.unmap_memory(&self.memory);
             }
         } else {
             self.resize(
@@ -422,13 +423,12 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
         (buffer, memory, requirements)
     };
     unsafe {
-        let mut data_target = device
-            .acquire_mapping_writer(&memory, 0..requirements.size)
+        let data_target = device
+            .map_memory(&memory, 0..requirements.size)
             .expect("Failed to acquire a memory writer!");
-        data_target[..data.len()].copy_from_slice(data);
-        device
-            .release_mapping_writer(data_target)
-            .expect("Couldn't release the mapping writer!");
+        let data_target = std::mem::transmute::<_, *mut f32>(data_target);
+        std::slice::from_raw_parts_mut(data_target, data.len())[..data.len()].copy_from_slice(data);
+        device.unmap_memory(&memory);
     }
 
     let (buffer_gpu, memory_gpu, memory_gpu_requirements) = unsafe {
@@ -451,11 +451,9 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
         (buffer, memory, requirements)
     };
     let buffer_size: u64 = (std::mem::size_of::<f32>() * data.len()) as u64;
-    let mut cmd_buffer = s
-        .command_pool
-        .acquire_command_buffer::<gfx_hal::command::OneShot>();
+    let mut cmd_buffer = unsafe { s.command_pool.allocate_one(command::Level::Primary) };
     unsafe {
-        cmd_buffer.begin();
+        cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
         let buffer_barrier = gfx_hal::memory::Barrier::Buffer {
             families: None,
             range: None..None,
@@ -535,10 +533,8 @@ pub(crate) fn copy_image_to_rgb(
             .expect("Unable to wait for fence");
     }
     unsafe {
-        let mut cmd_buffer = s
-            .command_pool
-            .acquire_command_buffer::<gfx_hal::command::OneShot>();
-        cmd_buffer.begin();
+        let mut cmd_buffer = s.command_pool.allocate_one(command::Level::Primary);
+        cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
         let image_barrier = gfx_hal::memory::Barrier::Image {
             states: (gfx_hal::image::Access::empty(), image::Layout::Present)
                 ..(
@@ -632,10 +628,8 @@ pub(crate) fn copy_image_to_rgb(
         s.device.destroy_fence(fence);
     }
     unsafe {
-        let mut cmd_buffer = s
-            .command_pool
-            .acquire_command_buffer::<gfx_hal::command::OneShot>();
-        cmd_buffer.begin();
+        let mut cmd_buffer = s.command_pool.allocate_one(command::Level::Primary);
+        cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
         let image_barrier = gfx_hal::memory::Barrier::Image {
             states: (gfx_hal::image::Access::empty(), image::Layout::Undefined)
                 ..(
@@ -692,15 +686,15 @@ pub(crate) fn copy_image_to_rgb(
     unsafe {
         let reader = s
             .device
-            .acquire_mapping_reader::<u8>(&memory, 0..requirements.size as u64)
+            .map_memory(&memory, 0..requirements.size as u64)
             .expect("Unable to open reader");
         assert![u64::from(4 * width * height) <= requirements.size];
-        let result = reader
+        let result = std::slice::from_raw_parts(reader, (4 * width * height) as usize)
             .iter()
             .take((4 * width * height) as usize)
             .cloned()
             .collect::<Vec<_>>();
-        s.device.release_mapping_reader(reader);
+        s.device.unmap_memory(&memory);
         s.device.destroy_buffer(buffer);
         s.device.free_memory(memory);
         s.device.destroy_image(imgbuf);

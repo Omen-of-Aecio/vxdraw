@@ -21,7 +21,7 @@
 //! ## Animation: Rotating triangle ##
 //! Here's a more interesting example:
 //! ```
-//! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Deg, Matrix4 ShowWindow, VxDraw};
+//! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! fn main() {
 //!     #[cfg(feature = "doctest-headless")]
 //!     let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
@@ -100,18 +100,21 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::PhysicalDevice,
-    command::{self, ClearColor, ClearValue},
+    command::{self, ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags},
     device::Device,
     format::{self, ChannelType, Swizzle},
-    image, memory, pass, pool, pso,
-    queue::Submission,
-    window::{Extent2D, PresentMode::*, Surface, Swapchain},
-    Backend, Instance, SwapchainConfig,
+    image, memory, pass,
+    pool::{self, CommandPool},
+    pso,
+    queue::{CommandQueue, QueueFamily, Submission},
+    window::{Extent2D, PresentMode, Surface, Swapchain, SwapchainConfig},
+    Backend, Instance,
 };
+
 use std::fmt;
 use std::iter::once;
 use std::mem::ManuallyDrop;
-use winit::{dpi::LogicalSize, Event, EventsLoop, WindowBuilder};
+use winit::{dpi::LogicalSize, event_loop::EventLoop, window::WindowBuilder};
 
 pub mod blender;
 mod data;
@@ -180,8 +183,8 @@ pub enum ShowWindow {
 }
 
 #[cfg(not(feature = "gl"))]
-fn set_window_size(window: &mut winit::Window, show: ShowWindow) -> Extent2D {
-    let dpi_factor = window.get_hidpi_factor();
+fn set_window_size(window: &mut winit::window::Window, show: ShowWindow) -> Extent2D {
+    let dpi_factor = window.hidpi_factor();
     let (w, h): (u32, u32) = match show {
         ShowWindow::Headless1k => {
             window.set_inner_size(LogicalSize {
@@ -204,11 +207,7 @@ fn set_window_size(window: &mut winit::Window, show: ShowWindow) -> Extent2D {
             });
             (1000, 2000)
         }
-        ShowWindow::Enable => window
-            .get_inner_size()
-            .unwrap()
-            .to_physical(dpi_factor)
-            .into(),
+        ShowWindow::Enable => window.inner_size().to_physical(dpi_factor).into(),
         ShowWindow::Custom(width, height) => {
             window.set_inner_size(LogicalSize {
                 width: width as f64 * dpi_factor,
@@ -285,8 +284,9 @@ impl VxDraw {
 
         info![log, "Initializing rendering"; "show" => InDebug(&show), "backend" => BACKEND];
 
-        let events_loop = EventsLoop::new();
-        let window_builder = WindowBuilder::new().with_visibility(match show {
+        use winit::platform::unix::EventLoopExtUnix;
+        let events_loop = EventLoop::new_any_thread();
+        let window_builder = WindowBuilder::new().with_visible(match show {
             ShowWindow::Enable | ShowWindow::Custom(..) => true,
             _ => false,
         });
@@ -324,19 +324,24 @@ impl VxDraw {
             (adapters, surface, dims)
         };
 
-        use winit::os::unix::WindowBuilderExt;
+        use winit::platform::unix::WindowBuilderExtUnix;
         #[cfg(not(feature = "gl"))]
         let (window, vk_inst, mut adapters, mut surf, dims) = {
             let mut window = window_builder
-                .with_x11_window_type(winit::os::unix::XWindowType::Dialog)
+                .with_x11_window_type(vec![winit::platform::unix::XWindowType::Dialog])
                 .build(&events_loop)
                 .unwrap();
             let version = 1;
-            let vk_inst = back::Instance::create("renderer", version);
-            let surf: <back::Backend as Backend>::Surface = vk_inst.create_surface(&window);
+            let vk_inst =
+                back::Instance::create("renderer", version).expect("Unable to create backend");
+            let surf: <back::Backend as Backend>::Surface = unsafe {
+                vk_inst
+                    .create_surface(&window)
+                    .expect("Creating surface failed")
+            };
             let adapters = vk_inst.enumerate_adapters();
             let dims = set_window_size(&mut window, show);
-            let dpi_factor = window.get_hidpi_factor();
+            let dpi_factor = window.hidpi_factor();
             debug![log, "Window DPI factor"; "factor" => dpi_factor];
             (window, vk_inst, adapters, surf, dims)
         };
@@ -357,13 +362,33 @@ impl VxDraw {
         // TODO Find appropriate adapter, I've never seen a case where we have 2+ adapters, that time
         // will come one day
         let adapter = adapters.remove(0);
-        let (device, queue_group) = adapter
-            .open_with::<_, gfx_hal::Graphics>(1, |family| surf.supports_queue_family(family))
-            .expect("Unable to find device supporting graphics");
+
+        // let memory_types = adapter.physical_device.memory_properties().memory_types;
+        // let limits = adapter.physical_device.limits();
+
+        let family = adapter
+            .queue_families
+            .iter()
+            .find(|family| {
+                surf.supports_queue_family(family) && family.queue_type().supports_graphics()
+            })
+            .unwrap();
+
+        let mut gpu = unsafe {
+            adapter
+                .physical_device
+                .open(&[(family, &[1.0])], gfx_hal::Features::empty())
+                .unwrap()
+        };
+
+        let queue_group = gpu.queue_groups.pop().unwrap();
+        let device = gpu.device;
 
         let _phys_dev_limits = adapter.physical_device.limits();
 
-        let (caps, formats, present_modes) = surf.compatibility(&adapter.physical_device);
+        let caps = surf.capabilities(&adapter.physical_device);
+        let formats = surf.supported_formats(&adapter.physical_device);
+        let present_modes = caps.present_modes;
 
         debug![log, "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
         debug![log, "Formats available"; "formats" => InDebugPretty(&formats); clone formats];
@@ -387,16 +412,21 @@ impl VxDraw {
         // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
         // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
         let present_mode = {
-            [Mailbox, Fifo, Relaxed, Immediate]
-                .iter()
-                .cloned()
-                .find(|pm| present_modes.contains(pm))
-                .ok_or("No PresentMode values specified!")
-                .unwrap()
+            [
+                PresentMode::MAILBOX,
+                PresentMode::FIFO,
+                PresentMode::RELAXED,
+                PresentMode::IMMEDIATE,
+            ]
+            .iter()
+            .cloned()
+            .find(|pm| present_modes.contains(*pm))
+            .ok_or("No PresentMode values specified!")
+            .unwrap()
         };
         debug![log, "Using best possible present mode"; "mode" => InDebug(&present_mode)];
 
-        let image_count = if present_mode == Mailbox {
+        let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
                 .min(3)
                 .max(*caps.image_count.start())
@@ -604,8 +634,8 @@ impl VxDraw {
 
         let mut command_pool = unsafe {
             device
-                .create_command_pool_typed(
-                    &queue_group,
+                .create_command_pool(
+                    queue_group.family,
                     pool::CommandPoolCreateFlags::RESET_INDIVIDUAL,
                 )
                 .unwrap()
@@ -613,7 +643,7 @@ impl VxDraw {
 
         let command_buffers: Vec<_> = framebuffers
             .iter()
-            .map(|_| command_pool.acquire_command_buffer::<command::MultiShot>())
+            .map(|_| unsafe { command_pool.allocate_one(command::Level::Primary) })
             .collect();
 
         let debtris = debtri::create_debug_triangle(&device, &adapter, format, images.len());
@@ -652,7 +682,7 @@ impl VxDraw {
             },
             render_pass: ManuallyDrop::new(render_pass),
             resized_since_last_render: false,
-            surf,
+            surf: ManuallyDrop::new(surf),
             swapchain: ManuallyDrop::new(swapchain),
             swapconfig: swap_config,
             strtexs: vec![],
@@ -668,7 +698,9 @@ impl VxDraw {
             log,
             debtris,
 
-            clear_color: ClearColor::Sfloat([1.0f32, 0.25, 0.5, 0.0]),
+            clear_color: ClearColor {
+                float32: [1.0f32, 0.25, 0.5, 0.0],
+            },
         };
         vx.window_resized_recreate_swapchain();
         vx.resized_since_last_render = false;
@@ -714,12 +746,14 @@ impl VxDraw {
     /// Set the clear color when clearing a frame
     pub fn set_clear_color(&mut self, color: Color) {
         let (r, g, b, a) = color.into();
-        self.clear_color = ClearColor::Sfloat([
-            f32::from(r) / 255.0,
-            f32::from(g) / 255.0,
-            f32::from(b) / 255.0,
-            f32::from(a) / 255.0,
-        ]);
+        self.clear_color = ClearColor {
+            float32: [
+                f32::from(r) / 255.0,
+                f32::from(g) / 255.0,
+                f32::from(b) / 255.0,
+                f32::from(a) / 255.0,
+            ],
+        };
     }
 
     /// Get how many swapchain images there exist
@@ -746,7 +780,7 @@ impl VxDraw {
     /// Get the size of the display window in floats
     #[cfg(feature = "vulkan")]
     pub fn get_window_size_in_pixels(&self) -> (u32, u32) {
-        let (w, h): (u32, u32) = self.window.get_inner_size().unwrap().into();
+        let (w, h): (u32, u32) = self.window.inner_size().into();
         (w, h)
     }
 
@@ -769,7 +803,7 @@ impl VxDraw {
     /// Set the size of the display window
     #[cfg(feature = "vulkan")]
     pub fn set_window_size(&mut self, size: (u32, u32)) {
-        let dpi_factor = self.window.get_hidpi_factor();
+        let dpi_factor = self.window.hidpi_factor();
         self.window.set_inner_size(LogicalSize {
             width: f64::from(size.0) * dpi_factor,
             height: f64::from(size.1) * dpi_factor,
@@ -806,28 +840,8 @@ impl VxDraw {
     }
 
     /// Return the events loop of the window
-    pub fn events_loop(&mut self) -> Option<EventsLoop> {
+    pub fn events_loop(&mut self) -> Option<EventLoop<()>> {
         self.events_loop.take()
-    }
-
-    #[deprecated(
-        since = "0.2.0",
-        note = "Please use the `events_loop` function instead"
-    )]
-    /// Collect all pending input events to this window
-    pub fn collect_input(&mut self) -> Vec<Event> {
-        let mut inputs = vec![];
-        let log = &mut self.log;
-        self.events_loop.as_mut().unwrap().poll_events(|evt| match evt {
-            winit::Event::WindowEvent { ref event, .. } => match event {
-                winit::WindowEvent::Resized(dims) => {
-                    info![log, "Window resized event"; "dimensions" => InDebug(&dims); clone dims];
-                }
-                _ => inputs.push(evt),
-            },
-            _ => inputs.push(evt),
-        });
-        inputs
     }
 
     /// Draw a frame but also copy the resulting image out
@@ -853,7 +867,9 @@ impl VxDraw {
         self.resized_since_last_render = true;
         self.device.wait_idle().unwrap();
 
-        let (caps, formats, present_modes) = self.surf.compatibility(&self.adapter.physical_device);
+        let caps = self.surf.capabilities(&self.adapter.physical_device);
+        let present_modes = caps.present_modes;
+        let formats = self.surf.supported_formats(&self.adapter.physical_device);
         debug![
             self.log, "Surface capabilities";
             "capabilities" => InDebugPretty(&caps),
@@ -888,16 +904,21 @@ impl VxDraw {
         // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
         // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
         let present_mode = {
-            [Mailbox, Fifo, Relaxed, Immediate]
-                .iter()
-                .cloned()
-                .find(|pm| present_modes.contains(pm))
-                .ok_or("No PresentMode values specified!")
-                .unwrap()
+            [
+                PresentMode::MAILBOX,
+                PresentMode::FIFO,
+                PresentMode::RELAXED,
+                PresentMode::IMMEDIATE,
+            ]
+            .iter()
+            .cloned()
+            .find(|pm| present_modes.contains(*pm))
+            .ok_or("No PresentMode values specified!")
+            .unwrap()
         };
         debug![self.log, "Using best possible present mode"; "mode" => InDebug(&present_mode)];
 
-        let image_count = if present_mode == Mailbox {
+        let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
                 .min(3)
                 .max(*caps.image_count.start())
@@ -1114,7 +1135,7 @@ impl VxDraw {
                     return self.draw_frame_internal(postproc);
                 }
                 Err(err) => {
-                    error![self.log, "Acquire image error"; "error" => err, "type" => "acquire_image"];
+                    error![self.log, "Acquire image error"; "error" => InDebug(&err), "type" => "acquire_image"];
                     unimplemented![]
                 }
             };
@@ -1147,36 +1168,63 @@ impl VxDraw {
                 let buffer = &mut self.command_buffers[self.current_frame as usize];
 
                 let clear_values = [
-                    ClearValue::Color(self.clear_color),
-                    ClearValue::DepthStencil(gfx_hal::command::ClearDepthStencil(1.0, 0)),
+                    ClearValue {
+                        color: self.clear_color,
+                    },
+                    // ClearValue {
+                    //     color: self.clear_color,
+                    // },
+                    ClearValue {
+                        depth_stencil: ClearDepthStencil {
+                            depth: 1f32,
+                            stencil: 0,
+                        },
+                    },
                 ];
-                buffer.begin(false);
+                buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
+
+                // let image_barrier = memory::Barrier::Image {
+                //     states: (image::Access::empty(), image::Layout::Undefined)
+                //         ..(
+                //             image::Access::empty(),
+                //             image::Layout::ColorAttachmentOptimal,
+                //         ),
+                //     target: &self.images[swap_image.0 as usize],
+                //     families: None,
+                //     range: image::SubresourceRange {
+                //         aspects: format::Aspects::COLOR,
+                //         levels: 0..1,
+                //         layers: 0..1,
+                //     },
+                // };
+                // buffer.pipeline_barrier(
+                //     pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                //     memory::Dependencies::empty(),
+                //     &[image_barrier],
+                // );
+
+                // let image_barrier = memory::Barrier::Image {
+                //     states: (
+                //         image::Access::empty(),
+                //         image::Layout::ColorAttachmentOptimal,
+                //     )..(image::Access::empty(), image::Layout::Present),
+                //     target: &self.images[swap_image.0 as usize],
+                //     families: None,
+                //     range: image::SubresourceRange {
+                //         aspects: format::Aspects::COLOR,
+                //         levels: 0..1,
+                //         layers: 0..1,
+                //     },
+                // };
+                // buffer.pipeline_barrier(
+                //     pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::BOTTOM_OF_PIPE,
+                //     memory::Dependencies::empty(),
+                //     &[image_barrier],
+                // );
 
                 let image_barrier = memory::Barrier::Image {
                     states: (image::Access::empty(), image::Layout::Undefined)
-                        ..(
-                            image::Access::empty(),
-                            image::Layout::ColorAttachmentOptimal,
-                        ),
-                    target: &self.images[swap_image.0 as usize],
-                    families: None,
-                    range: image::SubresourceRange {
-                        aspects: format::Aspects::COLOR,
-                        levels: 0..1,
-                        layers: 0..1,
-                    },
-                };
-                buffer.pipeline_barrier(
-                    pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-                    memory::Dependencies::empty(),
-                    &[image_barrier],
-                );
-
-                let image_barrier = memory::Barrier::Image {
-                    states: (
-                        image::Access::empty(),
-                        image::Layout::ColorAttachmentOptimal,
-                    )..(image::Access::empty(), image::Layout::Present),
+                        ..(image::Access::empty(), image::Layout::Present),
                     target: &self.images[swap_image.0 as usize],
                     families: None,
                     range: image::SubresourceRange {
@@ -1283,18 +1331,19 @@ impl VxDraw {
                 }
 
                 {
-                    let mut enc = buffer.begin_render_pass_inline(
+                    buffer.begin_render_pass(
                         &self.render_pass,
                         &self.framebuffers[swap_image.0 as usize],
                         self.render_area,
                         clear_values.iter(),
+                        command::SubpassContents::Inline,
                     );
                     for draw_cmd in self.draw_order.iter() {
                         match draw_cmd {
                             DrawType::Text { id } => {
                                 let text = &mut self.texts[*id];
                                 if !text.hidden {
-                                    enc.bind_graphics_pipeline(&text.pipeline);
+                                    buffer.bind_graphics_pipeline(&text.pipeline);
                                     if text.posbuf_touch != 0 {
                                         text.posbuf[self.current_frame]
                                             .copy_from_slice_and_maybe_resize(
@@ -1365,33 +1414,37 @@ impl VxDraw {
                                     ]
                                     .into();
                                     if let Some(persp) = text.fixed_perspective {
-                                        enc.push_graphics_constants(
+                                        buffer.push_graphics_constants(
                                             &text.pipeline_layout,
                                             pso::ShaderStageFlags::VERTEX,
                                             0,
                                             &*(persp.as_ptr() as *const [u32; 16]),
                                         );
                                     } else {
-                                        enc.push_graphics_constants(
+                                        buffer.push_graphics_constants(
                                             &text.pipeline_layout,
                                             pso::ShaderStageFlags::VERTEX,
                                             0,
                                             &*(view.as_ptr() as *const [u32; 16]),
                                         );
                                     }
-                                    enc.bind_graphics_descriptor_sets(
+                                    buffer.bind_graphics_descriptor_sets(
                                         &text.pipeline_layout,
                                         0,
                                         Some(&*text.descriptor_set),
                                         &[],
                                     );
-                                    enc.bind_vertex_buffers(0, buffers);
-                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer.bind_vertex_buffers(0, buffers);
+                                    buffer.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                         buffer: text.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U32,
                                     });
-                                    enc.draw_indexed(0..text.posbuffer.len() as u32 * 6, 0, 0..1);
+                                    buffer.draw_indexed(
+                                        0..text.posbuffer.len() as u32 * 6,
+                                        0,
+                                        0..1,
+                                    );
                                 }
                             }
                             DrawType::StreamingTexture { id } => {
@@ -1405,9 +1458,9 @@ impl VxDraw {
                                     },
                                 );
 
-                                let mut target = self
+                                let target = self
                                     .device
-                                    .acquire_mapping_writer(
+                                    .map_memory(
                                         &strtex.image_memory[self.current_frame],
                                         0..strtex.image_requirements[self.current_frame].size,
                                     )
@@ -1422,7 +1475,11 @@ impl VxDraw {
                                                 }
                                                 let access = foot.row_pitch * u64::from(*y)
                                                     + u64::from(*x * 4);
-                                                target[access as usize..(access + 4) as usize]
+                                                std::slice::from_raw_parts_mut(
+                                                    target,
+                                                    (access + 4) as usize,
+                                                )
+                                                    [access as usize..(access + 4) as usize]
                                                     .copy_from_slice(&[
                                                         color.0, color.1, color.2, color.3,
                                                     ]);
@@ -1434,9 +1491,14 @@ impl VxDraw {
                                                         let idx = (idx as usize * pitch
                                                             + x as usize * 4)
                                                             as usize;
-                                                        target[idx..idx + 4].copy_from_slice(&[
-                                                            color.0, color.1, color.2, color.3,
-                                                        ]);
+                                                        std::slice::from_raw_parts_mut(
+                                                            target,
+                                                            idx + 4,
+                                                        )
+                                                            [idx..idx + 4]
+                                                            .copy_from_slice(&[
+                                                                color.0, color.1, color.2, color.3,
+                                                            ]);
                                                     }
                                                 }
                                             }
@@ -1444,10 +1506,9 @@ impl VxDraw {
                                     }
                                 }
                                 self.device
-                                    .release_mapping_writer(target)
-                                    .expect("Unable to release mapping writer");
+                                    .unmap_memory(&strtex.image_memory[self.current_frame]);
                                 if !strtex.hidden {
-                                    enc.bind_graphics_pipeline(&strtex.pipeline);
+                                    buffer.bind_graphics_pipeline(&strtex.pipeline);
                                     if strtex.posbuf_touch != 0 {
                                         strtex.posbuf[self.current_frame]
                                             .copy_from_slice_and_maybe_resize(
@@ -1518,39 +1579,43 @@ impl VxDraw {
                                     ]
                                     .into();
                                     if let Some(persp) = strtex.fixed_perspective {
-                                        enc.push_graphics_constants(
+                                        buffer.push_graphics_constants(
                                             &strtex.pipeline_layout,
                                             pso::ShaderStageFlags::VERTEX,
                                             0,
                                             &*(persp.as_ptr() as *const [u32; 16]),
                                         );
                                     } else {
-                                        enc.push_graphics_constants(
+                                        buffer.push_graphics_constants(
                                             &strtex.pipeline_layout,
                                             pso::ShaderStageFlags::VERTEX,
                                             0,
                                             &*(view.as_ptr() as *const [u32; 16]),
                                         );
                                     }
-                                    enc.bind_graphics_descriptor_sets(
+                                    buffer.bind_graphics_descriptor_sets(
                                         &strtex.pipeline_layout,
                                         0,
                                         Some(&strtex.descriptor_sets[self.current_frame]),
                                         &[],
                                     );
-                                    enc.bind_vertex_buffers(0, buffers);
-                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer.bind_vertex_buffers(0, buffers);
+                                    buffer.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                         buffer: strtex.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U32,
                                     });
-                                    enc.draw_indexed(0..strtex.posbuffer.len() as u32 * 6, 0, 0..1);
+                                    buffer.draw_indexed(
+                                        0..strtex.posbuffer.len() as u32 * 6,
+                                        0,
+                                        0..1,
+                                    );
                                 }
                             }
                             DrawType::DynamicTexture { id } => {
                                 let dyntex = &mut self.dyntexs[*id];
                                 if !dyntex.hidden {
-                                    enc.bind_graphics_pipeline(&dyntex.pipeline);
+                                    buffer.bind_graphics_pipeline(&dyntex.pipeline);
                                     if dyntex.posbuf_touch != 0 {
                                         dyntex.posbuf[self.current_frame]
                                             .copy_from_slice_and_maybe_resize(
@@ -1621,39 +1686,43 @@ impl VxDraw {
                                     ]
                                     .into();
                                     if let Some(persp) = dyntex.fixed_perspective {
-                                        enc.push_graphics_constants(
+                                        buffer.push_graphics_constants(
                                             &dyntex.pipeline_layout,
                                             pso::ShaderStageFlags::VERTEX,
                                             0,
                                             &*(persp.as_ptr() as *const [u32; 16]),
                                         );
                                     } else {
-                                        enc.push_graphics_constants(
+                                        buffer.push_graphics_constants(
                                             &dyntex.pipeline_layout,
                                             pso::ShaderStageFlags::VERTEX,
                                             0,
                                             &*(view.as_ptr() as *const [u32; 16]),
                                         );
                                     }
-                                    enc.bind_graphics_descriptor_sets(
+                                    buffer.bind_graphics_descriptor_sets(
                                         &dyntex.pipeline_layout,
                                         0,
                                         Some(&*dyntex.descriptor_set),
                                         &[],
                                     );
-                                    enc.bind_vertex_buffers(0, buffers);
-                                    enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer.bind_vertex_buffers(0, buffers);
+                                    buffer.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
                                         buffer: dyntex.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U32,
                                     });
-                                    enc.draw_indexed(0..dyntex.posbuffer.len() as u32 * 6, 0, 0..1);
+                                    buffer.draw_indexed(
+                                        0..dyntex.posbuffer.len() as u32 * 6,
+                                        0,
+                                        0..1,
+                                    );
                                 }
                             }
                             DrawType::Quad { id } => {
                                 if let Some(quad) = self.quads.get_mut(*id) {
                                     if !quad.hidden {
-                                        enc.bind_graphics_pipeline(&quad.pipeline);
+                                        buffer.bind_graphics_pipeline(&quad.pipeline);
                                         {
                                             let view =
                                                 if let Some(ref view) = quad.fixed_perspective {
@@ -1661,7 +1730,7 @@ impl VxDraw {
                                                 } else {
                                                     &view
                                                 };
-                                            enc.push_graphics_constants(
+                                            buffer.push_graphics_constants(
                                                 &quad.pipeline_layout,
                                                 pso::ShaderStageFlags::VERTEX,
                                                 0,
@@ -1727,13 +1796,15 @@ impl VxDraw {
                                             (quad.scalebuf[self.current_frame].buffer(), 0),
                                         ]
                                         .into();
-                                        enc.bind_vertex_buffers(0, buffers);
-                                        enc.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
-                                            buffer: &quad.indices[self.current_frame].buffer(),
-                                            offset: 0,
-                                            index_type: gfx_hal::IndexType::U32,
-                                        });
-                                        enc.draw_indexed(
+                                        buffer.bind_vertex_buffers(0, buffers);
+                                        buffer.bind_index_buffer(
+                                            gfx_hal::buffer::IndexBufferView {
+                                                buffer: &quad.indices[self.current_frame].buffer(),
+                                                offset: 0,
+                                                index_type: gfx_hal::IndexType::U32,
+                                            },
+                                        );
+                                        buffer.draw_indexed(
                                             0..quad.posbuffer.len() as u32 * 6,
                                             0,
                                             0..1,
@@ -1744,10 +1815,10 @@ impl VxDraw {
                         }
                     }
                     if !self.debtris.hidden {
-                        enc.bind_graphics_pipeline(&self.debtris.pipeline);
+                        buffer.bind_graphics_pipeline(&self.debtris.pipeline);
                         let ratio = self.swapconfig.extent.width as f32
                             / self.swapconfig.extent.height as f32;
-                        enc.push_graphics_constants(
+                        buffer.push_graphics_constants(
                             &self.debtris.pipeline_layout,
                             pso::ShaderStageFlags::VERTEX,
                             0,
@@ -1807,12 +1878,13 @@ impl VxDraw {
                             (self.debtris.scalebuf[self.current_frame].buffer(), 0),
                         ]
                         .into();
-                        enc.bind_vertex_buffers(0, buffers);
+                        buffer.bind_vertex_buffers(0, buffers);
 
-                        enc.draw(0..(count * 3) as u32, 0..1);
+                        buffer.draw(0..(count * 3) as u32, 0..1);
                     }
                 }
 
+                buffer.end_render_pass();
                 buffer.finish();
             }
 
@@ -1858,7 +1930,7 @@ impl VxDraw {
                     return self.draw_frame_internal(postproc);
                 }
                 Err(err) => {
-                    error![self.log, "Acquire image error"; "error" => err, "type" => "present"];
+                    error![self.log, "Acquire image error"; "error" => InDebug(&err), "type" => "present"];
                     unimplemented![]
                 }
             }
@@ -1988,13 +2060,12 @@ mod tests {
     fn init_window_and_get_input() {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        vx.events_loop()
-            .unwrap()
-            .run_forever(|_evt| -> winit::ControlFlow {
+        vx.events_loop().unwrap().run(
+            move |_evt, _, ctrl_flow: &mut winit::event_loop::ControlFlow| {
                 vx.debtri().add(debtri::DebugTriangle::default());
-                winit::ControlFlow::Break
-            });
-        assert![vx.events_loop().is_none()];
+                *ctrl_flow = winit::event_loop::ControlFlow::Exit;
+            },
+        );
     }
 
     #[test]

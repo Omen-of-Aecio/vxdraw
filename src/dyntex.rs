@@ -39,13 +39,16 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::PhysicalDevice,
-    command,
+    command::{self, CommandBuffer, CommandBufferFlags},
     device::Device,
     format, image, memory,
     memory::Properties,
     pass,
+    pool::CommandPool,
+    pso::Primitive,
     pso::{self, DescriptorPool},
-    Backend, Primitive,
+    queue::CommandQueue,
+    Backend,
 };
 use std::{io::Cursor, mem::ManuallyDrop};
 
@@ -399,22 +402,21 @@ impl<'a> Dyntex<'a> {
             .unwrap();
 
         unsafe {
-            let mut writer = s
+            let writer = s
                 .device
-                .acquire_mapping_writer::<u8>(&image_upload_memory, 0..image_mem_reqs.size)
+                .map_memory(&image_upload_memory, 0..image_mem_reqs.size)
                 .expect("Unable to get mapping writer");
             let mut idx = 0;
             for y in 0..img_height {
                 // let row = &(*img)[y * row_size..(y + 1) * row_size];
                 let dest_base = y * row_pitch;
                 for row_index in 0..row_size {
-                    writer[dest_base + row_index] = img[idx % img.len()];
+                    std::slice::from_raw_parts_mut(writer, image_mem_reqs.size as usize)
+                        [dest_base + row_index] = img[idx % img.len()];
                     idx += 1;
                 }
             }
-            device
-                .release_mapping_writer(writer)
-                .expect("Couldn't release the mapping writer to the staging buffer!");
+            device.unmap_memory(&image_upload_memory);
         }
 
         let mut the_image = unsafe {
@@ -461,7 +463,7 @@ impl<'a> Dyntex<'a> {
 
         let sampler = unsafe {
             s.device
-                .create_sampler(image::SamplerInfo::new(
+                .create_sampler(&image::SamplerDesc::new(
                     match options.filtering {
                         Filter::Nearest => image::Filter::Nearest,
                         Filter::Linear => image::Filter::Linear,
@@ -476,8 +478,10 @@ impl<'a> Dyntex<'a> {
         };
 
         unsafe {
-            let mut cmd_buffer = s.command_pool.acquire_command_buffer::<command::OneShot>();
-            cmd_buffer.begin();
+            let mut cmd_buffer = s
+                .command_pool
+                .allocate_one(gfx_hal::command::Level::Primary);
+            cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
             let image_barrier = memory::Barrier::Image {
                 states: (image::Access::empty(), image::Layout::Undefined)
                     ..(
@@ -818,7 +822,7 @@ impl<'a> Dyntex<'a> {
         }
 
         let mut push_constants = Vec::<(pso::ShaderStageFlags, core::ops::Range<u32>)>::new();
-        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
+        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..64));
         let pipeline_layout = unsafe {
             s.device
                 .create_pipeline_layout(&descriptor_set_layouts, push_constants)
@@ -1630,6 +1634,7 @@ mod tests {
         dyntex.translate_all(&tex, |_| (0.25, 0.35));
 
         let img = vx.draw_frame_copy_framebuffer();
+
         utils::assert_swapchain_eq(&mut vx, "translated_texture", img);
     }
 

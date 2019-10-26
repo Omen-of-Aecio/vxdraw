@@ -131,7 +131,7 @@ use gfx_backend_gl as back;
 use gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 use gfx_backend_vulkan as back;
-use gfx_hal::{device::Device, format, image, pass, pso, Backend, Primitive};
+use gfx_hal::{device::Device, format, image, pass, pso, pso::Primitive, Backend};
 use std::{io::Cursor, mem::ManuallyDrop};
 
 // ---
@@ -598,7 +598,7 @@ impl<'a> Quads<'a> {
                     .expect("Couldn't make a DescriptorSetLayout")
             }];
         let mut push_constants = Vec::<(pso::ShaderStageFlags, std::ops::Range<u32>)>::new();
-        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..16));
+        push_constants.push((pso::ShaderStageFlags::VERTEX, 0..64));
 
         let quad_pipeline_layout = unsafe {
             s.device
