@@ -771,7 +771,7 @@ impl<'a> Texts<'a> {
                 },
             };
             buffer.pipeline_barrier(
-                pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::HOST,
+                pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::HOST,
                 memory::Dependencies::empty(),
                 &[image_barrier],
             );
@@ -1500,6 +1500,31 @@ mod tests {
 
         vx.text()
             .add(&mut layer, "font", text::TextOptions::new().font_size(60.0));
+
+        vx.text().add(
+            &mut layer,
+            "my text",
+            text::TextOptions::new()
+                .font_size(32.0)
+                .translation((0.0, -0.5)),
+        );
+
+        let img = vx.draw_frame_copy_framebuffer();
+        assert_swapchain_eq(&mut vx, "some_text", img);
+    }
+
+    #[test]
+    fn texting_add_new_letter() {
+        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+
+        let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
+
+        let text = vx
+            .text()
+            .add(&mut layer, "font", text::TextOptions::new().font_size(60.0));
+
+        vx.draw_frame();
 
         vx.text().add(
             &mut layer,

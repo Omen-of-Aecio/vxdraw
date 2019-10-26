@@ -44,7 +44,7 @@
 //!
 //!     // Sleep here so we can see some animation
 //!     #[cfg(not(feature = "doctest-headless"))]
-//!     std::thread::sleep(std::time::Duration::new(0, 16_000_000));
+//!     std::thread::sleep(std::time::Duration::from_millis(16));
 //! }
 //! ```
 use super::{blender, utils::*, Color};

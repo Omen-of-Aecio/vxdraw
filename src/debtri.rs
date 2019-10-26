@@ -1441,7 +1441,7 @@ mod tests {
     #[bench]
     fn bench_rotating_windmills_set_color(b: &mut Bencher) {
         let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Enable);
 
         let last = utils::add_windmills(&mut vx, false).pop().unwrap();
 

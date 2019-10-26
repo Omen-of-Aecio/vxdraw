@@ -104,7 +104,7 @@ use gfx_hal::{
     pool::{self, CommandPool},
     pso,
     queue::{CommandQueue, QueueFamily, Submission},
-    window::{Extent2D, PresentMode, Surface, Swapchain, SwapchainConfig},
+    window::{self as w, Extent2D, PresentMode, Surface, Swapchain, SwapchainConfig},
     Backend, Instance,
 };
 
@@ -1110,26 +1110,24 @@ impl VxDraw {
     fn draw_frame_internal(
         &mut self,
         do_postproc: bool,
-        mut postproc: impl FnMut(&mut VxDraw, gfx_hal::window::SwapImageIndex),
+        mut postproc: impl FnMut(&mut VxDraw, w::SwapImageIndex),
     ) {
         self.resized_since_last_render = false;
 
         let view = self.perspective;
         unsafe {
-            let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match self
-                .swapchain
-                .acquire_image(
-                    u64::max_value(),
-                    Some(&*self.acquire_image_semaphore_free),
-                    None,
-                ) {
+            let swap_image: (_, Option<w::Suboptimal>) = match self.swapchain.acquire_image(
+                u64::max_value(),
+                Some(&*self.acquire_image_semaphore_free),
+                None,
+            ) {
                 Ok((index, None)) => (index, None),
                 Ok((_index, Some(_suboptimal))) => {
                     info![self.log, "Swapchain in suboptimal state, recreating" ; "type" => "acquire_image"];
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
-                Err(gfx_hal::window::AcquireError::OutOfDate) => {
+                Err(w::AcquireError::OutOfDate) => {
                     info![self.log, "Swapchain out of date, recreating"; "type" => "acquire_image"];
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
@@ -1194,76 +1192,25 @@ impl VxDraw {
                     }),
                 );
                 buffer.set_scissors(0, std::iter::once(&rect));
-                for text in self.texts.iter() {
-                    let image_barrier = m::Barrier::Image {
-                        states: (i::Access::empty(), i::Layout::General)
-                            ..(i::Access::SHADER_READ, i::Layout::ShaderReadOnlyOptimal),
-                        target: &*text.image_buffer,
-                        families: None,
-                        range: i::SubresourceRange {
-                            aspects: f::Aspects::COLOR,
-                            levels: 0..1,
-                            layers: 0..1,
-                        },
-                    };
-                    buffer.pipeline_barrier(
-                        pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
-                        m::Dependencies::empty(),
-                        &[image_barrier],
-                    );
-                    // Submit automatically makes host writes available for the device
-                    let image_barrier = m::Barrier::Image {
-                        states: (i::Access::empty(), i::Layout::ShaderReadOnlyOptimal)
-                            ..(i::Access::empty(), i::Layout::General),
-                        target: &*text.image_buffer,
-                        families: None,
-                        range: i::SubresourceRange {
-                            aspects: f::Aspects::COLOR,
-                            levels: 0..1,
-                            layers: 0..1,
-                        },
-                    };
-                    buffer.pipeline_barrier(
-                        pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
-                        m::Dependencies::empty(),
-                        &[image_barrier],
-                    );
-                }
-                for strtex in self.strtexs.iter() {
-                    let image_barrier = m::Barrier::Image {
-                        states: (i::Access::empty(), i::Layout::General)
-                            ..(i::Access::SHADER_READ, i::Layout::ShaderReadOnlyOptimal),
-                        target: &strtex.image_buffer[self.current_frame],
-                        families: None,
-                        range: i::SubresourceRange {
-                            aspects: f::Aspects::COLOR,
-                            levels: 0..1,
-                            layers: 0..1,
-                        },
-                    };
-                    buffer.pipeline_barrier(
-                        pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
-                        m::Dependencies::empty(),
-                        &[image_barrier],
-                    );
-                    // Submit automatically makes host writes available for the device
-                    let image_barrier = m::Barrier::Image {
-                        states: (i::Access::empty(), i::Layout::ShaderReadOnlyOptimal)
-                            ..(i::Access::empty(), i::Layout::General),
-                        target: &strtex.image_buffer[self.current_frame],
-                        families: None,
-                        range: i::SubresourceRange {
-                            aspects: f::Aspects::COLOR,
-                            levels: 0..1,
-                            layers: 0..1,
-                        },
-                    };
-                    buffer.pipeline_barrier(
-                        pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
-                        m::Dependencies::empty(),
-                        &[image_barrier],
-                    );
-                }
+
+                // Fix for the validation layer complaining about the image not being in PRESENT
+                // mode
+                let image_barrier = m::Barrier::Image {
+                    states: (i::Access::empty(), i::Layout::Undefined)
+                        ..(i::Access::empty(), i::Layout::Present),
+                    target: &self.images[swap_image.0 as usize],
+                    families: None,
+                    range: i::SubresourceRange {
+                        aspects: f::Aspects::COLOR,
+                        levels: 0..1,
+                        layers: 0..1,
+                    },
+                };
+                buffer.pipeline_barrier(
+                    pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::TRANSFER,
+                    m::Dependencies::empty(),
+                    &[image_barrier],
+                );
 
                 {
                     buffer.begin_render_pass(
@@ -1863,7 +1810,7 @@ impl VxDraw {
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
-                Err(gfx_hal::window::PresentError::OutOfDate) => {
+                Err(w::PresentError::OutOfDate) => {
                     info![self.log, "Swapchain out of date, recreating"; "type" => "present"];
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
