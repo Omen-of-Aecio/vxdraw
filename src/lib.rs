@@ -94,10 +94,12 @@ use gfx_backend_metal as back;
 use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::PhysicalDevice,
+    buffer as b,
     command::{self, ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags},
     device::Device,
+    format as f,
     format::{self, ChannelType, Swizzle},
-    image, memory, pass,
+    image, image as i, memory, memory as m, pass,
     pool::{self, CommandPool},
     pso,
     queue::{CommandQueue, QueueFamily, Submission},
@@ -493,6 +495,7 @@ impl VxDraw {
                 preserves: &[],
             };
             debug![log, "Render pass info"; "color attachment" => InDebugPretty(&color_attachment); clone color_attachment];
+
             unsafe {
                 device
                     .create_render_pass(&[color_attachment, depth], &[subpass], &[])
@@ -840,7 +843,11 @@ impl VxDraw {
 
     /// Draw a frame but also copy the resulting image out
     pub fn draw_frame_copy_framebuffer(&mut self) -> Vec<u8> {
-        self.draw_frame_internal(copy_image_to_rgb)
+        let mut vec = vec![];
+        self.draw_frame_internal(true, |s, idx| {
+            copy_image_to_rgb(s, idx, &mut vec);
+        });
+        vec
     }
 
     /// Draw a single frame and present it to the screen
@@ -848,7 +855,7 @@ impl VxDraw {
     /// The view matrix is used to translate all elements on the screen with the exception of debug
     /// triangles and layers that have their own view.
     pub fn draw_frame(&mut self) {
-        self.draw_frame_internal(|_, _| {});
+        self.draw_frame_internal(false, |_, _| {});
     }
 
     /// Check if the window has been resized since the last rendering
@@ -1102,10 +1109,11 @@ impl VxDraw {
 
     /// Internal drawing routine
     #[allow(clippy::cognitive_complexity)]
-    fn draw_frame_internal<T>(
+    fn draw_frame_internal<'a>(
         &mut self,
-        postproc: fn(&mut VxDraw, gfx_hal::window::SwapImageIndex) -> T,
-    ) -> T {
+        do_postproc: bool,
+        mut postproc: impl FnMut(&mut VxDraw, gfx_hal::window::SwapImageIndex),
+    ) {
         self.resized_since_last_render = false;
 
         let view = self.perspective;
@@ -1121,12 +1129,12 @@ impl VxDraw {
                 Ok((_index, Some(_suboptimal))) => {
                     info![self.log, "Swapchain in suboptimal state, recreating" ; "type" => "acquire_image"];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(postproc);
+                    return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(gfx_hal::window::AcquireError::OutOfDate) => {
                     info![self.log, "Swapchain out of date, recreating"; "type" => "acquire_image"];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(postproc);
+                    return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(err) => {
                     error![self.log, "Acquire image error"; "error" => InDebug(&err), "type" => "acquire_image"];
@@ -1165,9 +1173,6 @@ impl VxDraw {
                     ClearValue {
                         color: self.clear_color,
                     },
-                    // ClearValue {
-                    //     color: self.clear_color,
-                    // },
                     ClearValue {
                         depth_stencil: ClearDepthStencil {
                             depth: 1f32,
@@ -1267,23 +1272,6 @@ impl VxDraw {
                         &[image_barrier],
                     );
                 }
-
-                let image_barrier = memory::Barrier::Image {
-                    states: (image::Access::empty(), image::Layout::Undefined)
-                        ..(image::Access::empty(), image::Layout::Present),
-                    target: &self.images[swap_image.0 as usize],
-                    families: None,
-                    range: image::SubresourceRange {
-                        aspects: format::Aspects::COLOR,
-                        levels: 0..1,
-                        layers: 0..1,
-                    },
-                };
-                buffer.pipeline_barrier(
-                    pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::BOTTOM_OF_PIPE,
-                    memory::Dependencies::empty(),
-                    &[image_barrier],
-                );
 
                 {
                     buffer.begin_render_pass(
@@ -1840,13 +1828,14 @@ impl VxDraw {
                 }
 
                 buffer.end_render_pass();
+
                 buffer.finish();
             }
 
             let command_buffers = &self.command_buffers[self.current_frame];
             let wait_semaphores: ArrayVec<[_; 1]> = [(
                 &self.acquire_image_semaphores[swap_image.0 as usize],
-                pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+                pso::PipelineStage::BOTTOM_OF_PIPE,
             )]
             .into();
             {
@@ -1855,14 +1844,20 @@ impl VxDraw {
                 let submission = Submission {
                     command_buffers: once(command_buffers),
                     wait_semaphores,
-                    signal_semaphores,
+                    signal_semaphores: if do_postproc {
+                        None
+                    } else {
+                        Some(present_wait_semaphore)
+                    },
                 };
                 self.queue_group.queues[0].submit(
                     submission,
                     Some(&self.frames_in_flight_fences[self.current_frame]),
                 );
             }
-            let postproc_res = postproc(self, swap_image.0);
+            if do_postproc {
+                postproc(self, swap_image.0);
+            }
             let present_wait_semaphore = &self.present_wait_semaphores[self.current_frame];
             let present_wait_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
             match self.swapchain.present(
@@ -1877,26 +1872,24 @@ impl VxDraw {
                         "Swapchain in suboptimal state, recreating"; "type" => "present"
                     ];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(postproc);
+                    return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(gfx_hal::window::PresentError::OutOfDate) => {
                     info![self.log, "Swapchain out of date, recreating"; "type" => "present"];
                     self.window_resized_recreate_swapchain();
-                    return self.draw_frame_internal(postproc);
+                    return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(err) => {
                     error![self.log, "Acquire image error"; "error" => InDebug(&err), "type" => "present"];
                     unimplemented![]
                 }
             }
-            postproc_res
         };
         self.current_frame = (self.current_frame + 1) % self.max_frames_in_flight;
         for strtex in self.strtexs.iter_mut() {
             strtex.circular_writes[self.current_frame].clear();
         }
         self.layer_holes.advance_state();
-        postproc_res
     }
 
     /// Generate the perspective projection so that the window's size does not stretch its

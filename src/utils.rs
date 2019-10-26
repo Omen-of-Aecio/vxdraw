@@ -12,13 +12,14 @@ use gfx_backend_vulkan as back;
 use gfx_hal::{
     adapter::Adapter,
     adapter::PhysicalDevice,
+    buffer as b,
     command::{self, CommandBuffer, CommandBufferFlags},
     device::Device,
-    format, image, memory,
-    memory::Properties,
+    format as f, format, image, image as i, memory,
+    memory::{self as m, Properties},
     pool::CommandPool,
     pso,
-    queue::CommandQueue,
+    queue::{CommandQueue, Submission},
     Backend, MemoryTypeId,
 };
 use std::f32::consts::PI;
@@ -64,7 +65,7 @@ pub(crate) fn make_vertex_buffer_with_data(
     let (buffer, memory, requirements) = unsafe {
         let buffer_size: u64 = (std::mem::size_of::<f32>() * data.len()) as u64;
         let mut buffer = device
-            .create_buffer(buffer_size, gfx_hal::buffer::Usage::VERTEX)
+            .create_buffer(buffer_size, b::Usage::VERTEX)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
         let memory_type_id = find_memory_type_id(
@@ -111,7 +112,7 @@ impl ResizBufIdx4 {
         let (buffer, memory, requirements) = unsafe {
             let buffer_size: u64 = (capacity * 6 * std::mem::size_of::<u32>()) as u64;
             let mut buffer = device
-                .create_buffer(buffer_size, gfx_hal::buffer::Usage::INDEX)
+                .create_buffer(buffer_size, b::Usage::INDEX)
                 .expect("cant make bf");
             let requirements = device.get_buffer_requirements(&buffer);
             let memory_type_id = find_memory_type_id(
@@ -208,7 +209,7 @@ impl ResizBuf {
         let (buffer, memory, requirements) = unsafe {
             let buffer_size: u64 = capacity_in_bytes as u64;
             let mut buffer = device
-                .create_buffer(buffer_size, gfx_hal::buffer::Usage::VERTEX)
+                .create_buffer(buffer_size, b::Usage::VERTEX)
                 .expect("cant make bf");
             let requirements = device.get_buffer_requirements(&buffer);
             let memory_type_id = find_memory_type_id(
@@ -307,7 +308,7 @@ pub(crate) fn make_transfer_buffer_of_size(
     let device = &s.device;
     let (buffer, memory, requirements) = unsafe {
         let mut buffer = device
-            .create_buffer(size, gfx_hal::buffer::Usage::TRANSFER_DST)
+            .create_buffer(size, b::Usage::TRANSFER_DST)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
         let memory_type_id = find_memory_type_id(
@@ -340,11 +341,11 @@ pub(crate) fn make_transfer_img_of_size(
         if s.adapter
             .physical_device
             .image_format_properties(
-                format::Format::Rgba8Unorm,
+                f::Format::Rgba8Unorm,
                 2,
-                image::Tiling::Linear,
-                image::Usage::TRANSFER_SRC | image::Usage::TRANSFER_DST,
-                image::ViewCapabilities::empty(),
+                i::Tiling::Linear,
+                i::Usage::TRANSFER_SRC | i::Usage::TRANSFER_DST,
+                i::ViewCapabilities::empty(),
             )
             .is_none()
         {
@@ -355,9 +356,9 @@ pub(crate) fn make_transfer_img_of_size(
         if !s
             .adapter
             .physical_device
-            .format_properties(Some(format::Format::Rgba8Unorm))
+            .format_properties(Some(f::Format::Rgba8Unorm))
             .linear_tiling
-            .contains(format::ImageFeature::BLIT_DST)
+            .contains(f::ImageFeature::BLIT_DST)
         {
             const MSG: &str =
                 "Device does not support VK_FORMAT_R8G8B8A8_UNORM as blit destination";
@@ -366,12 +367,12 @@ pub(crate) fn make_transfer_img_of_size(
         }
         let mut buffer = device
             .create_image(
-                image::Kind::D2(w, h, 1, 1),
+                i::Kind::D2(w, h, 1, 1),
                 1,
-                format::Format::Rgba8Unorm,
-                image::Tiling::Linear,
-                image::Usage::TRANSFER_DST | image::Usage::TRANSFER_SRC,
-                image::ViewCapabilities::empty(),
+                f::Format::Rgba8Unorm,
+                i::Tiling::Linear,
+                i::Usage::TRANSFER_DST | i::Usage::TRANSFER_SRC,
+                i::ViewCapabilities::empty(),
             )
             .expect("cant make bf");
         let requirements = device.get_image_requirements(&buffer);
@@ -404,7 +405,7 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
     let (buffer, memory, requirements) = unsafe {
         let buffer_size: u64 = (std::mem::size_of::<f32>() * data.len()) as u64;
         let mut buffer = device
-            .create_buffer(buffer_size, gfx_hal::buffer::Usage::TRANSFER_SRC)
+            .create_buffer(buffer_size, b::Usage::TRANSFER_SRC)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
         let memory_type_id = find_memory_type_id(
@@ -431,10 +432,7 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
     let (buffer_gpu, memory_gpu, memory_gpu_requirements) = unsafe {
         let buffer_size: u64 = (std::mem::size_of::<f32>() * data.len()) as u64;
         let mut buffer = device
-            .create_buffer(
-                buffer_size,
-                gfx_hal::buffer::Usage::TRANSFER_DST | gfx_hal::buffer::Usage::VERTEX,
-            )
+            .create_buffer(buffer_size, b::Usage::TRANSFER_DST | b::Usage::VERTEX)
             .expect("cant make bf");
         let requirements = device.get_buffer_requirements(&buffer);
         let memory_type_id =
@@ -451,15 +449,15 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
     let mut cmd_buffer = unsafe { s.command_pool.allocate_one(command::Level::Primary) };
     unsafe {
         cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
-        let buffer_barrier = gfx_hal::memory::Barrier::Buffer {
+        let buffer_barrier = m::Barrier::Buffer {
             families: None,
             range: None..None,
-            states: gfx_hal::buffer::Access::empty()..gfx_hal::buffer::Access::TRANSFER_WRITE,
+            states: b::Access::empty()..b::Access::TRANSFER_WRITE,
             target: &buffer_gpu,
         };
         cmd_buffer.pipeline_barrier(
             pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::TRANSFER,
-            gfx_hal::memory::Dependencies::empty(),
+            m::Dependencies::empty(),
             &[buffer_barrier],
         );
         let copy = once(command::BufferCopy {
@@ -468,15 +466,15 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
             size: buffer_size,
         });
         cmd_buffer.copy_buffer(&buffer, &buffer_gpu, copy);
-        let buffer_barrier = gfx_hal::memory::Barrier::Buffer {
+        let buffer_barrier = m::Barrier::Buffer {
             families: None,
             range: None..None,
-            states: gfx_hal::buffer::Access::TRANSFER_WRITE..gfx_hal::buffer::Access::SHADER_READ,
+            states: b::Access::TRANSFER_WRITE..b::Access::SHADER_READ,
             target: &buffer_gpu,
         };
         cmd_buffer.pipeline_barrier(
             pso::PipelineStage::TRANSFER..pso::PipelineStage::FRAGMENT_SHADER,
-            gfx_hal::memory::Dependencies::empty(),
+            m::Dependencies::empty(),
             &[buffer_barrier],
         );
         cmd_buffer.finish();
@@ -513,7 +511,8 @@ pub(crate) fn make_centered_equilateral_triangle() -> [f32; 6] {
 pub(crate) fn copy_image_to_rgb(
     s: &mut VxDraw,
     image_index: gfx_hal::window::SwapImageIndex,
-) -> Vec<u8> {
+    output: &mut Vec<u8>,
+) {
     let width = s.swapconfig.extent.width;
     let height = s.swapconfig.extent.height;
 
@@ -521,159 +520,141 @@ pub(crate) fn copy_image_to_rgb(
         make_transfer_buffer_of_size(s, u64::from(width * height * 4));
     let (imgbuf, imgmem, _imgreq) = make_transfer_img_of_size(s, width, height);
     let images = &s.images;
-    // unsafe {
-    //     s.device
-    //         .wait_for_fence(
-    //             &s.frames_in_flight_fences[s.current_frame],
-    //             u64::max_value(),
-    //         )
-    //         .expect("Unable to wait for fence");
-    // }
     unsafe {
+        // s.device
+        //     .wait_for_fence(
+        //         &s.frames_in_flight_fences[s.current_frame],
+        //         u64::max_value(),
+        //     )
+        //     .expect("Unable to wait for fence");
+        // println!["====== DOING THE BUFFER COPY {:?}", &images[image_index as usize]];
         let mut cmd_buffer = s.command_pool.allocate_one(command::Level::Primary);
-        cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
-        let image_barrier = gfx_hal::memory::Barrier::Image {
-            states: (gfx_hal::image::Access::empty(), image::Layout::Present)
-                ..(
-                    gfx_hal::image::Access::TRANSFER_READ,
-                    image::Layout::TransferSrcOptimal,
-                ),
+        cmd_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
+        let image_barrier = m::Barrier::Image {
+            states: (i::Access::empty(), i::Layout::Present)
+                ..(i::Access::TRANSFER_READ, i::Layout::TransferSrcOptimal),
             target: &images[image_index as usize],
             families: None,
-            range: image::SubresourceRange {
-                aspects: format::Aspects::COLOR,
+            range: i::SubresourceRange {
+                aspects: f::Aspects::COLOR,
                 levels: 0..1,
                 layers: 0..1,
             },
         };
-        let dstbarrier = gfx_hal::memory::Barrier::Image {
-            states: (gfx_hal::image::Access::empty(), image::Layout::Undefined)
-                ..(
-                    gfx_hal::image::Access::TRANSFER_WRITE,
-                    image::Layout::General,
-                ),
+        let dstbarrier = m::Barrier::Image {
+            states: (i::Access::empty(), i::Layout::Undefined)
+                ..(i::Access::TRANSFER_WRITE, i::Layout::TransferDstOptimal),
             target: &imgbuf,
             families: None,
-            range: image::SubresourceRange {
-                aspects: format::Aspects::COLOR,
+            range: i::SubresourceRange {
+                aspects: f::Aspects::COLOR,
                 levels: 0..1,
                 layers: 0..1,
             },
         };
         cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT..pso::PipelineStage::TRANSFER,
-            gfx_hal::memory::Dependencies::empty(),
+            pso::PipelineStage::BOTTOM_OF_PIPE..pso::PipelineStage::TRANSFER,
+            m::Dependencies::empty(),
             &[image_barrier, dstbarrier],
         );
         cmd_buffer.blit_image(
             &images[image_index as usize],
-            image::Layout::TransferSrcOptimal,
+            i::Layout::TransferSrcOptimal,
             &imgbuf,
-            image::Layout::General,
-            image::Filter::Nearest,
+            i::Layout::TransferDstOptimal,
+            i::Filter::Nearest,
             once(command::ImageBlit {
-                src_subresource: image::SubresourceLayers {
-                    aspects: format::Aspects::COLOR,
+                src_subresource: i::SubresourceLayers {
+                    aspects: f::Aspects::COLOR,
                     level: 0,
                     layers: 0..1,
                 },
-                src_bounds: image::Offset { x: 0, y: 0, z: 0 }..image::Offset {
+                src_bounds: i::Offset { x: 0, y: 0, z: 0 }..i::Offset {
                     x: width as i32,
                     y: height as i32,
                     z: 1,
                 },
-                dst_subresource: image::SubresourceLayers {
-                    aspects: format::Aspects::COLOR,
+                dst_subresource: i::SubresourceLayers {
+                    aspects: f::Aspects::COLOR,
                     level: 0,
                     layers: 0..1,
                 },
-                dst_bounds: image::Offset { x: 0, y: 0, z: 0 }..image::Offset {
+                dst_bounds: i::Offset { x: 0, y: 0, z: 0 }..i::Offset {
                     x: width as i32,
                     y: height as i32,
                     z: 1,
                 },
             }),
         );
-        let image_barrier = gfx_hal::memory::Barrier::Image {
-            states: (
-                gfx_hal::image::Access::TRANSFER_READ,
-                image::Layout::TransferSrcOptimal,
-            )..(gfx_hal::image::Access::empty(), image::Layout::Present),
-            target: &images[image_index as usize],
-            families: None,
-            range: image::SubresourceRange {
-                aspects: format::Aspects::COLOR,
-                levels: 0..1,
-                layers: 0..1,
-            },
-        };
-        cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::TRANSFER..pso::PipelineStage::TOP_OF_PIPE,
-            gfx_hal::memory::Dependencies::empty(),
-            &[image_barrier],
-        );
-        cmd_buffer.finish();
-        let the_command_queue = &mut s.queue_group.queues[0];
-        let fence = s
-            .device
-            .create_fence(false)
-            .expect("Unable to create fence");
-        the_command_queue.submit_without_semaphores(once(&cmd_buffer), Some(&fence));
-        s.device
-            .wait_for_fence(&fence, u64::max_value())
-            .expect("unable to wait for fence");
-        s.device.destroy_fence(fence);
-    }
-    unsafe {
-        let mut cmd_buffer = s.command_pool.allocate_one(command::Level::Primary);
-        cmd_buffer.begin_primary(CommandBufferFlags::EMPTY);
-        let image_barrier = gfx_hal::memory::Barrier::Image {
-            states: (gfx_hal::image::Access::empty(), image::Layout::Undefined)
-                ..(
-                    gfx_hal::image::Access::TRANSFER_READ,
-                    image::Layout::TransferSrcOptimal,
-                ),
+        let image_barrier = m::Barrier::Image {
+            states: (i::Access::TRANSFER_WRITE, i::Layout::TransferDstOptimal)
+                ..(i::Access::TRANSFER_READ, i::Layout::TransferSrcOptimal),
             target: &imgbuf,
             families: None,
-            range: image::SubresourceRange {
-                aspects: format::Aspects::COLOR,
+            range: i::SubresourceRange {
+                aspects: f::Aspects::COLOR,
                 levels: 0..1,
                 layers: 0..1,
             },
         };
         cmd_buffer.pipeline_barrier(
-            pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::TRANSFER,
-            gfx_hal::memory::Dependencies::empty(),
+            pso::PipelineStage::TRANSFER..pso::PipelineStage::TRANSFER,
+            m::Dependencies::empty(),
             &[image_barrier],
         );
         cmd_buffer.copy_image_to_buffer(
             &imgbuf,
-            image::Layout::TransferSrcOptimal,
+            i::Layout::TransferSrcOptimal,
             &buffer,
             once(command::BufferImageCopy {
                 buffer_offset: 0,
                 buffer_width: width,
                 buffer_height: height,
-                image_layers: image::SubresourceLayers {
-                    aspects: format::Aspects::COLOR,
+                image_layers: i::SubresourceLayers {
+                    aspects: f::Aspects::COLOR,
                     level: 0,
                     layers: 0..1,
                 },
-                image_offset: image::Offset { x: 0, y: 0, z: 0 },
-                image_extent: image::Extent {
+                image_offset: i::Offset { x: 0, y: 0, z: 0 },
+                image_extent: i::Extent {
                     width,
                     height,
                     depth: 1,
                 },
             }),
         );
+        let image_barrier = m::Barrier::Image {
+            states: (i::Access::TRANSFER_READ, i::Layout::TransferSrcOptimal)
+                ..(i::Access::empty(), i::Layout::Present),
+            target: &images[image_index as usize],
+            families: None,
+            range: i::SubresourceRange {
+                aspects: f::Aspects::COLOR,
+                levels: 0..1,
+                layers: 0..1,
+            },
+        };
+        cmd_buffer.pipeline_barrier(
+            pso::PipelineStage::TRANSFER..pso::PipelineStage::BOTTOM_OF_PIPE,
+            m::Dependencies::empty(),
+            &[image_barrier],
+        );
         cmd_buffer.finish();
         let the_command_queue = &mut s.queue_group.queues[0];
         let fence = s
             .device
             .create_fence(false)
             .expect("Unable to create fence");
-        the_command_queue.submit_without_semaphores(once(&cmd_buffer), Some(&fence));
+
+        let present_wait_semaphore = &s.present_wait_semaphores[s.current_frame];
+        the_command_queue.submit(
+            Submission {
+                command_buffers: once(&cmd_buffer),
+                wait_semaphores: None,
+                signal_semaphores: Some(present_wait_semaphore),
+            },
+            Some(&fence),
+        );
         s.device
             .wait_for_fence(&fence, u64::max_value())
             .expect("unable to wait for fence");
@@ -686,17 +667,17 @@ pub(crate) fn copy_image_to_rgb(
             .map_memory(&memory, 0..requirements.size as u64)
             .expect("Unable to open reader");
         assert![u64::from(4 * width * height) <= requirements.size];
-        let result = std::slice::from_raw_parts(reader, (4 * width * height) as usize)
-            .iter()
-            .take((4 * width * height) as usize)
-            .cloned()
-            .collect::<Vec<_>>();
+        output.extend(
+            std::slice::from_raw_parts(reader, (4 * width * height) as usize)
+                .iter()
+                .take((4 * width * height) as usize)
+                .cloned(),
+        );
         s.device.unmap_memory(&memory);
         s.device.destroy_buffer(buffer);
         s.device.free_memory(memory);
         s.device.destroy_image(imgbuf);
         s.device.free_memory(imgmem);
-        result
     }
 }
 
