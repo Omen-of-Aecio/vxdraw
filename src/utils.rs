@@ -84,9 +84,7 @@ pub(crate) fn make_vertex_buffer_with_data(
         let data_target = device
             .map_memory(&memory, 0..requirements.size)
             .expect("Failed to acquire a memory writer!");
-        let data_target = std::mem::transmute::<_, *mut f32>(data_target);
-        std::slice::from_raw_parts_mut(data_target, requirements.size as usize / 4)[..data.len()]
-            .copy_from_slice(data);
+        std::ptr::copy_nonoverlapping(data.as_ptr() as *const u8, data_target, data.len() * 4);
         device.unmap_memory(&memory);
     }
     (buffer, memory, requirements)
@@ -426,8 +424,7 @@ pub(crate) fn make_vertex_buffer_with_data_on_gpu(
         let data_target = device
             .map_memory(&memory, 0..requirements.size)
             .expect("Failed to acquire a memory writer!");
-        let data_target = std::mem::transmute::<_, *mut f32>(data_target);
-        std::slice::from_raw_parts_mut(data_target, data.len())[..data.len()].copy_from_slice(data);
+        std::ptr::copy_nonoverlapping(data.as_ptr() as *const u8, data_target, data.len() * 4);
         device.unmap_memory(&memory);
     }
 
