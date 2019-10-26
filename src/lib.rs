@@ -96,10 +96,11 @@ use gfx_hal::{
     adapter::PhysicalDevice,
     buffer as b,
     command::{self, ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags},
+    device,
     device::Device,
     format as f,
-    format::{self, ChannelType, Swizzle},
-    image, image as i, memory, memory as m, pass,
+    format::{ChannelType, Swizzle},
+    image as i, memory as m, pass,
     pool::{self, CommandPool},
     pso,
     queue::{CommandQueue, QueueFamily, Submission},
@@ -292,7 +293,7 @@ impl VxDraw {
             let window = {
                 let builder = back::config_context(
                     back::glutin::ContextBuilder::new(),
-                    format::Format::Rgba8Srgb,
+                    f::Format::Rgba8Srgb,
                     None,
                 )
                 .with_vsync(true);
@@ -388,7 +389,7 @@ impl VxDraw {
 
         debug![log, "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
         debug![log, "Formats available"; "formats" => InDebugPretty(&formats); clone formats];
-        let format = formats.map_or(format::Format::Rgba8Srgb, |formats| {
+        let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
             formats
                 .iter()
                 .find(|format| format.base_format().1 == ChannelType::Srgb)
@@ -400,7 +401,7 @@ impl VxDraw {
             .physical_device
             .format_properties(Some(format))
             .optimal_tiling
-            .contains(format::ImageFeature::BLIT_SRC)];
+            .contains(f::ImageFeature::BLIT_SRC)];
 
         debug![log, "Format chosen"; "format" => InDebugPretty(&format); clone format];
         debug![log, "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
@@ -439,8 +440,8 @@ impl VxDraw {
         swap_config.present_mode = present_mode;
         swap_config.image_count = image_count;
         swap_config.extent = dims;
-        if caps.usage.contains(image::Usage::TRANSFER_SRC) {
-            swap_config.image_usage |= gfx_hal::image::Usage::TRANSFER_SRC;
+        if caps.usage.contains(i::Usage::TRANSFER_SRC) {
+            swap_config.image_usage |= i::Usage::TRANSFER_SRC;
         } else {
             warn![
                 log,
@@ -474,22 +475,22 @@ impl VxDraw {
                     store: pass::AttachmentStoreOp::Store,
                 },
                 stencil_ops: pass::AttachmentOps::DONT_CARE,
-                layouts: image::Layout::Undefined..image::Layout::Present,
+                layouts: i::Layout::Undefined..i::Layout::Present,
             };
             let depth = pass::Attachment {
-                format: Some(format::Format::D32Sfloat),
+                format: Some(f::Format::D32Sfloat),
                 samples: 1,
                 ops: pass::AttachmentOps::new(
                     pass::AttachmentLoadOp::Clear,
                     pass::AttachmentStoreOp::Store,
                 ),
                 stencil_ops: pass::AttachmentOps::DONT_CARE,
-                layouts: image::Layout::Undefined..image::Layout::DepthStencilAttachmentOptimal,
+                layouts: i::Layout::Undefined..i::Layout::DepthStencilAttachmentOptimal,
             };
 
             let subpass = pass::SubpassDesc {
-                colors: &[(0, image::Layout::ColorAttachmentOptimal)],
-                depth_stencil: Some(&(1, image::Layout::DepthStencilAttachmentOptimal)),
+                colors: &[(0, i::Layout::ColorAttachmentOptimal)],
+                depth_stencil: Some(&(1, i::Layout::DepthStencilAttachmentOptimal)),
                 inputs: &[],
                 resolves: &[],
                 preserves: &[],
@@ -512,7 +513,7 @@ impl VxDraw {
         let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
         let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
         let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
-        let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
+        let mut depth_image_requirements: Vec<m::Requirements> = vec![];
 
         let (image_views, framebuffers) = {
             let image_views = images
@@ -521,11 +522,11 @@ impl VxDraw {
                     device
                         .create_image_view(
                             &image,
-                            image::ViewKind::D2,
+                            i::ViewKind::D2,
                             format, // MUST be identical to the image's format
                             Swizzle::NO,
-                            image::SubresourceRange {
-                                aspects: format::Aspects::COLOR,
+                            i::SubresourceRange {
+                                aspects: f::Aspects::COLOR,
                                 levels: 0..1,
                                 layers: 0..1,
                             },
@@ -539,20 +540,17 @@ impl VxDraw {
                 for _ in &image_views {
                     let mut depth_image = device
                         .create_image(
-                            image::Kind::D2(dims.width, dims.height, 1, 1),
+                            i::Kind::D2(dims.width, dims.height, 1, 1),
                             1,
-                            format::Format::D32Sfloat,
-                            image::Tiling::Optimal,
-                            image::Usage::DEPTH_STENCIL_ATTACHMENT,
-                            image::ViewCapabilities::empty(),
+                            f::Format::D32Sfloat,
+                            i::Tiling::Optimal,
+                            i::Usage::DEPTH_STENCIL_ATTACHMENT,
+                            i::ViewCapabilities::empty(),
                         )
                         .expect("Unable to create depth image");
                     let requirements = device.get_image_requirements(&depth_image);
-                    let memory_type_id = find_memory_type_id(
-                        &adapter,
-                        requirements,
-                        memory::Properties::DEVICE_LOCAL,
-                    );
+                    let memory_type_id =
+                        find_memory_type_id(&adapter, requirements, m::Properties::DEVICE_LOCAL);
                     let memory = device
                         .allocate_memory(memory_type_id, requirements.size)
                         .expect("Couldn't allocate image memory!");
@@ -562,11 +560,11 @@ impl VxDraw {
                     let image_view = device
                         .create_image_view(
                             &depth_image,
-                            image::ViewKind::D2,
-                            format::Format::D32Sfloat,
-                            format::Swizzle::NO,
-                            image::SubresourceRange {
-                                aspects: format::Aspects::DEPTH,
+                            i::ViewKind::D2,
+                            f::Format::D32Sfloat,
+                            f::Swizzle::NO,
+                            i::SubresourceRange {
+                                aspects: f::Aspects::DEPTH,
                                 levels: 0..1,
                                 layers: 0..1,
                             },
@@ -587,7 +585,7 @@ impl VxDraw {
                             .create_framebuffer(
                                 &render_pass,
                                 vec![image_view, &depth_image_views[idx]],
-                                image::Extent {
+                                i::Extent {
                                     width: dims.width as u32,
                                     height: dims.height as u32,
                                     depth: 1,
@@ -733,7 +731,7 @@ impl VxDraw {
             self.device
                 .wait_for_fences(
                     &self.frames_in_flight_fences[..],
-                    gfx_hal::device::WaitFor::All,
+                    device::WaitFor::All,
                     u64::max_value(),
                 )
                 .expect("Unable to wait for frame fences");
@@ -891,7 +889,7 @@ impl VxDraw {
         let mut swap_config = SwapchainConfig::from_caps(&caps, self.swapconfig.format, extent);
         self.swapconfig.extent = swap_config.extent;
 
-        let format = formats.map_or(format::Format::Rgba8Srgb, |formats| {
+        let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
             formats
                 .iter()
                 .find(|format| format.base_format().1 == ChannelType::Srgb)
@@ -933,8 +931,8 @@ impl VxDraw {
         swap_config.present_mode = present_mode;
         swap_config.image_count = image_count;
 
-        if caps.usage.contains(image::Usage::TRANSFER_SRC) {
-            swap_config.image_usage |= gfx_hal::image::Usage::TRANSFER_SRC;
+        if caps.usage.contains(i::Usage::TRANSFER_SRC) {
+            swap_config.image_usage |= i::Usage::TRANSFER_SRC;
         } else {
             warn![
                 self.log,
@@ -967,7 +965,7 @@ impl VxDraw {
         let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
         let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
         let mut depth_image_memories: Vec<<back::Backend as Backend>::Memory> = vec![];
-        let mut depth_image_requirements: Vec<memory::Requirements> = vec![];
+        let mut depth_image_requirements: Vec<m::Requirements> = vec![];
 
         let (image_views, framebuffers) = {
             let image_views = images
@@ -976,11 +974,11 @@ impl VxDraw {
                     self.device
                         .create_image_view(
                             &image,
-                            image::ViewKind::D2,
+                            i::ViewKind::D2,
                             self.swapconfig.format, // MUST be identical to the image's format
                             Swizzle::NO,
-                            image::SubresourceRange {
-                                aspects: format::Aspects::COLOR,
+                            i::SubresourceRange {
+                                aspects: f::Aspects::COLOR,
                                 levels: 0..1,
                                 layers: 0..1,
                             },
@@ -995,24 +993,24 @@ impl VxDraw {
                     let mut depth_image = self
                         .device
                         .create_image(
-                            image::Kind::D2(
+                            i::Kind::D2(
                                 self.swapconfig.extent.width,
                                 self.swapconfig.extent.height,
                                 1,
                                 1,
                             ),
                             1,
-                            format::Format::D32Sfloat,
-                            image::Tiling::Optimal,
-                            image::Usage::DEPTH_STENCIL_ATTACHMENT,
-                            image::ViewCapabilities::empty(),
+                            f::Format::D32Sfloat,
+                            i::Tiling::Optimal,
+                            i::Usage::DEPTH_STENCIL_ATTACHMENT,
+                            i::ViewCapabilities::empty(),
                         )
                         .expect("Unable to create depth image");
                     let requirements = self.device.get_image_requirements(&depth_image);
                     let memory_type_id = find_memory_type_id(
                         &self.adapter,
                         requirements,
-                        memory::Properties::DEVICE_LOCAL,
+                        m::Properties::DEVICE_LOCAL,
                     );
                     let memory = self
                         .device
@@ -1025,11 +1023,11 @@ impl VxDraw {
                         .device
                         .create_image_view(
                             &depth_image,
-                            image::ViewKind::D2,
-                            format::Format::D32Sfloat,
-                            format::Swizzle::NO,
-                            image::SubresourceRange {
-                                aspects: format::Aspects::DEPTH,
+                            i::ViewKind::D2,
+                            f::Format::D32Sfloat,
+                            f::Swizzle::NO,
+                            i::SubresourceRange {
+                                aspects: f::Aspects::DEPTH,
                                 levels: 0..1,
                                 layers: 0..1,
                             },
@@ -1050,7 +1048,7 @@ impl VxDraw {
                             .create_framebuffer(
                                 &self.render_pass,
                                 vec![image_view, &depth_image_views[idx]],
-                                image::Extent {
+                                i::Extent {
                                     width: self.swapconfig.extent.width,
                                     height: self.swapconfig.extent.height,
                                     depth: 1,
@@ -1109,7 +1107,7 @@ impl VxDraw {
 
     /// Internal drawing routine
     #[allow(clippy::cognitive_complexity)]
-    fn draw_frame_internal<'a>(
+    fn draw_frame_internal(
         &mut self,
         do_postproc: bool,
         mut postproc: impl FnMut(&mut VxDraw, gfx_hal::window::SwapImageIndex),
@@ -1117,7 +1115,7 @@ impl VxDraw {
         self.resized_since_last_render = false;
 
         let view = self.perspective;
-        let postproc_res = unsafe {
+        unsafe {
             let swap_image: (_, Option<gfx_hal::window::Suboptimal>) = match self
                 .swapchain
                 .acquire_image(
@@ -1197,78 +1195,72 @@ impl VxDraw {
                 );
                 buffer.set_scissors(0, std::iter::once(&rect));
                 for text in self.texts.iter() {
-                    let image_barrier = memory::Barrier::Image {
-                        states: (image::Access::empty(), image::Layout::General)
-                            ..(
-                                image::Access::SHADER_READ,
-                                image::Layout::ShaderReadOnlyOptimal,
-                            ),
+                    let image_barrier = m::Barrier::Image {
+                        states: (i::Access::empty(), i::Layout::General)
+                            ..(i::Access::SHADER_READ, i::Layout::ShaderReadOnlyOptimal),
                         target: &*text.image_buffer,
                         families: None,
-                        range: image::SubresourceRange {
-                            aspects: format::Aspects::COLOR,
+                        range: i::SubresourceRange {
+                            aspects: f::Aspects::COLOR,
                             levels: 0..1,
                             layers: 0..1,
                         },
                     };
                     buffer.pipeline_barrier(
                         pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
-                        memory::Dependencies::empty(),
+                        m::Dependencies::empty(),
                         &[image_barrier],
                     );
                     // Submit automatically makes host writes available for the device
-                    let image_barrier = memory::Barrier::Image {
-                        states: (image::Access::empty(), image::Layout::ShaderReadOnlyOptimal)
-                            ..(image::Access::empty(), image::Layout::General),
+                    let image_barrier = m::Barrier::Image {
+                        states: (i::Access::empty(), i::Layout::ShaderReadOnlyOptimal)
+                            ..(i::Access::empty(), i::Layout::General),
                         target: &*text.image_buffer,
                         families: None,
-                        range: image::SubresourceRange {
-                            aspects: format::Aspects::COLOR,
+                        range: i::SubresourceRange {
+                            aspects: f::Aspects::COLOR,
                             levels: 0..1,
                             layers: 0..1,
                         },
                     };
                     buffer.pipeline_barrier(
                         pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
-                        memory::Dependencies::empty(),
+                        m::Dependencies::empty(),
                         &[image_barrier],
                     );
                 }
                 for strtex in self.strtexs.iter() {
-                    let image_barrier = memory::Barrier::Image {
-                        states: (image::Access::empty(), image::Layout::General)
-                            ..(
-                                image::Access::SHADER_READ,
-                                image::Layout::ShaderReadOnlyOptimal,
-                            ),
+                    let image_barrier = m::Barrier::Image {
+                        states: (i::Access::empty(), i::Layout::General)
+                            ..(i::Access::SHADER_READ, i::Layout::ShaderReadOnlyOptimal),
                         target: &strtex.image_buffer[self.current_frame],
                         families: None,
-                        range: image::SubresourceRange {
-                            aspects: format::Aspects::COLOR,
+                        range: i::SubresourceRange {
+                            aspects: f::Aspects::COLOR,
                             levels: 0..1,
                             layers: 0..1,
                         },
                     };
                     buffer.pipeline_barrier(
                         pso::PipelineStage::TOP_OF_PIPE..pso::PipelineStage::FRAGMENT_SHADER,
-                        memory::Dependencies::empty(),
+                        m::Dependencies::empty(),
                         &[image_barrier],
                     );
                     // Submit automatically makes host writes available for the device
-                    let image_barrier = memory::Barrier::Image {
-                        states: (image::Access::empty(), image::Layout::ShaderReadOnlyOptimal)
-                            ..(image::Access::empty(), image::Layout::General),
+                    let image_barrier = m::Barrier::Image {
+                        states: (i::Access::empty(), i::Layout::ShaderReadOnlyOptimal)
+                            ..(i::Access::empty(), i::Layout::General),
                         target: &strtex.image_buffer[self.current_frame],
                         families: None,
-                        range: image::SubresourceRange {
-                            aspects: format::Aspects::COLOR,
+                        range: i::SubresourceRange {
+                            aspects: f::Aspects::COLOR,
                             levels: 0..1,
                             layers: 0..1,
                         },
                     };
                     buffer.pipeline_barrier(
                         pso::PipelineStage::FRAGMENT_SHADER..pso::PipelineStage::HOST,
-                        memory::Dependencies::empty(),
+                        m::Dependencies::empty(),
                         &[image_barrier],
                     );
                 }
@@ -1378,7 +1370,7 @@ impl VxDraw {
                                         &[],
                                     );
                                     buffer.bind_vertex_buffers(0, buffers);
-                                    buffer.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer.bind_index_buffer(b::IndexBufferView {
                                         buffer: text.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U32,
@@ -1394,8 +1386,8 @@ impl VxDraw {
                                 let strtex = &mut self.strtexs[*id];
                                 let foot = self.device.get_image_subresource_footprint(
                                     &strtex.image_buffer[self.current_frame],
-                                    image::Subresource {
-                                        aspects: format::Aspects::COLOR,
+                                    i::Subresource {
+                                        aspects: f::Aspects::COLOR,
                                         level: 0,
                                         layer: 0,
                                     },
@@ -1543,7 +1535,7 @@ impl VxDraw {
                                         &[],
                                     );
                                     buffer.bind_vertex_buffers(0, buffers);
-                                    buffer.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer.bind_index_buffer(b::IndexBufferView {
                                         buffer: strtex.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U32,
@@ -1650,7 +1642,7 @@ impl VxDraw {
                                         &[],
                                     );
                                     buffer.bind_vertex_buffers(0, buffers);
-                                    buffer.bind_index_buffer(gfx_hal::buffer::IndexBufferView {
+                                    buffer.bind_index_buffer(b::IndexBufferView {
                                         buffer: dyntex.indices[self.current_frame].buffer(),
                                         offset: 0,
                                         index_type: gfx_hal::IndexType::U32,
@@ -1740,13 +1732,11 @@ impl VxDraw {
                                         ]
                                         .into();
                                         buffer.bind_vertex_buffers(0, buffers);
-                                        buffer.bind_index_buffer(
-                                            gfx_hal::buffer::IndexBufferView {
-                                                buffer: &quad.indices[self.current_frame].buffer(),
-                                                offset: 0,
-                                                index_type: gfx_hal::IndexType::U32,
-                                            },
-                                        );
+                                        buffer.bind_index_buffer(b::IndexBufferView {
+                                            buffer: &quad.indices[self.current_frame].buffer(),
+                                            offset: 0,
+                                            index_type: gfx_hal::IndexType::U32,
+                                        });
                                         buffer.draw_indexed(
                                             0..quad.posbuffer.len() as u32 * 6,
                                             0,
@@ -1840,7 +1830,6 @@ impl VxDraw {
             .into();
             {
                 let present_wait_semaphore = &self.present_wait_semaphores[self.current_frame];
-                let signal_semaphores: ArrayVec<[_; 1]> = [present_wait_semaphore].into();
                 let submission = Submission {
                     command_buffers: once(command_buffers),
                     wait_semaphores,
@@ -1884,7 +1873,7 @@ impl VxDraw {
                     unimplemented![]
                 }
             }
-        };
+        }
         self.current_frame = (self.current_frame + 1) % self.max_frames_in_flight;
         for strtex in self.strtexs.iter_mut() {
             strtex.circular_writes[self.current_frame].clear();

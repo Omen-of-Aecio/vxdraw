@@ -15,7 +15,7 @@ use gfx_hal::{
     buffer as b,
     command::{self, CommandBuffer, CommandBufferFlags},
     device::Device,
-    format as f, format, image, image as i, memory,
+    format as f, image as i, memory,
     memory::{self as m, Properties},
     pool::CommandPool,
     pso,
