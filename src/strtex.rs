@@ -12,10 +12,16 @@
 //! Here is a binary counter using a streaming texture. The counter increments from left to right.
 //! ```
 //! use vxdraw::{prelude::*, strtex::{LayerOptions, Sprite}, void_logger, Color, Deg, Matrix4, ShowWindow, VxDraw};
+//! use winit::platform::unix::EventLoopExtUnix;
+//! use winit::event_loop::EventLoop;
+//!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //! // Create a new layer/streaming texture, each streaming texture is on its own layer
 //! let clock = vx.strtex().add_layer(&LayerOptions::new().width(8));
@@ -1940,15 +1946,17 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use fast_logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use test::{black_box, Bencher};
+    use winit::platform::unix::EventLoopExtUnix;
 
     #[test]
     fn generate_map_randomly() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
@@ -1961,8 +1969,9 @@ mod tests {
 
     #[test]
     fn with_origin_11() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(1000).height(1000));
@@ -1975,8 +1984,9 @@ mod tests {
 
     #[test]
     fn streaming_texture_blocks() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
 
@@ -1994,8 +2004,9 @@ mod tests {
 
     #[test]
     fn streaming_texture_blocks_off_by_one() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(10).height(1));
@@ -2023,8 +2034,9 @@ mod tests {
 
     #[test]
     fn use_read_only_works_after_frame_drawn() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(10).height(10));
@@ -2043,8 +2055,9 @@ mod tests {
 
     #[test]
     fn use_write() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(10).height(10));
@@ -2062,8 +2075,9 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_pixel_accesses() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
 
@@ -2083,8 +2097,9 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_block_accesses() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let id = strtex.add_layer(&LayerOptions::new().width(64).height(64));
@@ -2102,8 +2117,9 @@ mod tests {
 
     #[test]
     fn strtex_mass_manip() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let layer = vx
             .strtex()
@@ -2178,8 +2194,9 @@ mod tests {
 
     #[test]
     fn wrap_mode_clamp() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let options = &LayerOptions::new()
@@ -2197,8 +2214,9 @@ mod tests {
 
     #[test]
     fn wrap_mode_mirror() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut strtex = vx.strtex();
         let options = &LayerOptions::new()
@@ -2216,8 +2234,9 @@ mod tests {
 
     #[test]
     fn rapidly_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions::new();
 
@@ -2239,8 +2258,9 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel_while_drawing(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let id = vx
             .strtex()
@@ -2256,8 +2276,9 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_500x500_area(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let id = vx
             .strtex()
@@ -2273,8 +2294,9 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_500x500_area_using_iterator(b: &mut Bencher) {
         use itertools::Itertools;
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let id = vx
             .strtex()
@@ -2293,8 +2315,9 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let id = vx
             .strtex()
@@ -2309,8 +2332,9 @@ mod tests {
 
     #[bench]
     fn adding_sprites(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let layer = vx
             .strtex()
             .add_layer(&LayerOptions::new().width(1000).height(1000));
@@ -2325,8 +2349,9 @@ mod tests {
 
     #[bench]
     fn generate_perlin_noise(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let layer = vx
             .strtex()
             .add_layer(&LayerOptions::new().width(1000).height(1000));

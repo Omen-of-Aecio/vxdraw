@@ -2,12 +2,18 @@
 //!
 //! # Example - Drawing centered text #
 //! ```
+//! use winit::platform::unix::EventLoopExtUnix;
+//! use winit::event_loop::EventLoop;
 //! use vxdraw::{prelude::*, text, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
+//!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //! // Create a new layer. A layer consists of a font file and some options
 //! let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
@@ -33,14 +39,19 @@
 //! Text itself does not directly support textures, but by using blending modes we can overlay a texture
 //! onto the text.
 //! ```
+//! use winit::platform::unix::EventLoopExtUnix;
+//! use winit::event_loop::EventLoop;
 //! use vxdraw::{prelude::*, blender, dyntex::{Filter, ImgData, LayerOptions, Sprite}, quads, text, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
 //! static FOREST: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //! const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 //!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //! let clear_alpha = vx.quads().add_layer(&quads::LayerOptions::new().blend(|x| {
 //!     x.alpha(blender::BlendOp::Add {
@@ -1486,15 +1497,17 @@ impl<'a> Texts<'a> {
 mod tests {
     use super::*;
     use crate::*;
-    use fast_logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, Logger};
     use test::Bencher;
+    use winit::platform::unix::EventLoopExtUnix;
 
     const DEJAVU: &[u8] = include_bytes!["../fonts/DejaVuSans.ttf"];
 
     #[test]
     fn texting() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1515,13 +1528,13 @@ mod tests {
 
     #[test]
     fn texting_add_new_letter() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
-        let text = vx
-            .text()
+        vx.text()
             .add(&mut layer, "font", text::TextOptions::new().font_size(60.0));
 
         vx.draw_frame();
@@ -1540,8 +1553,9 @@ mod tests {
 
     #[test]
     fn text_world_size() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1598,8 +1612,9 @@ mod tests {
 
     #[test]
     fn centered_text_rotates_around_origin() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1618,8 +1633,9 @@ mod tests {
 
     #[test]
     fn fixed_perspective_text() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(
             DEJAVU,
@@ -1638,8 +1654,9 @@ mod tests {
 
     #[test]
     fn centered_text_translated_up() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1657,8 +1674,9 @@ mod tests {
 
     #[test]
     fn one_opaque_and_another_transparent() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1682,8 +1700,9 @@ mod tests {
 
     #[test]
     fn resizing_back_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1732,8 +1751,9 @@ mod tests {
 
     #[test]
     fn resizing_twice() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1761,8 +1781,9 @@ mod tests {
 
     #[test]
     fn set_glyph_opacity() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1783,8 +1804,9 @@ mod tests {
 
     #[test]
     fn do_not_resize_texture_when_making_the_same_text() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 
@@ -1812,8 +1834,9 @@ mod tests {
 
     #[test]
     fn rapidly_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         for _ in 0..10 {
             let mut text = vx.text();
@@ -1831,8 +1854,9 @@ mod tests {
 
     #[bench]
     fn text_flag(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut layer = vx.text().add_layer(DEJAVU, text::LayerOptions::new());
 

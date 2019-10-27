@@ -3,11 +3,17 @@
 //! # Example - Hello Triangle #
 //! To get started, spawn a window and draw a debug triangle!
 //! ```
+//! use winit::platform::unix::EventLoopExtUnix;
+//! use winit::event_loop::EventLoop;
 //! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Matrix4, ShowWindow, VxDraw};
+//!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //! vx.debtri().add(DebugTriangle::default());
 //! vx.draw_frame();
@@ -19,11 +25,17 @@
 //! ## Animation: Rotating triangle ##
 //! Here's a more interesting example:
 //! ```
+//! use winit::platform::unix::EventLoopExtUnix;
 //! use vxdraw::{debtri::DebugTriangle, prelude::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
+//! use winit::event_loop::EventLoop;
+//!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //! // Spawn a debug triangle, the handle is used to refer to it later
 //! let handle = vx.debtri().add(DebugTriangle::default());
@@ -40,39 +52,6 @@
 //!     std::thread::sleep(std::time::Duration::new(0, 10_000_000));
 //! }
 //! ```
-//!
-//! # Logging #
-//! [VxDraw] is quite a lot of machinery, so it is useful for [VxDraw] to be able to log. To avoid
-//! hardcoding a logging dependency in the interface the library provides [Logger] which is a type
-//! that only depends on the standard library. You can build your own "logger bridge" using this.
-//!
-//! ```
-//! use vxdraw::{prelude::*, Matrix4, *};
-//!
-//! let log = Box::new(|lvl: u8, msg| {
-//!     struct Adapter {
-//!         pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>
-//!     }
-//!     impl std::fmt::Display for Adapter {
-//!         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!             (self.msg)(f)
-//!         }
-//!     }
-//!     println!["{} @ {}", lvl, Adapter { msg }];
-//! });
-//! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
-//! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
-//!
-//! vx.debtri().add(debtri::DebugTriangle::default());
-//!
-//! vx.draw_frame();
-//!
-//! // Sleep here so the window does not instantly disappear
-//! #[cfg(not(feature = "doctest-headless"))]
-//! std::thread::sleep(std::time::Duration::new(3, 0));
-//! ```
 #![feature(test)]
 #![deny(missing_docs)]
 extern crate test;
@@ -83,7 +62,7 @@ use arrayvec::ArrayVec;
 pub use cgmath::prelude;
 use cgmath::prelude::*;
 pub use cgmath::{Deg, Matrix4, Rad};
-use fast_logger::{debug, error, info, trace, warn, InDebug, InDebugPretty, Logpass};
+use fast_logger::{debug, error, info, trace, warn, Generic, InDebug, InDebugPretty};
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -107,8 +86,6 @@ use gfx_hal::{
     window::{self as w, Extent2D, PresentMode, Surface, Swapchain, SwapchainConfig},
     Backend, Instance,
 };
-
-use std::fmt;
 use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, event_loop::EventLoop, window::WindowBuilder};
@@ -157,11 +134,12 @@ impl From<&Color> for (u8, u8, u8, u8) {
 ///
 /// In most tests we use the logger from another crate because it has `spawn_test`, which is useful
 /// for quickly debugging a failing test.
-pub type Logger = Box<dyn FnMut(u8, Box<dyn Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>)>;
+// pub type Logger = Box<dyn FnMut(u8, Box<dyn Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>)>;
 
 /// Create an empty logger bridge
-pub fn void_logger() -> Logger {
-    Box::new(|_, _| {})
+pub fn void_logger() -> fast_logger::Logger<fast_logger::Generic> {
+    fast_logger::Logger::spawn_void()
+    // Box::new(|_, _| {})
 }
 
 /// Information regarding window visibility
@@ -267,9 +245,11 @@ impl VxDraw {
     /// Spawn a new VxDraw context with a window
     ///
     /// This method sets up all that is necessary for drawing.
-    pub fn new(log: Logger, show: ShowWindow) -> VxDraw {
-        let mut log = Logpass::from_compatibility(log);
-
+    pub fn new(
+        mut log: fast_logger::Logger<Generic>,
+        show: ShowWindow,
+        events: &EventLoop<()>,
+    ) -> VxDraw {
         #[cfg(feature = "gl")]
         static BACKEND: &str = "OpenGL";
         #[cfg(feature = "vulkan")]
@@ -281,8 +261,6 @@ impl VxDraw {
 
         info![log, "Initializing rendering"; "show" => InDebug(&show), "backend" => BACKEND];
 
-        use winit::platform::unix::EventLoopExtUnix;
-        let events_loop = EventLoop::new_any_thread();
         let window_builder = WindowBuilder::new().with_visible(match show {
             ShowWindow::Enable | ShowWindow::Custom(..) => true,
             _ => false,
@@ -297,7 +275,7 @@ impl VxDraw {
                     None,
                 )
                 .with_vsync(true);
-                back::glutin::WindowedContext::new_windowed(window_builder, builder, &events_loop)
+                back::glutin::WindowedContext::new_windowed(window_builder, builder, &events)
                     .unwrap()
             };
 
@@ -326,7 +304,7 @@ impl VxDraw {
         let (window, vk_inst, mut adapters, mut surf, dims) = {
             let mut window = window_builder
                 .with_x11_window_type(vec![winit::platform::unix::XWindowType::Dialog])
-                .build(&events_loop)
+                .build(&events)
                 .unwrap();
             let version = 1;
             let vk_inst =
@@ -661,7 +639,6 @@ impl VxDraw {
             device,
             // device_limits: phys_dev_limits,
             texts: vec![],
-            events_loop: Some(events_loop),
             frames_in_flight_fences,
             framebuffers,
             format,
@@ -832,11 +809,6 @@ impl VxDraw {
     /// Drawing text
     pub fn text(&mut self) -> text::Texts {
         text::Texts::new(self)
-    }
-
-    /// Return the events loop of the window
-    pub fn events_loop(&mut self) -> Option<EventLoop<()>> {
-        self.events_loop.take()
     }
 
     /// Draw a frame but also copy the resulting image out
@@ -1852,8 +1824,9 @@ impl VxDraw {
 mod tests {
     use super::*;
     use cgmath::{Deg, Rad, Vector3};
-    use fast_logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, Logger};
     use test::Bencher;
+    use winit::platform::unix::EventLoopExtUnix;
 
     // ---
 
@@ -1864,15 +1837,27 @@ mod tests {
 
     #[test]
     fn setup_and_teardown() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let _ = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let _ = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
+    }
+
+    #[test]
+    fn vxdraw_is_send() {
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
+        std::thread::spawn(move || {
+            vx.draw_frame();
+        });
     }
 
     #[test]
     fn setup_and_teardown_draw_clear() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
 
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let img = vx.draw_frame_copy_framebuffer();
 
@@ -1881,9 +1866,10 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_custom_clear_color() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
 
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         vx.set_clear_color(Color::Rgba(255, 0, 255, 128));
 
         let img = vx.draw_frame_copy_framebuffer();
@@ -1893,8 +1879,9 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_draw_resize() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let large_triangle = debtri::DebugTriangle::new().scale(3.7);
         vx.debtri().add(large_triangle);
@@ -1914,8 +1901,9 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let (buffer, memory, _) =
             make_vertex_buffer_with_data_on_gpu(&mut vx, &vec![1.0f32; 10_000]);
@@ -1928,7 +1916,8 @@ mod tests {
 
     #[test]
     fn check_world_coord_conversion() {
-        let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
         assert_eq![(-1.0, -1.0), vx.to_world_coords((0.0, 0.0))];
 
         vx.set_perspective(Matrix4::from_translation(Vector3::new(1.0, 2.0, 0.0)));
@@ -1942,9 +1931,11 @@ mod tests {
 
     #[test]
     fn init_window_and_get_input() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
-        vx.events_loop().unwrap().run(
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
+        event_loop.run(
             move |_evt, _, ctrl_flow: &mut winit::event_loop::ControlFlow| {
                 vx.debtri().add(debtri::DebugTriangle::default());
                 *ctrl_flow = winit::event_loop::ControlFlow::Exit;
@@ -1954,8 +1945,9 @@ mod tests {
 
     #[test]
     fn tearing_test() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let _tri = make_centered_equilateral_triangle();
         vx.debtri().add(debtri::DebugTriangle::default());
@@ -1977,21 +1969,23 @@ mod tests {
     #[test]
     fn correct_perspective() {
         {
-            let logger = Logger::<Generic>::spawn_void().to_compatibility();
-            let vx = VxDraw::new(logger, ShowWindow::Headless1k);
+            let logger = Logger::<Generic>::spawn_void();
+            let event_loop = EventLoop::new_any_thread();
+            let vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
             assert_eq![Matrix4::identity(), vx.perspective_projection()];
         }
         {
-            let logger = Logger::<Generic>::spawn_void().to_compatibility();
-            let vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
+            let event_loop = EventLoop::new_any_thread();
+            let vx = VxDraw::new(void_logger(), ShowWindow::Headless1x2k, &event_loop);
             assert_eq![
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
                 vx.perspective_projection()
             ];
         }
         {
-            let logger = Logger::<Generic>::spawn_void().to_compatibility();
-            let vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+            let logger = Logger::<Generic>::spawn_void();
+            let event_loop = EventLoop::new_any_thread();
+            let vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
             assert_eq![
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
                 vx.perspective_projection(),
@@ -2001,8 +1995,9 @@ mod tests {
 
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().add_layer(TESTURE, &options);
@@ -2031,26 +2026,10 @@ mod tests {
     }
 
     #[test]
-    fn log_adapter_works() {
-        let log = Box::new(|lvl, msg| {
-            struct LogAdapter {
-                pub msg: Box<dyn Fn(&mut std::fmt::Formatter) -> std::fmt::Result + Send + Sync>,
-            }
-            impl std::fmt::Display for LogAdapter {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    (self.msg)(f)
-                }
-            }
-            println!["{} @ {}", lvl, LogAdapter { msg }];
-        });
-
-        VxDraw::new(log, ShowWindow::Headless1k);
-    }
-
-    #[test]
     fn swap_layers() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = dyntex::LayerOptions::new().depth(false);
         let tex1 = vx.dyntex().add_layer(TESTURE, &options);
@@ -2073,8 +2052,9 @@ mod tests {
     #[test]
     fn swap_layers_quad() {
         use quads::{LayerOptions, Quad};
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let quad1 = vx.quads().add_layer(&LayerOptions::default());
         vx.quads().add(&quad1, Quad::new().scale(0.25));
@@ -2093,8 +2073,9 @@ mod tests {
 
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         b.iter(|| {
             vx.draw_frame();

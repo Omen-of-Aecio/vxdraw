@@ -7,11 +7,17 @@
 //! # Example - Drawing a sprite #
 //! ```
 //! use vxdraw::{dyntex::{ImgData, LayerOptions, Sprite}, prelude::*, void_logger, Deg, Matrix4, ShowWindow, VxDraw};
+//! use winit::platform::unix::EventLoopExtUnix;
+//! use winit::event_loop::EventLoop;
+//!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! static TESTURE: &ImgData = &ImgData::PNGBytes(include_bytes!["../images/testure.png"]);
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //!
 //! let mut dyntex = vx.dyntex();
@@ -1511,11 +1517,12 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use fast_logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
     use std::f32::consts::PI;
     use test::Bencher;
+    use winit::platform::unix::EventLoopExtUnix;
 
     // ---
 
@@ -1529,8 +1536,9 @@ mod tests {
 
     #[test]
     fn simple_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let tex = dyntex.add_layer(LOGO, &LayerOptions::new());
@@ -1542,8 +1550,9 @@ mod tests {
 
     #[test]
     fn simple_texture_adheres_to_view() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new());
 
@@ -1554,8 +1563,9 @@ mod tests {
 
     #[test]
     fn colored_simple_texture1() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         vx.dyntex().add(&tex, Sprite::new().opacity(100));
 
@@ -1565,8 +1575,9 @@ mod tests {
 
     #[test]
     fn colored_simple_texture_set_position() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let tex = dyntex.add_layer(LOGO, &LayerOptions::new());
@@ -1579,8 +1590,9 @@ mod tests {
 
     #[test]
     fn translated_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tex = vx.dyntex().add_layer(
             LOGO,
             &LayerOptions {
@@ -1638,8 +1650,9 @@ mod tests {
 
     #[test]
     fn rotated_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let mut dyntex = vx.dyntex();
         let tex = dyntex.add_layer(
             LOGO,
@@ -1695,8 +1708,9 @@ mod tests {
 
     #[test]
     fn many_sprites() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tex = vx.dyntex().add_layer(
             LOGO,
             &LayerOptions {
@@ -1721,8 +1735,9 @@ mod tests {
 
     #[test]
     fn three_layer_scene() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1756,8 +1771,9 @@ mod tests {
 
     #[test]
     fn three_layer_scene_remove_middle() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1793,8 +1809,9 @@ mod tests {
 
     #[test]
     fn three_layer_scene_remove_middle_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1834,8 +1851,9 @@ mod tests {
 
     #[test]
     fn rapidly_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions::new();
 
@@ -1855,8 +1873,9 @@ mod tests {
 
     #[test]
     fn three_layer_scene_remove_last_texture() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1897,8 +1916,9 @@ mod tests {
 
     #[test]
     fn fixed_perspective() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
 
         let options = &LayerOptions {
             depth_test: false,
@@ -1915,8 +1935,9 @@ mod tests {
 
     #[test]
     fn change_of_uv_works_for_first() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
 
@@ -1942,8 +1963,9 @@ mod tests {
 
     #[test]
     fn bunch_of_different_opacity_sprites() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
 
@@ -1965,8 +1987,9 @@ mod tests {
 
     #[test]
     fn set_single_sprite_rotation() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new();
@@ -1980,8 +2003,9 @@ mod tests {
 
     #[test]
     fn linear_filtering_mode() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().filter(Filter::Linear);
@@ -1996,8 +2020,9 @@ mod tests {
 
     #[test]
     fn raw_uvs() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new();
@@ -2011,8 +2036,9 @@ mod tests {
 
     #[test]
     fn wrap_mode_clamp() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().wrap_mode(WrapMode::Clamp);
@@ -2026,8 +2052,9 @@ mod tests {
 
     #[test]
     fn wrap_mode_mirror() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut dyntex = vx.dyntex();
         let options = &LayerOptions::new().wrap_mode(WrapMode::Mirror);
@@ -2041,8 +2068,9 @@ mod tests {
 
     #[test]
     fn push_and_pop_often_avoid_allocating_out_of_bounds() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions::new();
         let testure = vx.dyntex().add_layer(TESTURE, options);
@@ -2058,8 +2086,9 @@ mod tests {
 
     #[test]
     fn too_little_data_in_texture_wraps() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions::new();
         #[rustfmt::skip]
@@ -2083,8 +2112,9 @@ mod tests {
 
     #[bench]
     fn bench_many_sprites(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         for i in 0..1000 {
             vx.dyntex().add(
@@ -2104,8 +2134,9 @@ mod tests {
 
     #[bench]
     fn bench_many_particles(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tex = vx.dyntex().add_layer(LOGO, &LayerOptions::new());
         let mut rng = random::new(0);
         for i in 0..1000 {
@@ -2131,8 +2162,9 @@ mod tests {
 
     #[bench]
     fn animated_fireballs_20x20_uvs2(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let fireball_texture = vx.dyntex().add_layer(
             FIREBALL,
@@ -2187,8 +2219,9 @@ mod tests {
 
     #[bench]
     fn bench_push_and_pop_sprite(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let options = &LayerOptions::new();
         let testure = vx.dyntex().add_layer(TESTURE, options);
@@ -2202,8 +2235,9 @@ mod tests {
 
     #[bench]
     fn bench_push_and_pop_texture(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let mut dyntex = vx.dyntex();
 
         b.iter(|| {

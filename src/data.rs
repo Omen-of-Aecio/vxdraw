@@ -1,6 +1,5 @@
 use cgmath::Matrix4;
 use core::ptr::read;
-use fast_logger::Logpass;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -360,7 +359,7 @@ pub struct VxDraw {
     pub(crate) swapconfig: gfx_hal::window::SwapchainConfig,
     pub(crate) format: gfx_hal::format::Format,
 
-    pub(crate) log: Logpass,
+    pub(crate) log: fast_logger::Logger<fast_logger::Generic>,
 
     pub(crate) queue_group: gfx_hal::queue::QueueGroup<back::Backend>,
     pub(crate) clear_color: ClearColor,
@@ -382,8 +381,6 @@ pub struct VxDraw {
     pub(crate) vk_inst: back::Instance,
     #[cfg(not(feature = "gl"))]
     pub(crate) window: winit::window::Window,
-
-    pub(crate) events_loop: Option<winit::event_loop::EventLoop<()>>,
 }
 
 // ---

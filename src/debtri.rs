@@ -9,11 +9,17 @@
 //!
 //! See [debtri::Debtri] for all operations supported on debug triangles.
 //! ```
+//! use winit::platform::unix::EventLoopExtUnix;
+//! use winit::event_loop::EventLoop;
 //! use vxdraw::{prelude::*, void_logger, Color, Deg, Matrix4, ShowWindow, VxDraw};
+//!
+//! // Create an event loop
+//! let event_loop = EventLoop::new_any_thread();
+//!
 //! #[cfg(feature = "doctest-headless")]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
 //! #[cfg(not(feature = "doctest-headless"))]
-//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable);
+//! let mut vx = VxDraw::new(void_logger(), ShowWindow::Enable, &event_loop);
 //!
 //! let tri = vx.debtri().add(vxdraw::debtri::DebugTriangle::default());
 //!
@@ -942,15 +948,17 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use fast_logger::{Generic, GenericLogger, Logger};
+    use fast_logger::{Generic, Logger};
     use test::{black_box, Bencher};
+    use winit::platform::unix::EventLoopExtUnix;
 
     // ---
 
     #[test]
     fn simple_triangle() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         vx.debtri().add(tri);
@@ -963,8 +971,9 @@ mod tests {
 
     #[test]
     fn simple_triangle_pop() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         vx.debtri().add(tri);
@@ -980,8 +989,9 @@ mod tests {
 
     #[test]
     fn simple_triangle_color() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let triangle = vx.debtri().add(tri);
@@ -998,8 +1008,9 @@ mod tests {
 
     #[test]
     fn test_single_triangle_api() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1017,8 +1028,9 @@ mod tests {
 
     #[test]
     fn remove_middle_triangle() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1042,8 +1054,9 @@ mod tests {
 
     #[test]
     fn fill_remove_hole() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1069,8 +1082,9 @@ mod tests {
 
     #[test]
     fn removing_iterates_minus_one() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1108,8 +1122,9 @@ mod tests {
 
     #[test]
     fn swap_triangles() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1138,8 +1153,9 @@ mod tests {
 
     #[test]
     fn deform_triangles() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1164,8 +1180,9 @@ mod tests {
 
     #[test]
     fn simple_triangle_change_color() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let tri = DebugTriangle::default();
 
         let mut debtri = vx.debtri();
@@ -1179,8 +1196,9 @@ mod tests {
 
     #[test]
     fn debug_triangle_corners_widescreen() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
 
         for i in [-1f32, 1f32].iter() {
             for j in [-1f32, 1f32].iter() {
@@ -1197,8 +1215,9 @@ mod tests {
 
     #[test]
     fn debug_triangle_corners_tallscreen() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1x2k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1x2k, &event_loop);
 
         for i in [-1f32, 1f32].iter() {
             for j in [-1f32, 1f32].iter() {
@@ -1215,8 +1234,9 @@ mod tests {
 
     #[test]
     fn circle_of_triangles() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
 
         for i in 0..360 {
             let mut tri = DebugTriangle::default();
@@ -1232,8 +1252,9 @@ mod tests {
 
     #[test]
     fn triangle_in_corner() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut tri = DebugTriangle::default();
         tri.scale = 0.1f32;
@@ -1253,8 +1274,9 @@ mod tests {
 
     #[test]
     fn a_bunch_of_quads() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let mut topright = debtri::DebugTriangle::from([-1.0, -1.0, 1.0, 1.0, 1.0, -1.0]);
         let mut bottomleft = debtri::DebugTriangle::from([-1.0, -1.0, -1.0, 1.0, 1.0, 1.0]);
@@ -1280,8 +1302,9 @@ mod tests {
 
     #[test]
     fn windmills() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
         let img = vx.draw_frame_copy_framebuffer();
@@ -1291,8 +1314,9 @@ mod tests {
 
     #[test]
     fn windmills_mass_edits() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
         let mut debtri = vx.debtri();
@@ -1308,8 +1332,9 @@ mod tests {
 
     #[test]
     fn windmills_hidden() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
 
@@ -1326,8 +1351,9 @@ mod tests {
 
     #[test]
     fn windmills_ignore_perspective() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
         let img = vx.draw_frame_copy_framebuffer();
@@ -1337,8 +1363,9 @@ mod tests {
 
     #[test]
     fn windmills_change_color() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let handles = utils::add_windmills(&mut vx, false);
         let mut debtri = vx.debtri();
@@ -1354,8 +1381,9 @@ mod tests {
 
     #[test]
     fn rotating_windmills_drawing_invariant() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
         for _ in 0..30 {
@@ -1377,8 +1405,9 @@ mod tests {
 
     #[test]
     fn windmills_given_initial_rotation() {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, true);
         let img = vx.draw_frame_copy_framebuffer();
@@ -1389,8 +1418,9 @@ mod tests {
 
     #[bench]
     fn bench_simple_triangle(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         vx.debtri().add(DebugTriangle::default());
         utils::add_4_screencorners(&mut vx);
@@ -1402,8 +1432,9 @@ mod tests {
 
     #[bench]
     fn bench_still_windmills(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
 
@@ -1414,8 +1445,9 @@ mod tests {
 
     #[bench]
     fn bench_windmills_set_color(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let handles = utils::add_windmills(&mut vx, false);
 
@@ -1427,8 +1459,9 @@ mod tests {
 
     #[bench]
     fn bench_rotating_windmills_only(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
 
@@ -1440,8 +1473,9 @@ mod tests {
 
     #[bench]
     fn bench_rotating_windmills_set_color(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         let last = utils::add_windmills(&mut vx, false).pop().unwrap();
 
@@ -1454,8 +1488,9 @@ mod tests {
 
     #[bench]
     fn bench_rotating_windmills_no_render(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void().to_compatibility();
-        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k);
+        let logger = Logger::<Generic>::spawn_void();
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
         utils::add_windmills(&mut vx, false);
 
