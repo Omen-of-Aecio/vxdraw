@@ -350,8 +350,8 @@ pub(crate) fn make_transfer_img_of_size(
             .is_none()
         {
             const MSG: &str = "Device does not support VK_FORMAT_R8G8B8A8_UNORM transfer image";
-            error![s.log, "{}", MSG];
-            panic![MSG];
+            error!(s.log, "{}", MSG);
+            panic!(MSG);
         }
         if !s
             .adapter
@@ -362,8 +362,8 @@ pub(crate) fn make_transfer_img_of_size(
         {
             const MSG: &str =
                 "Device does not support VK_FORMAT_R8G8B8A8_UNORM as blit destination";
-            error![s.log, "{}", MSG];
-            panic![MSG];
+            error!(s.log, "{}", MSG);
+            panic!(MSG);
         }
         let mut buffer = device
             .create_image(
@@ -820,7 +820,7 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
             .args(&[appendname])
             .output()
             .expect("Failed to execute process");
-        panic!["Images were NOT the same!"];
+        panic!("Images were NOT the same!");
     }
 }
 

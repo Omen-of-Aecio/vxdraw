@@ -1034,7 +1034,7 @@ impl<'a> Dyntex<'a> {
 
         let replace = self.vx.dyntexs.get(layer.0).map(|x| !x.removed.is_empty());
         if replace.is_none() {
-            panic!["Layer does not exist"];
+            panic!("Layer does not exist");
         }
 
         let handle = if replace.unwrap() {

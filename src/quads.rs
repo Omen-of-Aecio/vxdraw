@@ -757,7 +757,7 @@ impl<'a> Quads<'a> {
         let bottomright = (width / 2f32 - quad.origin.0, height / 2f32 - quad.origin.1);
         let replace = self.vx.quads.get(layer.0).map(|x| !x.holes.is_empty());
         if replace.is_none() {
-            panic!["Layer does not exist"];
+            panic!("Layer does not exist");
         }
         let handle = if replace.unwrap() {
             let hole = self.vx.quads.get_mut(layer.0).unwrap().holes.pop().unwrap();

@@ -254,7 +254,7 @@ impl VxDraw {
         #[cfg(feature = "dx12")]
         static BACKEND: &str = "Dx12";
 
-        info![log, "Initializing rendering"; "show" => ?&show, "backend" => BACKEND];
+        info!(log, "Initializing rendering"; "show" => ?&show, "backend" => BACKEND);
 
         let window_builder = WindowBuilder::new().with_visible(match show {
             ShowWindow::Enable | ShowWindow::Custom(..) => true,
@@ -277,7 +277,7 @@ impl VxDraw {
             set_window_size(window.window(), show);
             let dims = {
                 let dpi_factor = window.get_hidpi_factor();
-                debug![log, "Window DPI factor"; "factor" => dpi_factor];
+                debug!(log, "Window DPI factor"; "factor" => dpi_factor);
                 let (w, h): (u32, u32) = window
                     .get_inner_size()
                     .unwrap()
@@ -312,7 +312,7 @@ impl VxDraw {
             let adapters = vk_inst.enumerate_adapters();
             let dims = set_window_size(&mut window, show);
             let dpi_factor = window.hidpi_factor();
-            debug![log, "Window DPI factor"; "factor" => dpi_factor];
+            debug!(log, "Window DPI factor"; "factor" => dpi_factor);
             (window, vk_inst, adapters, surf, dims)
         };
 
@@ -320,13 +320,13 @@ impl VxDraw {
 
         {
             let len = adapters.len();
-            debug![log, "Adapters found"; "count" => len];
+            debug!(log, "Adapters found"; "count" => len);
         }
 
         for (idx, adap) in adapters.iter().enumerate() {
             let info = adap.info.clone();
             let limits = adap.physical_device.limits();
-            debug![log, "Adapter found"; "idx" => idx, "info" => ?info, "device limits" => ?limits];
+            debug!(log, "Adapter found"; "idx" => idx, "info" => ?info, "device limits" => ?limits);
         }
 
         // TODO Find appropriate adapter, I've never seen a case where we have 2+ adapters, that time
@@ -360,8 +360,8 @@ impl VxDraw {
         let formats = surf.supported_formats(&adapter.physical_device);
         let present_modes = caps.present_modes;
 
-        debug![log, "Surface capabilities"; "capabilities" => ?caps];
-        debug![log, "Formats available"; "formats" => ?formats];
+        debug!(log, "Surface capabilities"; "capabilities" => ?caps);
+        debug!(log, "Formats available"; "formats" => ?formats);
         let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
             formats
                 .iter()
@@ -376,8 +376,8 @@ impl VxDraw {
             .optimal_tiling
             .contains(f::ImageFeature::BLIT_SRC)];
 
-        debug![log, "Format chosen"; "format" => ?format];
-        debug![log, "Available present modes"; "modes" => ?present_modes];
+        debug!(log, "Format chosen"; "format" => ?format);
+        debug!(log, "Available present modes"; "modes" => ?present_modes);
 
         // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
         // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
@@ -394,7 +394,7 @@ impl VxDraw {
             .ok_or("No PresentMode values specified!")
             .unwrap()
         };
-        debug![log, "Using best possible present mode"; "mode" => ?&present_mode];
+        debug!(log, "Using best possible present mode"; "mode" => ?&present_mode);
 
         let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
@@ -405,9 +405,9 @@ impl VxDraw {
                 .min(2)
                 .max(*caps.image_count.start())
         };
-        debug![log, "Using swapchain images"; "count" => image_count];
+        debug!(log, "Using swapchain images"; "count" => image_count);
 
-        debug![log, "Swapchain size"; "extent" => ?&dims];
+        debug!(log, "Swapchain size"; "extent" => ?&dims);
 
         let mut swap_config = SwapchainConfig::from_caps(&caps, format, dims);
         swap_config.present_mode = present_mode;
@@ -422,14 +422,14 @@ impl VxDraw {
             ];
         }
 
-        debug![log, "Swapchain final configuration"; "swapchain" => ?swap_config];
+        debug!(log, "Swapchain final configuration"; "swapchain" => ?swap_config);
 
         let (swapchain, images) =
             unsafe { device.create_swapchain(&mut surf, swap_config.clone(), None) }
                 .expect("Unable to create swapchain");
 
         let images_string = format!["{:#?}", images];
-        debug![log, "Image information"; "images" => images_string];
+        debug!(log, "Image information"; "images" => images_string);
 
         swap_config.image_count = images.len() as u32;
         let image_count = images.len();
@@ -468,7 +468,7 @@ impl VxDraw {
                 resolves: &[],
                 preserves: &[],
             };
-            debug![log, "Render pass info"; "color attachment" => ?color_attachment];
+            debug!(log, "Render pass info"; "color attachment" => ?color_attachment);
 
             unsafe {
                 device
@@ -480,7 +480,7 @@ impl VxDraw {
 
         {
             let rpfmt = format!["{:#?}", render_pass];
-            debug![log, "Created render pass for framebuffers"; "renderpass" => rpfmt];
+            debug!(log, "Created render pass for framebuffers"; "renderpass" => rpfmt);
         }
 
         let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
@@ -574,11 +574,11 @@ impl VxDraw {
 
         {
             let image_views = format!["{:?}", image_views];
-            debug![log, "Created image views"; "image views" => image_views];
+            debug!(log, "Created image views"; "image views" => image_views);
         }
 
         let framebuffers_string = format!["{:#?}", framebuffers];
-        debug![log, "Framebuffer information"; "framebuffers" => framebuffers_string];
+        debug!(log, "Framebuffer information"; "framebuffers" => framebuffers_string);
 
         let max_frames_in_flight = image_count as usize;
         assert![max_frames_in_flight > 0];
@@ -597,7 +597,7 @@ impl VxDraw {
 
         {
             let count = frames_in_flight_fences.len();
-            debug![log, "Allocated fences and semaphores"; "count" => count];
+            debug!(log, "Allocated fences and semaphores"; "count" => count);
         }
 
         let mut command_pool = unsafe {
@@ -845,7 +845,7 @@ impl VxDraw {
         assert![formats.iter().any(|f| f.contains(&self.swapconfig.format))];
 
         let pixels = self.get_window_size_in_pixels();
-        info![self.log, "New window size"; "size" => ?&pixels];
+        info!(self.log, "New window size"; "size" => ?&pixels);
 
         let extent = Extent2D {
             width: pixels.0,
@@ -863,8 +863,8 @@ impl VxDraw {
                 .unwrap_or(formats[0])
         });
 
-        debug![self.log, "Format chosen"; "format" => ?format];
-        debug![self.log, "Available present modes"; "modes" => ?present_modes];
+        debug!(self.log, "Format chosen"; "format" => ?format);
+        debug!(self.log, "Available present modes"; "modes" => ?present_modes);
 
         // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
         // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
@@ -881,7 +881,7 @@ impl VxDraw {
             .ok_or("No PresentMode values specified!")
             .unwrap()
         };
-        debug![self.log, "Using best possible present mode"; "mode" => ?&present_mode];
+        debug!(self.log, "Using best possible present mode"; "mode" => ?&present_mode);
 
         let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
@@ -892,7 +892,7 @@ impl VxDraw {
                 .min(2)
                 .max(*caps.image_count.start())
         };
-        debug![self.log, "Using swapchain images"; "count" => image_count];
+        debug!(self.log, "Using swapchain images"; "count" => image_count);
 
         swap_config.present_mode = present_mode;
         swap_config.image_count = image_count;
@@ -906,7 +906,7 @@ impl VxDraw {
             ];
         }
 
-        info![self.log, "Recreating swapchain"; "config" => ?&swap_config];
+        info!(self.log, "Recreating swapchain"; "config" => ?&swap_config);
         let (swapchain, images) = unsafe {
             self.device.create_swapchain(
                 &mut self.surf,
@@ -926,7 +926,7 @@ impl VxDraw {
         // }
 
         let images_string = format!["{:#?}", images];
-        debug![self.log, "Image information"; "images" => images_string];
+        debug!(self.log, "Image information"; "images" => images_string);
 
         let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
         let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
@@ -1048,11 +1048,11 @@ impl VxDraw {
 
         {
             let image_views = format!["{:?}", image_views];
-            debug![self.log, "Created image views"; "image views" => image_views];
+            debug!(self.log, "Created image views"; "image views" => image_views);
         }
 
         let framebuffers_string = format!["{:#?}", framebuffers];
-        debug![self.log, "Framebuffer information"; "framebuffers" => framebuffers_string];
+        debug!(self.log, "Framebuffer information"; "framebuffers" => framebuffers_string);
 
         self.images = images;
         self.framebuffers = framebuffers;
@@ -1089,17 +1089,17 @@ impl VxDraw {
             ) {
                 Ok((index, None)) => (index, None),
                 Ok((_index, Some(_suboptimal))) => {
-                    info![self.log, "Swapchain in suboptimal state, recreating" ; "type" => "acquire_image"];
+                    info!(self.log, "Swapchain in suboptimal state, recreating" ; "type" => "acquire_image");
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(w::AcquireError::OutOfDate) => {
-                    info![self.log, "Swapchain out of date, recreating"; "type" => "acquire_image"];
+                    info!(self.log, "Swapchain out of date, recreating"; "type" => "acquire_image");
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(err) => {
-                    error![self.log, "Acquire image error"; "error" => ?&err, "type" => "acquire_image"];
+                    error!(self.log, "Acquire image error"; "error" => ?&err, "type" => "acquire_image");
                     unimplemented![]
                 }
             };
@@ -1125,7 +1125,7 @@ impl VxDraw {
                 let texture_count = self.dyntexs.len();
                 let debugtris_cnt = self.debtris.posbuffer.len();
                 let swap_image = swap_image.0;
-                trace![self.log, "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt];
+                trace!(self.log, "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt);
             }
 
             {
@@ -1777,12 +1777,12 @@ impl VxDraw {
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(w::PresentError::OutOfDate) => {
-                    info![self.log, "Swapchain out of date, recreating"; "type" => "present"];
+                    info!(self.log, "Swapchain out of date, recreating"; "type" => "present");
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(err) => {
-                    error![self.log, "Acquire image error"; "error" => ?&err, "type" => "present"];
+                    error!(self.log, "Acquire image error"; "error" => ?&err, "type" => "present");
                     unimplemented![]
                 }
             }

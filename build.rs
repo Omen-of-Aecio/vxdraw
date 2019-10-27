@@ -23,7 +23,7 @@ fn main() {
             "frag" => shaderc::ShaderKind::Fragment,
             "vert" => shaderc::ShaderKind::Vertex,
             ext => {
-                panic!["Unknown extension found in shaders directory: {:?}", ext];
+                panic!("Unknown extension found in shaders directory: {:?}", ext);
             }
         };
         let mut compiler = shaderc::Compiler::new().expect("Unable to create shader compiler");
