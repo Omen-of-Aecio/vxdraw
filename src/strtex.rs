@@ -1946,15 +1946,15 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use fast_logger::{Generic, Logger};
     use rand::Rng;
     use rand_pcg::Pcg64Mcg as random;
+    use slog::{Discard, Logger};
     use test::{black_box, Bencher};
     use winit::platform::unix::EventLoopExtUnix;
 
     #[test]
     fn generate_map_randomly() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1969,7 +1969,7 @@ mod tests {
 
     #[test]
     fn with_origin_11() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1984,7 +1984,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_blocks() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2004,7 +2004,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_blocks_off_by_one() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2034,7 +2034,7 @@ mod tests {
 
     #[test]
     fn use_read_only_works_after_frame_drawn() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2055,7 +2055,7 @@ mod tests {
 
     #[test]
     fn use_write() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2075,7 +2075,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_pixel_accesses() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2097,7 +2097,7 @@ mod tests {
 
     #[test]
     fn streaming_texture_weird_block_accesses() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2117,7 +2117,7 @@ mod tests {
 
     #[test]
     fn strtex_mass_manip() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2194,7 +2194,7 @@ mod tests {
 
     #[test]
     fn wrap_mode_clamp() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2214,7 +2214,7 @@ mod tests {
 
     #[test]
     fn wrap_mode_mirror() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2234,7 +2234,7 @@ mod tests {
 
     #[test]
     fn rapidly_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2258,7 +2258,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel_while_drawing(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2276,7 +2276,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_500x500_area(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2294,7 +2294,7 @@ mod tests {
     #[bench]
     fn bench_streaming_texture_set_500x500_area_using_iterator(b: &mut Bencher) {
         use itertools::Itertools;
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2315,7 +2315,7 @@ mod tests {
 
     #[bench]
     fn bench_streaming_texture_set_single_pixel(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2332,7 +2332,7 @@ mod tests {
 
     #[bench]
     fn adding_sprites(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let layer = vx
@@ -2349,7 +2349,7 @@ mod tests {
 
     #[bench]
     fn generate_perlin_noise(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let layer = vx

@@ -1497,7 +1497,7 @@ impl<'a> Texts<'a> {
 mod tests {
     use super::*;
     use crate::*;
-    use fast_logger::{Generic, Logger};
+    use slog::{Discard, Logger};
     use test::Bencher;
     use winit::platform::unix::EventLoopExtUnix;
 
@@ -1505,7 +1505,7 @@ mod tests {
 
     #[test]
     fn texting() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1528,7 +1528,7 @@ mod tests {
 
     #[test]
     fn texting_add_new_letter() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1553,7 +1553,7 @@ mod tests {
 
     #[test]
     fn text_world_size() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1612,7 +1612,7 @@ mod tests {
 
     #[test]
     fn centered_text_rotates_around_origin() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1633,7 +1633,7 @@ mod tests {
 
     #[test]
     fn fixed_perspective_text() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1654,7 +1654,7 @@ mod tests {
 
     #[test]
     fn centered_text_translated_up() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1674,7 +1674,7 @@ mod tests {
 
     #[test]
     fn one_opaque_and_another_transparent() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1700,7 +1700,7 @@ mod tests {
 
     #[test]
     fn resizing_back_texture() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1751,7 +1751,7 @@ mod tests {
 
     #[test]
     fn resizing_twice() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1781,7 +1781,7 @@ mod tests {
 
     #[test]
     fn set_glyph_opacity() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1804,7 +1804,7 @@ mod tests {
 
     #[test]
     fn do_not_resize_texture_when_making_the_same_text() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1834,7 +1834,7 @@ mod tests {
 
     #[test]
     fn rapidly_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1854,7 +1854,7 @@ mod tests {
 
     #[bench]
     fn text_flag(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 

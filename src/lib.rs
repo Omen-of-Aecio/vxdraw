@@ -62,7 +62,6 @@ use arrayvec::ArrayVec;
 pub use cgmath::prelude;
 use cgmath::prelude::*;
 pub use cgmath::{Deg, Matrix4, Rad};
-use fast_logger::{debug, error, info, trace, warn, Generic, InDebug, InDebugPretty};
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -86,6 +85,7 @@ use gfx_hal::{
     window::{self as w, Extent2D, PresentMode, Surface, Swapchain, SwapchainConfig},
     Backend, Instance,
 };
+use slog::{debug, error, info, o, trace, warn, Discard, Logger};
 use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, event_loop::EventLoop, window::WindowBuilder};
@@ -137,9 +137,8 @@ impl From<&Color> for (u8, u8, u8, u8) {
 // pub type Logger = Box<dyn FnMut(u8, Box<dyn Fn(&mut fmt::Formatter) -> fmt::Result + Send + Sync>)>;
 
 /// Create an empty logger bridge
-pub fn void_logger() -> fast_logger::Logger<fast_logger::Generic> {
-    fast_logger::Logger::spawn_void()
-    // Box::new(|_, _| {})
+pub fn void_logger() -> slog::Logger {
+    Logger::root(Discard, o!())
 }
 
 /// Information regarding window visibility
@@ -245,11 +244,7 @@ impl VxDraw {
     /// Spawn a new VxDraw context with a window
     ///
     /// This method sets up all that is necessary for drawing.
-    pub fn new(
-        mut log: fast_logger::Logger<Generic>,
-        show: ShowWindow,
-        events: &EventLoop<()>,
-    ) -> VxDraw {
+    pub fn new(log: Logger, show: ShowWindow, events: &EventLoop<()>) -> VxDraw {
         #[cfg(feature = "gl")]
         static BACKEND: &str = "OpenGL";
         #[cfg(feature = "vulkan")]
@@ -259,7 +254,7 @@ impl VxDraw {
         #[cfg(feature = "dx12")]
         static BACKEND: &str = "Dx12";
 
-        info![log, "Initializing rendering"; "show" => InDebug(&show), "backend" => BACKEND];
+        info![log, "Initializing rendering"; "show" => ?&show, "backend" => BACKEND];
 
         let window_builder = WindowBuilder::new().with_visible(match show {
             ShowWindow::Enable | ShowWindow::Custom(..) => true,
@@ -331,7 +326,7 @@ impl VxDraw {
         for (idx, adap) in adapters.iter().enumerate() {
             let info = adap.info.clone();
             let limits = adap.physical_device.limits();
-            debug![log, "Adapter found"; "idx" => idx, "info" => InDebugPretty(&info), "device limits" => InDebugPretty(&limits)];
+            debug![log, "Adapter found"; "idx" => idx, "info" => ?info, "device limits" => ?limits];
         }
 
         // TODO Find appropriate adapter, I've never seen a case where we have 2+ adapters, that time
@@ -365,8 +360,8 @@ impl VxDraw {
         let formats = surf.supported_formats(&adapter.physical_device);
         let present_modes = caps.present_modes;
 
-        debug![log, "Surface capabilities"; "capabilities" => InDebugPretty(&caps); clone caps];
-        debug![log, "Formats available"; "formats" => InDebugPretty(&formats); clone formats];
+        debug![log, "Surface capabilities"; "capabilities" => ?caps];
+        debug![log, "Formats available"; "formats" => ?formats];
         let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
             formats
                 .iter()
@@ -381,8 +376,8 @@ impl VxDraw {
             .optimal_tiling
             .contains(f::ImageFeature::BLIT_SRC)];
 
-        debug![log, "Format chosen"; "format" => InDebugPretty(&format); clone format];
-        debug![log, "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
+        debug![log, "Format chosen"; "format" => ?format];
+        debug![log, "Available present modes"; "modes" => ?present_modes];
 
         // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
         // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
@@ -399,7 +394,7 @@ impl VxDraw {
             .ok_or("No PresentMode values specified!")
             .unwrap()
         };
-        debug![log, "Using best possible present mode"; "mode" => InDebug(&present_mode)];
+        debug![log, "Using best possible present mode"; "mode" => ?&present_mode];
 
         let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
@@ -412,7 +407,7 @@ impl VxDraw {
         };
         debug![log, "Using swapchain images"; "count" => image_count];
 
-        debug![log, "Swapchain size"; "extent" => InDebug(&dims)];
+        debug![log, "Swapchain size"; "extent" => ?&dims];
 
         let mut swap_config = SwapchainConfig::from_caps(&caps, format, dims);
         swap_config.present_mode = present_mode;
@@ -427,7 +422,7 @@ impl VxDraw {
             ];
         }
 
-        debug![log, "Swapchain final configuration"; "swapchain" => InDebugPretty(&swap_config); clone swap_config];
+        debug![log, "Swapchain final configuration"; "swapchain" => ?swap_config];
 
         let (swapchain, images) =
             unsafe { device.create_swapchain(&mut surf, swap_config.clone(), None) }
@@ -473,7 +468,7 @@ impl VxDraw {
                 resolves: &[],
                 preserves: &[],
             };
-            debug![log, "Render pass info"; "color attachment" => InDebugPretty(&color_attachment); clone color_attachment];
+            debug![log, "Render pass info"; "color attachment" => ?color_attachment];
 
             unsafe {
                 device
@@ -843,15 +838,14 @@ impl VxDraw {
         let formats = self.surf.supported_formats(&self.adapter.physical_device);
         debug![
             self.log, "Surface capabilities";
-            "capabilities" => InDebugPretty(&caps),
-            "formats" => InDebugPretty(&formats);
-            clone caps, formats
+            "capabilities" => ?caps,
+            "formats" => ?formats
         ];
 
         assert![formats.iter().any(|f| f.contains(&self.swapconfig.format))];
 
         let pixels = self.get_window_size_in_pixels();
-        info![self.log, "New window size"; "size" => InDebug(&pixels)];
+        info![self.log, "New window size"; "size" => ?&pixels];
 
         let extent = Extent2D {
             width: pixels.0,
@@ -869,8 +863,8 @@ impl VxDraw {
                 .unwrap_or(formats[0])
         });
 
-        debug![self.log, "Format chosen"; "format" => InDebugPretty(&format); clone format];
-        debug![self.log, "Available present modes"; "modes" => InDebugPretty(&present_modes); clone present_modes];
+        debug![self.log, "Format chosen"; "format" => ?format];
+        debug![self.log, "Available present modes"; "modes" => ?present_modes];
 
         // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPresentModeKHR.html
         // VK_PRESENT_MODE_FIFO_KHR ... This is the only value of presentMode that is required to be supported
@@ -887,7 +881,7 @@ impl VxDraw {
             .ok_or("No PresentMode values specified!")
             .unwrap()
         };
-        debug![self.log, "Using best possible present mode"; "mode" => InDebug(&present_mode)];
+        debug![self.log, "Using best possible present mode"; "mode" => ?&present_mode];
 
         let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
@@ -912,7 +906,7 @@ impl VxDraw {
             ];
         }
 
-        info![self.log, "Recreating swapchain"; "config" => InDebug(&swap_config); clone swap_config];
+        info![self.log, "Recreating swapchain"; "config" => ?&swap_config];
         let (swapchain, images) = unsafe {
             self.device.create_swapchain(
                 &mut self.surf,
@@ -1105,7 +1099,7 @@ impl VxDraw {
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(err) => {
-                    error![self.log, "Acquire image error"; "error" => InDebug(&err), "type" => "acquire_image"];
+                    error![self.log, "Acquire image error"; "error" => ?&err, "type" => "acquire_image"];
                     unimplemented![]
                 }
             };
@@ -1788,7 +1782,7 @@ impl VxDraw {
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
                 Err(err) => {
-                    error![self.log, "Acquire image error"; "error" => InDebug(&err), "type" => "present"];
+                    error![self.log, "Acquire image error"; "error" => ?&err, "type" => "present"];
                     unimplemented![]
                 }
             }
@@ -1824,7 +1818,7 @@ impl VxDraw {
 mod tests {
     use super::*;
     use cgmath::{Deg, Rad, Vector3};
-    use fast_logger::{Generic, Logger};
+    use slog::{Discard, Logger};
     use test::Bencher;
     use winit::platform::unix::EventLoopExtUnix;
 
@@ -1837,14 +1831,14 @@ mod tests {
 
     #[test]
     fn setup_and_teardown() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let _ = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
     }
 
     #[test]
     fn vxdraw_is_send() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         std::thread::spawn(move || {
@@ -1854,7 +1848,7 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_draw_clear() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
 
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
@@ -1866,7 +1860,7 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_custom_clear_color() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
 
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
@@ -1879,7 +1873,7 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_draw_resize() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1901,7 +1895,7 @@ mod tests {
 
     #[test]
     fn setup_and_teardown_with_gpu_upload() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1931,7 +1925,7 @@ mod tests {
 
     #[test]
     fn init_window_and_get_input() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
 
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
@@ -1945,7 +1939,7 @@ mod tests {
 
     #[test]
     fn tearing_test() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1969,7 +1963,7 @@ mod tests {
     #[test]
     fn correct_perspective() {
         {
-            let logger = Logger::<Generic>::spawn_void();
+            let logger = Logger::root(Discard, o!());
             let event_loop = EventLoop::new_any_thread();
             let vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
             assert_eq![Matrix4::identity(), vx.perspective_projection()];
@@ -1983,7 +1977,7 @@ mod tests {
             ];
         }
         {
-            let logger = Logger::<Generic>::spawn_void();
+            let logger = Logger::root(Discard, o!());
             let event_loop = EventLoop::new_any_thread();
             let vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
             assert_eq![
@@ -1995,7 +1989,7 @@ mod tests {
 
     #[test]
     fn strtex_and_dyntex_respect_draw_order() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2027,7 +2021,7 @@ mod tests {
 
     #[test]
     fn swap_layers() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2052,7 +2046,7 @@ mod tests {
     #[test]
     fn swap_layers_quad() {
         use quads::{LayerOptions, Quad};
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -2073,7 +2067,7 @@ mod tests {
 
     #[bench]
     fn clears_per_second(b: &mut Bencher) {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 

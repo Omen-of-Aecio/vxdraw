@@ -1,6 +1,5 @@
 //! Various utilities and helpers for vxdraw
 use crate::data::VxDraw;
-use fast_logger::error;
 #[cfg(feature = "dx12")]
 use gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -22,6 +21,7 @@ use gfx_hal::{
     queue::{CommandQueue, Submission},
     Backend, MemoryTypeId,
 };
+use slog::error;
 use std::f32::consts::PI;
 use std::iter::once;
 use std::mem::ManuallyDrop;

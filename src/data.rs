@@ -359,7 +359,7 @@ pub struct VxDraw {
     pub(crate) swapconfig: gfx_hal::window::SwapchainConfig,
     pub(crate) format: gfx_hal::format::Format,
 
-    pub(crate) log: fast_logger::Logger<fast_logger::Generic>,
+    pub(crate) log: slog::Logger,
 
     pub(crate) queue_group: gfx_hal::queue::QueueGroup<back::Backend>,
     pub(crate) clear_color: ClearColor,

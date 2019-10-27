@@ -14,7 +14,6 @@ exclude = ["tests/vxdraw/*"]
 [dependencies]
 arrayvec = "0.4.11"
 cgmath = "0.17.0"
-fast-logger = "0.5.1"
 gfx-backend-dx12 = { version = "0.4", optional = true }
 gfx-backend-gl = { version = "0.4", optional = true }
 gfx-backend-metal = { version = "0.4", optional = true }
@@ -27,6 +26,7 @@ rand = "0.6.1"
 rand_pcg = "0.1.2"
 winit = "0.20.0-alpha4"
 smallvec = "0.6"
+slog = "2.5.2"
 
 [build-dependencies]
 shaderc = { version = "0.6", features = ["build-from-source"] }

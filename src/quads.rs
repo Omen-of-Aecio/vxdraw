@@ -1214,12 +1214,12 @@ mod tests {
     use super::*;
     use crate::*;
     use cgmath::Deg;
-    use fast_logger::{Generic, Logger};
+    use slog::{Discard, Logger};
     use winit::platform::unix::EventLoopExtUnix;
 
     #[test]
     fn simple_quad() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1236,7 +1236,7 @@ mod tests {
 
     #[test]
     fn simple_quad_hide() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1252,7 +1252,7 @@ mod tests {
 
     #[test]
     fn simple_quad_translated() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1271,7 +1271,7 @@ mod tests {
 
     #[test]
     fn swapping_quad_draw_order() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1299,7 +1299,7 @@ mod tests {
 
     #[test]
     fn swapping_quad_draw_order_different_layers() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1328,7 +1328,7 @@ mod tests {
 
     #[test]
     fn three_quads_add_remove() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1354,7 +1354,7 @@ mod tests {
 
     #[test]
     fn three_quads_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1382,7 +1382,7 @@ mod tests {
 
     #[test]
     fn simple_quad_set_position() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1401,7 +1401,7 @@ mod tests {
 
     #[test]
     fn simple_quad_scale() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1420,7 +1420,7 @@ mod tests {
 
     #[test]
     fn simple_quad_deform() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1440,7 +1440,7 @@ mod tests {
 
     #[test]
     fn set_color_all() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1473,7 +1473,7 @@ mod tests {
 
     #[test]
     fn simple_quad_set_position_after_initial() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1497,7 +1497,7 @@ mod tests {
 
     #[test]
     fn simple_quad_rotated_with_exotic_origin() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1528,7 +1528,7 @@ mod tests {
 
     #[test]
     fn quad_layering() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
         let mut quad = quads::Quad {
@@ -1559,7 +1559,7 @@ mod tests {
 
     #[test]
     fn quad_mass_manip() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
@@ -1617,7 +1617,7 @@ mod tests {
 
     #[test]
     fn rapidly_add_remove_layer() {
-        let logger = Logger::<Generic>::spawn_void();
+        let logger = Logger::root(Discard, o!());
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
 
