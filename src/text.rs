@@ -929,7 +929,7 @@ impl<'a> Texts<'a> {
             },
         ) {
             Ok(BrushAction::Draw(vertices)) => {
-                assert_eq![0, count];
+                assert_eq!(0, count);
                 count = vertices.len();
                 self.vx.texts[layer.0].texts.push(string.to_string());
                 self.vx.texts[layer.0]
@@ -1565,49 +1565,49 @@ mod tests {
             text::TextOptions::new().font_size(32.0),
         );
 
-        assert_eq![
+        assert_eq!(
             (454.116, 29.536001),
             vx.text().get_world_size_in_pixels(&handle)
-        ];
+        );
 
         vx.text().set_rotation(&handle, Deg(90.0));
 
-        assert_eq![
+        assert_eq!(
             (29.536022, 454.116),
             vx.text().get_world_size_in_pixels(&handle)
-        ];
+        );
 
         vx.set_perspective(Matrix4::from_angle_z(Deg(-90.0)));
 
-        assert_eq![
+        assert_eq!(
             (454.116, 29.536001),
             vx.text().get_world_size_in_pixels(&handle)
-        ];
+        );
 
         vx.text().set_scale(&handle, 2.0);
 
-        assert_eq![
+        assert_eq!(
             (908.232, 59.072002),
             vx.text().get_world_size_in_pixels(&handle)
-        ];
-        assert_eq![(1.968, 0.128), vx.text().get_world_size(&handle)];
+        );
+        assert_eq!((1.968, 0.128), vx.text().get_world_size(&handle));
 
         vx.set_perspective(Matrix4::from_angle_z(Deg(45.0)));
 
-        assert_eq![
+        assert_eq!(
             (683.9873, 600.4468),
             vx.text().get_world_size_in_pixels(&handle)
-        ];
+        );
 
-        assert_eq![(0.1280001, 1.968), vx.text().get_model_size(&handle)];
+        assert_eq!((0.1280001, 1.968), vx.text().get_model_size(&handle));
 
         vx.text().set_scale(&handle, 0.5);
 
-        assert_eq![(0.032000024, 0.492), vx.text().get_model_size(&handle)];
+        assert_eq!((0.032000024, 0.492), vx.text().get_model_size(&handle));
 
         vx.set_perspective(Matrix4::identity());
 
-        assert_eq![(0.032000024, 0.492), vx.text().get_model_size(&handle)];
+        assert_eq!((0.032000024, 0.492), vx.text().get_model_size(&handle));
     }
 
     #[test]
@@ -1822,7 +1822,7 @@ mod tests {
             );
         }
 
-        assert_eq![(256, 256), vx.text().get_texture_dimensions(&layer)];
+        assert_eq!((256, 256), vx.text().get_texture_dimensions(&layer));
 
         let img = vx.draw_frame_copy_framebuffer();
         assert_swapchain_eq(
@@ -1847,8 +1847,8 @@ mod tests {
             vx.draw_frame();
 
             vx.text().remove_layer(layer);
-            assert![vx.swapconfig.image_count + 1 >= vx.text().layer_count() as u32];
-            assert![0 < vx.text().layer_count()];
+            assert!(vx.swapconfig.image_count + 1 >= vx.text().layer_count() as u32);
+            assert!(0 < vx.text().layer_count());
         }
     }
 

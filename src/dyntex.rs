@@ -1866,8 +1866,8 @@ mod tests {
             vx.draw_frame();
 
             vx.dyntex().remove_layer(layer);
-            assert![vx.swapconfig.image_count + 1 >= vx.dyntex().layer_count() as u32];
-            assert![0 < vx.dyntex().layer_count()];
+            assert!(vx.swapconfig.image_count + 1 >= vx.dyntex().layer_count() as u32);
+            assert!(0 < vx.dyntex().layer_count());
         }
     }
 

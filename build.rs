@@ -33,7 +33,7 @@ fn main() {
             .expect("Unable to compile to SPIRV");
 
         println!["Warning: {}", spirv.get_warning_messages()];
-        assert_eq![0, spirv.get_num_warnings()];
+        assert_eq!(0, spirv.get_num_warnings());
 
         let dest: PathBuf = ["target", "spirv", &(filename.to_string() + ".spirv")]
             .iter()

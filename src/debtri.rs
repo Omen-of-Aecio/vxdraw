@@ -169,18 +169,18 @@ impl<'a> Debtri<'a> {
     /// Check if invariants are held for this object
     fn check_health(&self) {
         let imgcnt = self.vx.swapconfig.image_count as usize;
-        debug_assert_eq![self.vx.debtris.posbuf.len(), imgcnt];
-        debug_assert_eq![self.vx.debtris.colbuf.len(), imgcnt];
-        debug_assert_eq![self.vx.debtris.tranbuf.len(), imgcnt];
-        debug_assert_eq![self.vx.debtris.rotbuf.len(), imgcnt];
-        debug_assert_eq![self.vx.debtris.scalebuf.len(), imgcnt];
+        debug_assert_eq!(self.vx.debtris.posbuf.len(), imgcnt);
+        debug_assert_eq!(self.vx.debtris.colbuf.len(), imgcnt);
+        debug_assert_eq!(self.vx.debtris.tranbuf.len(), imgcnt);
+        debug_assert_eq!(self.vx.debtris.rotbuf.len(), imgcnt);
+        debug_assert_eq!(self.vx.debtris.scalebuf.len(), imgcnt);
 
         let imgcnt = self.vx.swapconfig.image_count;
-        debug_assert![self.vx.debtris.posbuf_touch <= imgcnt];
-        debug_assert![self.vx.debtris.colbuf_touch <= imgcnt];
-        debug_assert![self.vx.debtris.tranbuf_touch <= imgcnt];
-        debug_assert![self.vx.debtris.rotbuf_touch <= imgcnt];
-        debug_assert![self.vx.debtris.scalebuf_touch <= imgcnt];
+        debug_assert!(self.vx.debtris.posbuf_touch <= imgcnt);
+        debug_assert!(self.vx.debtris.colbuf_touch <= imgcnt);
+        debug_assert!(self.vx.debtris.tranbuf_touch <= imgcnt);
+        debug_assert!(self.vx.debtris.rotbuf_touch <= imgcnt);
+        debug_assert!(self.vx.debtris.scalebuf_touch <= imgcnt);
     }
 
     /// Spawn the accessor object from [VxDraw].
@@ -1094,8 +1094,8 @@ mod tests {
             count += 1;
             (0.0, 0.0)
         });
-        assert_eq![0, count];
-        assert_eq![0, debtri.count()];
+        assert_eq!(0, count);
+        assert_eq!(0, debtri.count());
 
         debtri.add(tri);
         let middle = debtri.add(tri);
@@ -1106,8 +1106,8 @@ mod tests {
             count += 1;
             Deg(0.0)
         });
-        assert_eq![3, count];
-        assert_eq![3, debtri.count()];
+        assert_eq!(3, count);
+        assert_eq!(3, debtri.count());
 
         debtri.remove(middle);
 
@@ -1116,8 +1116,8 @@ mod tests {
             count += 1;
             1.0
         });
-        assert_eq![3, count];
-        assert_eq![3, debtri.count()];
+        assert_eq!(3, count);
+        assert_eq!(3, debtri.count());
     }
 
     #[test]
@@ -1137,15 +1137,15 @@ mod tests {
         debtri.set_translation(&right, (0.25, 0.0));
         debtri.set_color(&right, Color::Rgba(0, 0, 255, 255));
 
-        assert_eq![
+        assert_eq!(
             std::cmp::Ordering::Less,
             debtri.compare_draw_order(&left, &right)
-        ];
+        );
         debtri.swap_draw_order(&mut left, &mut right);
-        assert_eq![
+        assert_eq!(
             std::cmp::Ordering::Greater,
             debtri.compare_draw_order(&left, &right)
-        ];
+        );
 
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swap_triangles", img);

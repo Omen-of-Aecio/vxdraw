@@ -1286,12 +1286,12 @@ mod tests {
         quads.translate(&q2, (0.5, 0.5));
         quads.set_solid_color(&q2, Color::Rgba(0, 255, 255, 128));
 
-        assert_eq![std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2)];
+        assert_eq!(std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2));
         quads.swap_draw_order(&mut q1, &mut q2);
-        assert_eq![
+        assert_eq!(
             std::cmp::Ordering::Greater,
             quads.compare_draw_order(&q1, &q2)
-        ];
+        );
 
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swapping_quad_draw_order", img);
@@ -1315,12 +1315,12 @@ mod tests {
         quads.translate(&q2, (0.5, 0.5));
         quads.set_solid_color(&q2, Color::Rgba(0, 255, 255, 128));
 
-        assert_eq![std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2)];
+        assert_eq!(std::cmp::Ordering::Less, quads.compare_draw_order(&q1, &q2));
         quads.swap_draw_order(&mut q1, &mut q2);
-        assert_eq![
+        assert_eq!(
             std::cmp::Ordering::Greater,
             quads.compare_draw_order(&q1, &q2)
-        ];
+        );
 
         let img = vx.draw_frame_copy_framebuffer();
         utils::assert_swapchain_eq(&mut vx, "swapping_quad_draw_order_different_layers", img);
@@ -1632,8 +1632,8 @@ mod tests {
             vx.draw_frame();
 
             vx.quads().remove_layer(layer);
-            assert![vx.swapconfig.image_count + 1 >= vx.quads().layer_count() as u32];
-            assert![0 < vx.quads().layer_count()];
+            assert!(vx.swapconfig.image_count + 1 >= vx.quads().layer_count() as u32);
+            assert!(0 < vx.quads().layer_count());
         }
     }
 }

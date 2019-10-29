@@ -370,11 +370,11 @@ impl VxDraw {
                 .unwrap_or(formats[0])
         });
 
-        assert![adapter
+        assert!(adapter
             .physical_device
             .format_properties(Some(format))
             .optimal_tiling
-            .contains(f::ImageFeature::BLIT_SRC)];
+            .contains(f::ImageFeature::BLIT_SRC));
 
         debug!(log, "Format chosen"; "format" => ?format);
         debug!(log, "Available present modes"; "modes" => ?present_modes);
@@ -416,10 +416,10 @@ impl VxDraw {
         if caps.usage.contains(i::Usage::TRANSFER_SRC) {
             swap_config.image_usage |= i::Usage::TRANSFER_SRC;
         } else {
-            warn![
+            warn!(
                 log,
                 "Surface does not support TRANSFER_SRC, may fail during testing"
-            ];
+            );
         }
 
         debug!(log, "Swapchain final configuration"; "swapchain" => ?swap_config);
@@ -581,7 +581,7 @@ impl VxDraw {
         debug!(log, "Framebuffer information"; "framebuffers" => framebuffers_string);
 
         let max_frames_in_flight = image_count as usize;
-        assert![max_frames_in_flight > 0];
+        assert!(max_frames_in_flight > 0);
 
         let mut frames_in_flight_fences = vec![];
         let mut present_wait_semaphores = vec![];
@@ -836,13 +836,13 @@ impl VxDraw {
         let caps = self.surf.capabilities(&self.adapter.physical_device);
         let present_modes = caps.present_modes;
         let formats = self.surf.supported_formats(&self.adapter.physical_device);
-        debug![
+        debug!(
             self.log, "Surface capabilities";
             "capabilities" => ?caps,
             "formats" => ?formats
-        ];
+        );
 
-        assert![formats.iter().any(|f| f.contains(&self.swapconfig.format))];
+        assert!(formats.iter().any(|f| f.contains(&self.swapconfig.format)));
 
         let pixels = self.get_window_size_in_pixels();
         info!(self.log, "New window size"; "size" => ?&pixels);
@@ -900,10 +900,10 @@ impl VxDraw {
         if caps.usage.contains(i::Usage::TRANSFER_SRC) {
             swap_config.image_usage |= i::Usage::TRANSFER_SRC;
         } else {
-            warn![
+            warn!(
                 self.log,
                 "Surface does not support TRANSFER_SRC, may fail during testing"
-            ];
+            );
         }
 
         info!(self.log, "Recreating swapchain"; "config" => ?&swap_config);
@@ -1769,10 +1769,10 @@ impl VxDraw {
             ) {
                 Ok(None) => {}
                 Ok(Some(_suboptimal)) => {
-                    info![
+                    info!(
                         self.log,
                         "Swapchain in suboptimal state, recreating"; "type" => "present"
-                    ];
+                    );
                     self.window_resized_recreate_swapchain();
                     return self.draw_frame_internal(do_postproc, postproc);
                 }
@@ -1912,15 +1912,15 @@ mod tests {
     fn check_world_coord_conversion() {
         let event_loop = EventLoop::new_any_thread();
         let mut vx = VxDraw::new(void_logger(), ShowWindow::Headless1k, &event_loop);
-        assert_eq![(-1.0, -1.0), vx.to_world_coords((0.0, 0.0))];
+        assert_eq!((-1.0, -1.0), vx.to_world_coords((0.0, 0.0)));
 
         vx.set_perspective(Matrix4::from_translation(Vector3::new(1.0, 2.0, 0.0)));
-        assert_eq![(-2.0, -3.0), vx.to_world_coords((0.0, 0.0))];
+        assert_eq!((-2.0, -3.0), vx.to_world_coords((0.0, 0.0)));
 
         vx.set_perspective(
             Matrix4::from_translation(Vector3::new(1.0, 2.0, 0.0)) * Matrix4::from_scale(0.5),
         );
-        assert_eq![(-4.0, -6.0), vx.to_world_coords((0.0, 0.0))];
+        assert_eq!((-4.0, -6.0), vx.to_world_coords((0.0, 0.0)));
     }
 
     #[test]
@@ -1966,24 +1966,24 @@ mod tests {
             let logger = Logger::root(Discard, o!());
             let event_loop = EventLoop::new_any_thread();
             let vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
-            assert_eq![Matrix4::identity(), vx.perspective_projection()];
+            assert_eq!(Matrix4::identity(), vx.perspective_projection());
         }
         {
             let event_loop = EventLoop::new_any_thread();
             let vx = VxDraw::new(void_logger(), ShowWindow::Headless1x2k, &event_loop);
-            assert_eq![
+            assert_eq!(
                 Matrix4::from_nonuniform_scale(1.0, 0.5, 1.0),
                 vx.perspective_projection()
-            ];
+            );
         }
         {
             let logger = Logger::root(Discard, o!());
             let event_loop = EventLoop::new_any_thread();
             let vx = VxDraw::new(logger, ShowWindow::Headless2x1k, &event_loop);
-            assert_eq![
+            assert_eq!(
                 Matrix4::from_nonuniform_scale(0.5, 1.0, 1.0),
                 vx.perspective_projection(),
-            ];
+            );
         }
     }
 

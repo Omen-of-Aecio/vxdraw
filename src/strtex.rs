@@ -705,7 +705,7 @@ impl<'a> Strtex<'a> {
                 .expect("Couldn't make a Descriptor Set!")
         };
 
-        debug_assert![descriptor_sets.len() == image_views.len()];
+        debug_assert!(descriptor_sets.len() == image_views.len());
 
         unsafe {
             for (idx, set) in descriptor_sets.iter().enumerate() {
@@ -2045,12 +2045,12 @@ mod tests {
         strtex.read(&id, |arr, pitch| {
             green_value = arr[3 + 2 * pitch].1;
         });
-        assert_ne![123, green_value];
+        assert_ne!(123, green_value);
         vx.draw_frame();
         vx.strtex().read(&id, |arr, pitch| {
             green_value = arr[3 + 2 * pitch].1;
         });
-        assert_eq![123, green_value];
+        assert_eq!(123, green_value);
     }
 
     #[test]
@@ -2070,7 +2070,7 @@ mod tests {
         strtex.read(&id, |arr, pitch| {
             green_value = arr[3 + 2 * pitch].1;
         });
-        assert_eq![124, green_value];
+        assert_eq!(124, green_value);
     }
 
     #[test]
@@ -2249,8 +2249,8 @@ mod tests {
             vx.draw_frame();
 
             vx.strtex().remove_layer(layer);
-            assert![vx.swapconfig.image_count + 1 >= vx.strtex().layer_count() as u32];
-            assert![0 < vx.strtex().layer_count()];
+            assert!(vx.swapconfig.image_count + 1 >= vx.strtex().layer_count() as u32);
+            assert!(0 < vx.strtex().layer_count());
         }
     }
 

@@ -666,7 +666,7 @@ pub(crate) fn copy_image_to_rgb(
             .device
             .map_memory(&memory, 0..requirements.size as u64)
             .expect("Unable to open reader");
-        assert![u64::from(4 * width * height) <= requirements.size];
+        assert!(u64::from(4 * width * height) <= requirements.size);
         output.extend(
             std::slice::from_raw_parts(reader, (4 * width * height) as usize)
                 .iter()
@@ -735,20 +735,20 @@ pub(crate) fn assert_swapchain_eq(vx: &mut VxDraw, name: &str, rgb: Vec<u8>) {
     ) != dec.dimensions()
     {
         store_generated_image();
-        assert_eq![
+        assert_eq!(
             (
                 u64::from(vx.swapconfig.extent.width),
                 u64::from(vx.swapconfig.extent.height),
             ),
             dec.dimensions(),
             "The swapchain image and the preset correct image MUST be of the exact same size"
-        ];
+        );
     }
-    assert_eq![
+    assert_eq!(
         load_image::ColorType::RGB(8),
         dec.colortype(),
         "Both images MUST have the RGB(8) format"
-    ];
+    );
 
     let correct_bytes = dec.read_image().expect("Unable to read image");
 
