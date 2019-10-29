@@ -85,7 +85,7 @@ use gfx_hal::{
     window::{self as w, Extent2D, PresentMode, Surface, Swapchain, SwapchainConfig},
     Backend, Instance,
 };
-use slog::{debug, error, info, o, trace, warn, Discard, Logger};
+use slog::{crit, debug, error, info, o, trace, warn, Discard, Logger};
 use std::iter::once;
 use std::mem::ManuallyDrop;
 use winit::{dpi::LogicalSize, event_loop::EventLoop, window::WindowBuilder};
@@ -254,7 +254,7 @@ impl VxDraw {
         #[cfg(feature = "dx12")]
         static BACKEND: &str = "Dx12";
 
-        info!(log, "Initializing rendering"; "show" => ?&show, "backend" => BACKEND);
+        info!(log, "Initializing rendering"; "show" => ?show, "backend" => BACKEND);
 
         let window_builder = WindowBuilder::new().with_visible(match show {
             ShowWindow::Enable | ShowWindow::Custom(..) => true,
@@ -318,9 +318,10 @@ impl VxDraw {
 
         // ---
 
-        {
-            let len = adapters.len();
-            debug!(log, "Adapters found"; "count" => len);
+        debug!(log, "Adapters found"; "count" => adapters.len());
+
+        if adapters.is_empty() {
+            crit!(log, "No adapters found");
         }
 
         for (idx, adap) in adapters.iter().enumerate() {
@@ -345,9 +346,13 @@ impl VxDraw {
             .unwrap();
 
         let mut gpu = unsafe {
+            let scheduling_priority = 1.0;
             adapter
                 .physical_device
-                .open(&[(family, &[1.0])], gfx_hal::Features::empty())
+                .open(
+                    &[(family, &[scheduling_priority])],
+                    gfx_hal::Features::empty(),
+                )
                 .unwrap()
         };
 
@@ -362,6 +367,7 @@ impl VxDraw {
 
         debug!(log, "Surface capabilities"; "capabilities" => ?caps);
         debug!(log, "Formats available"; "formats" => ?formats);
+
         let format = formats.map_or(f::Format::Rgba8Srgb, |formats| {
             formats
                 .iter()
@@ -405,9 +411,9 @@ impl VxDraw {
                 .min(2)
                 .max(*caps.image_count.start())
         };
-        debug!(log, "Using swapchain images"; "count" => image_count);
 
-        debug!(log, "Swapchain size"; "extent" => ?&dims);
+        debug!(log, "Using swapchain images"; "count" => image_count);
+        debug!(log, "Swapchain size"; "extent" => ?dims);
 
         let mut swap_config = SwapchainConfig::from_caps(&caps, format, dims);
         swap_config.present_mode = present_mode;
@@ -416,10 +422,10 @@ impl VxDraw {
         if caps.usage.contains(i::Usage::TRANSFER_SRC) {
             swap_config.image_usage |= i::Usage::TRANSFER_SRC;
         } else {
-            warn!(
-                log,
-                "Surface does not support TRANSFER_SRC, may fail during testing"
-            );
+            let message = "Surface does not support TRANSFER_SRC, may fail during testing";
+            warn!(log, "{}", message);
+            #[cfg(test)]
+            panic!(message);
         }
 
         debug!(log, "Swapchain final configuration"; "swapchain" => ?swap_config);
@@ -428,8 +434,7 @@ impl VxDraw {
             unsafe { device.create_swapchain(&mut surf, swap_config.clone(), None) }
                 .expect("Unable to create swapchain");
 
-        let images_string = format!["{:#?}", images];
-        debug!(log, "Image information"; "images" => images_string);
+        debug!(log, "Image information"; "images" => ?images);
 
         swap_config.image_count = images.len() as u32;
         let image_count = images.len();
@@ -468,6 +473,7 @@ impl VxDraw {
                 resolves: &[],
                 preserves: &[],
             };
+
             debug!(log, "Render pass info"; "color attachment" => ?color_attachment);
 
             unsafe {
@@ -478,10 +484,7 @@ impl VxDraw {
             }
         };
 
-        {
-            let rpfmt = format!["{:#?}", render_pass];
-            debug!(log, "Created render pass for framebuffers"; "renderpass" => rpfmt);
-        }
+        debug!(log, "Created render pass for framebuffers"; "renderpass" => ?render_pass);
 
         let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
         let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
@@ -572,13 +575,8 @@ impl VxDraw {
             (image_views, framebuffers)
         };
 
-        {
-            let image_views = format!["{:?}", image_views];
-            debug!(log, "Created image views"; "image views" => image_views);
-        }
-
-        let framebuffers_string = format!["{:#?}", framebuffers];
-        debug!(log, "Framebuffer information"; "framebuffers" => framebuffers_string);
+        debug!(log, "Created image views"; "image views" => ?image_views);
+        debug!(log, "Framebuffer information"; "framebuffers" => ?framebuffers);
 
         let max_frames_in_flight = image_count as usize;
         assert!(max_frames_in_flight > 0);
@@ -595,10 +593,7 @@ impl VxDraw {
             .map(|_| device.create_semaphore().expect("Can't create semaphore"))
             .collect::<Vec<_>>();
 
-        {
-            let count = frames_in_flight_fences.len();
-            debug!(log, "Allocated fences and semaphores"; "count" => count);
-        }
+        debug!(log, "Allocated fences and semaphores"; "count" => frames_in_flight_fences.len());
 
         let mut command_pool = unsafe {
             device
@@ -845,7 +840,7 @@ impl VxDraw {
         assert!(formats.iter().any(|f| f.contains(&self.swapconfig.format)));
 
         let pixels = self.get_window_size_in_pixels();
-        info!(self.log, "New window size"; "size" => ?&pixels);
+        info!(self.log, "New window size"; "size" => ?pixels);
 
         let extent = Extent2D {
             width: pixels.0,
@@ -881,7 +876,7 @@ impl VxDraw {
             .ok_or("No PresentMode values specified!")
             .unwrap()
         };
-        debug!(self.log, "Using best possible present mode"; "mode" => ?&present_mode);
+        debug!(self.log, "Using best possible present mode"; "mode" => ?present_mode);
 
         let image_count = if present_mode == PresentMode::MAILBOX {
             (caps.image_count.end() - 1)
@@ -919,14 +914,7 @@ impl VxDraw {
         self.swapconfig.image_count = images.len() as u32;
         self.swapchain = ManuallyDrop::new(swapchain);
 
-        // unsafe {
-        //     self.device
-        //         .destroy_swapchain(std::mem::replace(&mut self.swapchain, swapchain));
-        //     // self.device .destroy_swapchain(ManuallyDrop::into_inner(core::ptr::read(&self.swapchain)));
-        // }
-
-        let images_string = format!["{:#?}", images];
-        debug!(self.log, "Image information"; "images" => images_string);
+        debug!(self.log, "Image information"; "images" => ?images);
 
         let mut depth_images: Vec<<back::Backend as Backend>::Image> = vec![];
         let mut depth_image_views: Vec<<back::Backend as Backend>::ImageView> = vec![];
@@ -1046,13 +1034,8 @@ impl VxDraw {
             }
         }
 
-        {
-            let image_views = format!["{:?}", image_views];
-            debug!(self.log, "Created image views"; "image views" => image_views);
-        }
-
-        let framebuffers_string = format!["{:#?}", framebuffers];
-        debug!(self.log, "Framebuffer information"; "framebuffers" => framebuffers_string);
+        debug!(self.log, "Created image views"; "image views" => ?image_views);
+        debug!(self.log, "Framebuffer information"; "framebuffers" => ?framebuffers);
 
         self.images = images;
         self.framebuffers = framebuffers;
@@ -1120,13 +1103,7 @@ impl VxDraw {
                 .reset_fence(&self.frames_in_flight_fences[self.current_frame])
                 .unwrap();
 
-            {
-                let current_frame = self.current_frame;
-                let texture_count = self.dyntexs.len();
-                let debugtris_cnt = self.debtris.posbuffer.len();
-                let swap_image = swap_image.0;
-                trace!(self.log, "Drawing frame"; "swapchain image" => swap_image, "flight" => current_frame, "textures" => texture_count, "debug triangles" => debugtris_cnt);
-            }
+            trace!(self.log, "Drawing frame"; "swapchain image" => swap_image.0, "flight" => self.current_frame, "textures" => self.dyntexs.len(), "debug triangles" => self.debtris.posbuffer.len());
 
             {
                 let buffer = &mut self.command_buffers[self.current_frame as usize];
