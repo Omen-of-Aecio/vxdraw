@@ -142,6 +142,15 @@ pub enum WrapMode {
     // Border, // Not supported, need borders
 }
 
+/// Specify how to initialize the layer
+#[derive(Clone)]
+pub enum InitialPixels {
+    /// Zero all pixel values
+    Zero,
+    /// Use the perlin noise generator to fill the pixels
+    Perlin([f32; 3]),
+}
+
 /// Options for creating a layer of a single streaming texture with sprites
 #[derive(Clone)]
 pub struct LayerOptions {
@@ -162,12 +171,19 @@ pub struct LayerOptions {
     blend: blender::Blender,
     vertex_shader: VertexShader,
     fragment_shader: FragmentShader,
+    initial_pixels: InitialPixels,
 }
 
 impl LayerOptions {
     /// Create a default layer
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the initial pixel values
+    pub fn initial_pixels(mut self, initial: InitialPixels) -> Self {
+        self.initial_pixels = initial;
+        self
     }
 
     /// Set the vertex shader
@@ -237,6 +253,7 @@ impl Default for LayerOptions {
             blend: blender::Blender::default(),
             vertex_shader: VertexShader::Standard,
             fragment_shader: FragmentShader::Standard,
+            initial_pixels: InitialPixels::Zero,
         }
     }
 }
@@ -874,6 +891,7 @@ impl<'a> Strtex<'a> {
             pipeline_layout: ManuallyDrop::new(pipeline_layout),
             render_pass: ManuallyDrop::new(render_pass),
         };
+        let log = s.log.clone();
 
         let prev_layer = s.layer_holes.find_available(|x| match x {
             DrawType::StreamingTexture { .. } => true,
@@ -897,7 +915,11 @@ impl<'a> Strtex<'a> {
             });
             Layer(s.strtexs.len() - 1)
         };
-        self.vx.strtex().write_all(&layer, (0, 0, 0, 0));
+
+        match options.initial_pixels {
+            InitialPixels::Zero => self.vx.strtex().write_all(&layer, (0, 0, 0, 0)),
+            InitialPixels::Perlin(seeds) => self.vx.strtex().fill_with_perlin_noise(&layer, seeds),
+        }
         layer
     }
 
