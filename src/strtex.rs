@@ -2382,4 +2382,18 @@ mod tests {
             vx.strtex().fill_with_perlin_noise(&layer, [1.0, 2.0, 3.0]);
         });
     }
+
+    #[bench]
+    fn add_remove_layer(b: &mut Bencher) {
+        let logger = Logger::root(Discard, o!());
+        let event_loop = EventLoop::new_any_thread();
+        let mut vx = VxDraw::new(logger, ShowWindow::Headless1k, &event_loop);
+
+        b.iter(|| {
+            let layer = vx
+                .strtex()
+                .add_layer(&LayerOptions::new().width(1000).height(1000));
+            vx.strtex().remove_layer(layer);
+        });
+    }
 }
