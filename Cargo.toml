@@ -8,6 +8,7 @@ homepage = "https://github.com/Omen-of-Aecio/vxdraw"
 repository = "https://github.com/Omen-of-Aecio/vxdraw"
 keywords = ["rendering", "graphics", "2d"]
 license = "LGPL-3.0-or-later"
+readme = "README.md"
 build = "build.rs"
 exclude = ["tests/vxdraw/*"]
 
